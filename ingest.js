@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // ingest.js
 import 'dotenv/config';
+import fs from 'node:fs';
 import path from 'node:path';
 import { runOCR } from './src/ocr.js';
 import { structureContent } from './src/structure.js';
@@ -9,6 +10,25 @@ import { writeAuditLog } from './src/audit.js';
 
 const SUBJECT = process.env.SCRIP_SUBJECT ?? 'histoire';
 const LEVEL = process.env.SCRIP_LEVEL ?? '1ère';
+
+function nextAvailablePath(filePath) {
+  if (!fs.existsSync(filePath)) return filePath;
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const base = path.basename(filePath, ext);
+  let n = 1;
+  while (fs.existsSync(path.join(dir, `${base} (${n})${ext}`))) n++;
+  return path.join(dir, `${base} (${n})${ext}`);
+}
+
+function extractTitle(content) {
+  const match = content.match(/^#\s+(.+)$/m);
+  return match ? match[1].trim() : null;
+}
+
+function sanitizeFilename(name) {
+  return name.replace(/[/\\:*?"<>|]/g, '-').trim();
+}
 
 async function main() {
   const imagePath = process.argv[2];
@@ -48,7 +68,11 @@ async function main() {
     sources: [sourceName],
   });
 
-  process.stdout.write(note);
+  const title = extractTitle(structured);
+  const baseName = sanitizeFilename(title ?? path.basename(imagePath, path.extname(imagePath)));
+  const notePath = nextAvailablePath(`${baseName}.md`);
+  fs.writeFileSync(notePath, note);
+  process.stderr.write(`[note] ${notePath}\n`);
 
   const auditPath = writeAuditLog(structured, imageRegions, sourceName, dateIngestion);
   if (auditPath) {
