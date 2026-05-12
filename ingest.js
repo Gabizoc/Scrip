@@ -31,8 +31,8 @@ async function main() {
   process.stderr.write(`[1/3] OCR en cours sur ${sourceName}...\n`);
   const { rawMarkdown } = await runOCR(absolutePath, mistralKey);
 
-  process.stderr.write(`[2/3] Structuration via Gemma 4...\n`);
-  const structuredContent = await structureContent(rawMarkdown, SUBJECT, LEVEL, openrouterKey);
+  process.stderr.write(`[2/3] Structuration via LLM...\n`);
+  const structuredContent = await structureContent(rawMarkdown, SUBJECT, LEVEL, openrouterKey, mistralKey);
 
   process.stderr.write(`[3/3] Assemblage de la note...\n`);
   const now = new Date();
