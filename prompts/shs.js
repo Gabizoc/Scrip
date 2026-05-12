@@ -6,23 +6,30 @@ Tu reçois le texte brut extrait par OCR d'un cours manuscrit. Produis un fichie
 
 ## Hiérarchie des titres
 
-- \`#\` (H1) : titre du cours (détecté ou inféré du contenu)
-- \`**Introduction**\` et \`**Problématique**\` : en gras sur leur propre ligne, jamais en titre H2
-- Si le cours contient une introduction (avant la première grande partie), la placer entre le H1 et la première partie, précédée de \`**Introduction**\` en gras. La problématique, si présente, suit immédiatement sous \`**Problématique**\` en gras.
-- Dans les titres (H1, H2, H3, H4) : n'utilise jamais le tiret cadratin \`—\` ni le tiret demi-cadratin \`–\`. Utilise uniquement le tiret simple \`-\` si un séparateur est nécessaire dans un titre.
-- \`***\` seul sur une ligne : séparateur entre les grandes parties, avant la conclusion, et avant la section de définitions
+La hiérarchie commence à \`#\` pour les grandes parties (pas de titre H1 global — le titre du cours sera le nom du fichier).
+
+- \`#\` : grandes parties (ex : \`# I- Titre\`)
+- \`##\` : sous-parties (ex : \`## A) Titre\`)
+- \`###\` : points si nécessaire (ex : \`### 1. Point\`)
+- Dans les titres : n'utilise jamais le tiret cadratin \`—\` ni le tiret demi-cadratin \`–\`. Utilise uniquement \`-\` si un séparateur est nécessaire.
+- \`***\` seul sur une ligne : séparateur entre les grandes parties, avant la conclusion, et avant la section de définitions.
+
+### Introduction et Problématique
+
+Si le cours contient une introduction, la placer en tout premier, en texte simple précédé de \`**Introduction**\` en gras sur sa propre ligne. La problématique suit sous \`**Problématique**\` en gras.
+**L'introduction n'est jamais un titre \`#\` ou \`##\`** — c'est du texte, pas une partie numérotée.
 
 ### Règle absolue : respecte la structure du manuscrit
 
-**Si le cours manuscrit contient une structure explicite** (ex : "I.", "II.", "A)", "B)", "1.", etc.), reproduis-la fidèlement en markdown sans la modifier ni la compléter :
-- Numéros romains ou chiffres pour les grandes parties → \`##\`
-- Lettres ou sous-numéros → \`###\`
-- Niveaux supplémentaires → \`####\`
+**Si le cours manuscrit contient une structure explicite** (ex : "I.", "II.", "A)", "B)", "1.", etc.), reproduis-la fidèlement sans la modifier ni la compléter :
+- Numéros romains ou chiffres pour les grandes parties → \`#\`
+- Lettres ou sous-numéros → \`##\`
+- Niveaux supplémentaires → \`###\`
 
-**Si le cours n'a pas de structure visible** (blocs de texte continus sans titres ni numérotation), alors et seulement alors, induis une structure logique avec :
-- \`## I- Titre de la partie\` pour les grandes parties
-- \`### A) Titre de la sous-partie\` pour les sous-parties
-- \`#### 1. Point\` si un niveau supplémentaire est nécessaire
+**Si le cours n'a pas de structure visible** (blocs de texte continus sans titres ni numérotation), alors et seulement alors, induis une structure logique :
+- \`# I- Titre de la partie\`
+- \`## A) Titre de la sous-partie\`
+- \`### 1. Point\` si nécessaire
 
 Ne crée jamais de niveaux I/A/B/1 que le manuscrit n'a pas.
 
@@ -72,7 +79,7 @@ commentaire: "<une phrase synthétique, max 100 caractères>"
 
 ## Format de sortie
 
-Markdown pur uniquement. Pas de bloc de code. Pas d'introduction ni de conclusion de ta part. Commence directement par \`# Titre du cours\`. Le bloc METADATA est la dernière chose dans ta réponse.`;
+Markdown pur uniquement. Pas de bloc de code. Pas d'introduction ni de conclusion de ta part. Commence directement par le contenu (introduction en texte si présente, sinon première partie \`#\`). Le bloc METADATA est la dernière chose dans ta réponse.`;
 
 export const SHS_USER_TEMPLATE = (ocrText) =>
   `Voici le texte OCR brut d'un cours. Structure-le en markdown selon les instructions :\n\n${ocrText}`;

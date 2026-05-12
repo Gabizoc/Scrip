@@ -21,8 +21,9 @@ function nextAvailablePath(filePath) {
   return path.join(dir, `${base} (${n})${ext}`);
 }
 
+// Cherche un titre explicite sans numérotation (ex: "# La Révolution" mais pas "# I- ...")
 function extractTitle(content) {
-  const match = content.match(/^#\s+(.+)$/m);
+  const match = content.match(/^#\s+(?![IVX]+[-.\s]|\d+[-.\s])(.+)$/m);
   return match ? match[1].trim() : null;
 }
 
