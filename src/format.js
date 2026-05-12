@@ -7,7 +7,7 @@
  * @returns {string}
  */
 export function buildNote(content, meta) {
-  const sourcesInline = meta.sources.join(', ');
+  const sourcesInline = (meta.sources ?? []).join(', ');
   const frontmatter = [
     '---',
     `matière: ${meta.subject}`,
