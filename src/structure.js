@@ -2,14 +2,14 @@
 import { HISTOIRE_SYSTEM_PROMPT, HISTOIRE_USER_TEMPLATE } from '../prompts/histoire.js';
 
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-const PRIMARY_MODEL = 'google/gemma-4-26b-a4b-it:free';
+const PRIMARY_MODEL = 'nvidia/nemotron-3-super-120b-a12b:free';
 
 const PROMPTS = {
   histoire: { system: HISTOIRE_SYSTEM_PROMPT, userTemplate: HISTOIRE_USER_TEMPLATE },
 };
 
 /**
- * Envoie le texte OCR brut à Gemma 4 via OpenRouter pour structuration markdown.
+ * Envoie le texte OCR brut au LLM via OpenRouter pour structuration markdown.
  * @param {string} rawMarkdown - Sortie brute de l'OCR
  * @param {string} subject - Matière (ex: 'histoire')
  * @param {string} level - Niveau scolaire (ex: '1ère')
