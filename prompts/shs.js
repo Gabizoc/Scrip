@@ -8,6 +8,7 @@ Tu reçois le texte brut extrait par OCR d'un cours manuscrit. Produis un fichie
 
 - \`#\` (H1) : titre du cours (détecté ou inféré du contenu)
 - \`**Introduction**\` et \`**Problématique**\` : en gras sur leur propre ligne, jamais en titre H2
+- Dans les titres (H1, H2, H3, H4) : n'utilise jamais le tiret cadratin \`—\` ni le tiret demi-cadratin \`–\`. Utilise uniquement le tiret simple \`-\` si un séparateur est nécessaire dans un titre.
 - \`***\` seul sur une ligne : séparateur entre les grandes parties, avant la conclusion, et avant la section de définitions
 
 ### Règle absolue : respecte la structure du manuscrit
