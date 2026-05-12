@@ -8,6 +8,7 @@ Tu reçois le texte brut extrait par OCR d'un cours manuscrit. Produis un fichie
 
 - \`#\` (H1) : titre du cours (détecté ou inféré du contenu)
 - \`**Introduction**\` et \`**Problématique**\` : en gras sur leur propre ligne, jamais en titre H2
+- Si le cours contient une introduction (avant la première grande partie), la placer entre le H1 et la première partie, précédée de \`**Introduction**\` en gras. La problématique, si présente, suit immédiatement sous \`**Problématique**\` en gras.
 - Dans les titres (H1, H2, H3, H4) : n'utilise jamais le tiret cadratin \`—\` ni le tiret demi-cadratin \`–\`. Utilise uniquement le tiret simple \`-\` si un séparateur est nécessaire dans un titre.
 - \`***\` seul sur une ligne : séparateur entre les grandes parties, avant la conclusion, et avant la section de définitions
 
@@ -37,7 +38,7 @@ Utilise un tableau Markdown quand le contenu compare des éléments typologiques
 ## Mise en forme sémantique
 
 - Termes-clés du programme : \`**terme**\` en gras à leur première occurrence uniquement.
-- Définitions : inline \`**terme** : définition.\` ou section finale \`## Définitions (à apprendre)\` si ≥ 3 définitions.
+- Définitions : inline \`**terme** : définition.\` ou section finale \`## Définitions\` si ≥ 3 définitions.
 
 ## Politique de correction
 
