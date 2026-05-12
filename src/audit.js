@@ -5,6 +5,16 @@ import path from 'node:path';
 const CORRECTION_RE = /\[Note\s*:\s*"([^"]+)"\s+corrigé\s+en\s+"([^"]+)"\s*[—–-]\s*([^\]]+)\]/gu;
 const AUDIT_DIR = '_audit';
 
+function nextAvailablePath(filePath) {
+  if (!fs.existsSync(filePath)) return filePath;
+  const dir = path.dirname(filePath);
+  const ext = path.extname(filePath);
+  const base = path.basename(filePath, ext);
+  let n = 1;
+  while (fs.existsSync(path.join(dir, `${base} (${n})${ext}`))) n++;
+  return path.join(dir, `${base} (${n})${ext}`);
+}
+
 /**
  * Parse les corrections factuelles tracées du contenu LLM.
  * @param {string} content
@@ -38,7 +48,7 @@ export function writeAuditLog(structuredContent, imageRegions, sourceName, dateI
 
   const baseName = path.basename(sourceName, path.extname(sourceName));
   fs.mkdirSync(AUDIT_DIR, { recursive: true });
-  const auditPath = path.join(AUDIT_DIR, `${baseName}.audit.md`);
+  const auditPath = nextAvailablePath(path.join(AUDIT_DIR, `${baseName}.audit.md`));
 
   const lines = [
     `# Audit — ${baseName}`,
