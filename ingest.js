@@ -27,7 +27,10 @@ function extractTitle(content) {
 }
 
 function sanitizeFilename(name) {
-  return name.replace(/[/\\:*?"<>|]/g, '-').trim();
+  return name
+    .replace(/[—–]/g, '-')
+    .replace(/[/\\:*?"<>|]/g, '-')
+    .trim();
 }
 
 async function main() {
