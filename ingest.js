@@ -5,8 +5,9 @@ import path from 'node:path';
 import { runOCR } from './src/ocr.js';
 import { structureContent } from './src/structure.js';
 import { buildNote } from './src/format.js';
+import { writeAuditLog } from './src/audit.js';
 
-const SUBJECT = 'histoire';
+const SUBJECT = process.env.SCRIP_SUBJECT ?? 'histoire';
 const LEVEL = process.env.SCRIP_LEVEL ?? '1ère';
 
 async function main() {
@@ -29,17 +30,17 @@ async function main() {
   const sourceName = path.basename(imagePath);
 
   process.stderr.write(`[1/3] OCR en cours sur ${sourceName}...\n`);
-  const { rawMarkdown } = await runOCR(absolutePath, mistralKey);
+  const { rawMarkdown, imageRegions } = await runOCR(absolutePath, mistralKey);
 
-  process.stderr.write(`[2/3] Structuration via LLM...\n`);
-  const structuredContent = await structureContent(rawMarkdown, SUBJECT, LEVEL, openrouterKey, mistralKey);
+  process.stderr.write(`[2/3] Structuration via LLM (${SUBJECT})...\n`);
+  const structured = await structureContent(rawMarkdown, SUBJECT, LEVEL, openrouterKey, mistralKey);
 
   process.stderr.write(`[3/3] Assemblage de la note...\n`);
   const now = new Date();
   const dateCours = now.toISOString().split('T')[0];
   const dateIngestion = now.toISOString();
 
-  const note = buildNote(structuredContent, {
+  const note = buildNote(structured, {
     subject: SUBJECT,
     level: LEVEL,
     dateCours,
@@ -48,6 +49,11 @@ async function main() {
   });
 
   process.stdout.write(note);
+
+  const auditPath = writeAuditLog(structured, imageRegions, sourceName, dateIngestion);
+  if (auditPath) {
+    process.stderr.write(`[audit] ${auditPath}\n`);
+  }
 }
 
 main().catch((err) => {
