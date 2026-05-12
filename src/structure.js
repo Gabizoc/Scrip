@@ -1,5 +1,5 @@
 // src/structure.js
-import { HISTOIRE_SYSTEM_PROMPT, HISTOIRE_USER_TEMPLATE } from '../prompts/histoire.js';
+import { SHS_SYSTEM_PROMPT, SHS_USER_TEMPLATE } from '../prompts/shs.js';
 
 const MISTRAL_ENDPOINT = 'https://api.mistral.ai/v1/chat/completions';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
@@ -12,7 +12,9 @@ const OPENROUTER_FALLBACKS = [
 ];
 
 const PROMPTS = {
-  histoire: { system: HISTOIRE_SYSTEM_PROMPT, userTemplate: HISTOIRE_USER_TEMPLATE },
+  histoire:   { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
+  géographie: { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
+  emc:        { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
 };
 
 async function callMistral(messages, apiKey) {
