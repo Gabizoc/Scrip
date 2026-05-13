@@ -1,16 +1,13 @@
 {
   "name": "scrip",
-  "version": "0.1.0",
-  "description": "CLI d'ingestion de cours manuscrits vers Markdown structuré (Obsidian)",
   "type": "module",
-  "engines": {
-    "node": ">=20.0.0"
-  },
+  "version": "1.0.0",
+  "workspaces": ["backend", "frontend"],
   "scripts": {
     "test": "node --test tests/*.test.js",
-    "start": "node ingest.js"
-  },
-  "dependencies": {
-    "dotenv": "^16.4.7"
+    "start": "node ingest.js",
+    "dev:backend": "npm run dev --workspace=backend",
+    "dev:frontend": "npm run dev --workspace=frontend",
+    "build": "npm run build --workspace=frontend"
   }
 }
