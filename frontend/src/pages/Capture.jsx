@@ -1,10 +1,10 @@
 // frontend/src/pages/Capture.jsx
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { api } from '../lib/api.js';
-import { useCamera } from '../hooks/useCamera.js';
+import { useCamera } from '../hooks/useCamera.jsx';
 import Button from '../components/Button.jsx';
 import GlassCard from '../components/GlassCard.jsx';
 
@@ -26,6 +26,14 @@ export default function Capture() {
   });
 
   const { trigger, CameraInput } = useCamera({ onCapture: setPhoto });
+
+  const photoUrl = photo ? URL.createObjectURL(photo) : null;
+
+  useEffect(() => {
+    return () => {
+      if (photoUrl) URL.revokeObjectURL(photoUrl);
+    };
+  }, [photoUrl]);
 
   const ingest = useMutation({
     mutationFn: () => api.ingest(photo, subjectId, settings?.currentLevelId),
@@ -57,7 +65,7 @@ export default function Capture() {
           {photo ? (
             <div className="space-y-3">
               <img
-                src={URL.createObjectURL(photo)}
+                src={photoUrl}
                 alt="aperçu du cours"
                 className="w-full rounded-md object-cover max-h-72"
               />

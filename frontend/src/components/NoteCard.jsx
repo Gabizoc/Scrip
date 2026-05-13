@@ -14,6 +14,12 @@ export default function NoteCard({ note }) {
     <GlassCard
       className="p-4 cursor-pointer active:scale-[0.98] transition-transform duration-100"
       onClick={() => navigate(`/preview/${note.id}`)}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') navigate(`/preview/${note.id}`);
+      }}
+      aria-label={`Ouvrir le cours : ${note.title}`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="flex-1 min-w-0">

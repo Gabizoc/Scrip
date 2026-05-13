@@ -1,5 +1,5 @@
 // frontend/src/hooks/useCamera.js
-import { useRef } from 'react';
+import { useRef, useCallback } from 'react';
 
 /**
  * Gère la capture photo via l'input file natif.
@@ -17,14 +17,14 @@ export function useCamera({ onCapture }) {
     inputRef.current?.click();
   }
 
-  function handleChange(e) {
+  const handleChange = useCallback(function handleChange(e) {
     const file = e.target.files?.[0];
     if (file) onCapture(file);
     // Reset pour permettre de re-sélectionner le même fichier
     e.target.value = '';
-  }
+  }, [onCapture]);
 
-  function CameraInput() {
+  const CameraInput = useCallback(function CameraInput() {
     return (
       <input
         ref={inputRef}
@@ -36,7 +36,7 @@ export function useCamera({ onCapture }) {
         aria-hidden="true"
       />
     );
-  }
+  }, []); // inputRef et handleChange sont des refs stables
 
   return { trigger, CameraInput };
 }
