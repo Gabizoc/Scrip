@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0A0A0B" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <title>Scrip</title>
+    <!--
+      Script anti-FOUC : s'exécute AVANT React.
+      Lit localStorage et applique .dark sur <html> immédiatement.
+      Sans ça, l'app flashe en mode clair avant que React charge le thème.
+    -->
+    <script>
+      (function () {
+        var s = localStorage.getItem('scrip.theme');
+        var dark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+        if (s === 'dark' || (s === 'auto' && dark) || (!s && dark)) {
+          document.documentElement.classList.add('dark');
+        }
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>
