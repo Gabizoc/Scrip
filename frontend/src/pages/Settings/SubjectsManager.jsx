@@ -8,7 +8,7 @@ import GlassCard from '../../components/GlassCard.jsx';
 import Button from '../../components/Button.jsx';
 import Input from '../../components/Input.jsx';
 
-const PROMPT_OPTIONS = ['shs', 'svt', 'emc'];
+const PROMPT_OPTIONS = ['shs', 'emc'];
 
 const EMPTY_FORM = { name: '', levelId: '', prompt: 'shs', outputFolder: '' };
 

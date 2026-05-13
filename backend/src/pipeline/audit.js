@@ -3,7 +3,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const CORRECTION_RE = /\[Note\s*:\s*"([^"]+)"\s+corrigé\s+en\s+"([^"]+)"\s*[—–-]\s*([^\]]+)\]/gu;
-const AUDIT_DIR = '_audit';
 
 function nextAvailablePath(filePath) {
   if (!fs.existsSync(filePath)) return filePath;
@@ -42,13 +41,13 @@ export function parseCorrections(content) {
  * @param {string} dateIngestion - ISO timestamp
  * @returns {string|null} Chemin du fichier créé, ou null si non nécessaire
  */
-export function writeAuditLog(structuredContent, imageRegions, sourceName, dateIngestion) {
+export function writeAuditLog(structuredContent, imageRegions, sourceName, dateIngestion, auditDir = '_audit') {
   const corrections = parseCorrections(structuredContent);
   if (corrections.length === 0 && imageRegions.length === 0) return null;
 
   const baseName = path.basename(sourceName, path.extname(sourceName));
-  fs.mkdirSync(AUDIT_DIR, { recursive: true });
-  const auditPath = nextAvailablePath(path.join(AUDIT_DIR, `${baseName}.audit.md`));
+  fs.mkdirSync(auditDir, { recursive: true });
+  const auditPath = nextAvailablePath(path.join(auditDir, `${baseName}.audit.md`));
 
   const lines = [
     `# Audit — ${baseName}`,

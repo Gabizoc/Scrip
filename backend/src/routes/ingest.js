@@ -3,6 +3,7 @@ import { Router } from 'express';
 import multer from 'multer';
 import path from 'node:path';
 import fs from 'node:fs';
+import os from 'node:os';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db.js';
 import { runOCR } from '../pipeline/ocr.js';
@@ -10,7 +11,7 @@ import { structureContent } from '../pipeline/structure.js';
 import { buildNote } from '../pipeline/format.js';
 import { writeAuditLog, parseMetadata } from '../pipeline/audit.js';
 
-const upload = multer({ dest: '/tmp/scrip-uploads/' });
+const upload = multer({ dest: path.join(os.tmpdir(), 'scrip-uploads') });
 export const ingestRouter = Router();
 
 function sanitizeFilename(name) {
@@ -83,8 +84,9 @@ ingestRouter.post('/', upload.single('photo'), async (req, res, next) => {
     fs.unlinkSync(req.file.path);
 
     // Audit log
+    const auditDir = path.join(db.data.settings.vaultPath, '_audit');
     const auditPath = writeAuditLog(
-      structured, imageRegions, req.file.originalname, now.toISOString()
+      structured, imageRegions, req.file.originalname, now.toISOString(), auditDir
     );
     const metadata = parseMetadata(structured);
 
