@@ -1,3 +1,4 @@
+// frontend/src/pages/Preview.jsx
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -19,7 +20,6 @@ export default function Preview() {
     queryFn: () => api.getNote(noteId),
   });
 
-  // Initialiser le draft quand les données arrivent
   useEffect(() => {
     if (data?.markdown) setDraft(data.markdown);
   }, [data?.markdown]);
@@ -41,101 +41,80 @@ export default function Preview() {
     },
   });
 
-  if (isLoading) {
-    return (
-      <div className="p-4 text-text-tertiary text-sm">Chargement...</div>
-    );
-  }
-  if (error) {
-    return (
-      <div className="p-4 text-status-danger text-sm">{error.message}</div>
-    );
-  }
+  if (isLoading) return <div className="p-8 text-text-tertiary text-sm">Chargement...</div>;
+  if (error) return <div className="p-8 text-status-danger text-sm">{error.message}</div>;
 
   return (
-    <div className="min-h-screen pb-8">
-      {/* Header sticky */}
-      <header className={[
-        'sticky top-0 z-10',
-        'px-4 py-3',
-        'backdrop-blur-glass bg-bg-base/80',
-        'border-b border-black/[0.06] dark:border-white/[0.06]',
-      ].join(' ')}>
-        <div className="flex items-center justify-between max-w-2xl mx-auto">
-          <button
-            onClick={() => navigate('/')}
-            className="text-text-secondary p-1 -ml-1"
-            aria-label="Retour"
-          >
-            <ArrowLeft size={20} />
-          </button>
+    <div className="p-6 md:p-8 max-w-3xl mx-auto">
+      {/* Toolbar */}
+      <div className="flex items-center justify-between mb-6 gap-4">
+        <button
+          onClick={() => navigate('/')}
+          className="flex items-center gap-2 text-text-secondary hover:text-text-primary transition-colors text-sm"
+        >
+          <ArrowLeft size={16} />
+          Cours
+        </button>
 
-          <div className="flex items-center gap-1">
-            {editing ? (
-              <>
-                <button
-                  onClick={() => setEditing(false)}
-                  className="text-text-secondary p-2"
-                  aria-label="Annuler"
-                >
-                  <X size={18} />
-                </button>
-                <Button
-                  onClick={() => patchNote.mutate(draft)}
-                  disabled={patchNote.isPending}
-                  className="h-9 text-sm px-4"
-                >
-                  <Check size={14} className="inline mr-1" />
-                  Sauvegarder
-                </Button>
-              </>
-            ) : (
-              <>
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-text-secondary p-2"
-                  aria-label="Éditer"
-                >
-                  <Edit2 size={18} />
-                </button>
-                <button
-                  onClick={() => {
-                    if (confirm('Supprimer ce cours ?')) deleteNote.mutate();
-                  }}
-                  className="text-status-danger p-2"
-                  aria-label="Supprimer"
-                >
-                  <Trash2 size={18} />
-                </button>
-              </>
-            )}
-          </div>
+        <div className="flex items-center gap-2">
+          {editing ? (
+            <>
+              <button
+                onClick={() => setEditing(false)}
+                className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary px-3 py-1.5 rounded-md border border-black/[0.08] dark:border-white/10 transition-colors"
+              >
+                <X size={14} /> Annuler
+              </button>
+              <Button
+                onClick={() => patchNote.mutate(draft)}
+                disabled={patchNote.isPending}
+                className="h-9 text-sm px-4"
+              >
+                <Check size={14} className="inline mr-1" /> Sauvegarder
+              </Button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => setEditing(true)}
+                className="flex items-center gap-1.5 text-sm text-text-secondary hover:text-text-primary px-3 py-1.5 rounded-md border border-black/[0.08] dark:border-white/10 transition-colors"
+              >
+                <Edit2 size={14} /> Éditer
+              </button>
+              <button
+                onClick={() => confirm('Supprimer ce cours ?') && deleteNote.mutate()}
+                className="flex items-center gap-1.5 text-sm text-status-danger hover:text-status-danger/80 px-3 py-1.5 rounded-md border border-status-danger/20 transition-colors"
+              >
+                <Trash2 size={14} /> Supprimer
+              </button>
+            </>
+          )}
         </div>
-      </header>
+      </div>
 
-      <main className="px-4 pt-4 max-w-2xl mx-auto">
-        {editing ? (
-          <textarea
-            value={draft}
-            onChange={e => setDraft(e.target.value)}
-            className={[
-              'w-full h-[75vh] p-4 rounded-md',
-              'bg-black/[0.03] dark:bg-white/[0.04]',
-              'border border-black/[0.08] dark:border-white/[0.06]',
-              'text-text-primary font-mono text-sm',
-              'resize-none focus:outline-none',
-              'focus:border-accent/40',
-            ].join(' ')}
-          />
-        ) : (
-          <GlassCard className="p-6">
-            {/* prose : typo Tailwind pour le rendu markdown */}
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <ReactMarkdown>{data?.markdown ?? ''}</ReactMarkdown>
-            </div>
-          </GlassCard>
-        )}
-      </main>
+      {/* Content */}
+      {editing ? (
+        <textarea
+          value={draft}
+          onChange={e => setDraft(e.target.value)}
+          className={[
+            'w-full h-[70vh] p-5 rounded-lg',
+            'bg-bg-elevated dark:bg-bg-elevated',
+            'border border-black/[0.08] dark:border-white/[0.06]',
+            'text-text-primary font-mono text-sm leading-relaxed',
+            'resize-none focus:outline-none focus:border-accent/50',
+            'transition-colors',
+          ].join(' ')}
+        />
+      ) : (
+        <GlassCard className="p-6 md:p-8">
+          <div className="prose prose-sm dark:prose-invert max-w-none
+            prose-headings:text-text-primary prose-p:text-text-primary
+            prose-strong:text-text-primary prose-code:text-accent">
+            <ReactMarkdown>{data?.markdown ?? ''}</ReactMarkdown>
+          </div>
+        </GlassCard>
+      )}
     </div>
   );
 }

@@ -2,17 +2,22 @@
 import { useNavigate } from 'react-router-dom';
 import GlassCard from './GlassCard.jsx';
 
+const SCORE_COLOR = (s) => {
+  if (s >= 80) return 'text-status-success';
+  if (s >= 60) return 'text-status-warning';
+  return 'text-status-danger';
+};
+
 export default function NoteCard({ note }) {
   const navigate = useNavigate();
   const date = new Date(note.createdAt).toLocaleDateString('fr-FR', {
-    day: 'numeric',
-    month: 'short',
+    day: 'numeric', month: 'short', year: 'numeric',
   });
   const score = note.metadata?.qualite_francais;
 
   return (
     <GlassCard
-      className="p-4 cursor-pointer active:scale-[0.98] transition-transform duration-100"
+      className="p-5 cursor-pointer hover:shadow-lg transition-all duration-150 active:scale-[0.98]"
       onClick={() => navigate(`/preview/${note.id}`)}
       role="button"
       tabIndex={0}
@@ -21,15 +26,13 @@ export default function NoteCard({ note }) {
       }}
       aria-label={`Ouvrir le cours : ${note.title}`}
     >
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex-1 min-w-0">
-          <h3 className="text-[15px] font-semibold text-text-primary truncate">
-            {note.title}
-          </h3>
-          <p className="text-sm text-text-secondary mt-0.5">{date}</p>
-        </div>
+      <h3 className="text-[15px] font-semibold text-text-primary line-clamp-2 mb-3 leading-snug">
+        {note.title}
+      </h3>
+      <div className="flex items-center justify-between">
+        <span className="text-xs text-text-tertiary">{date}</span>
         {score != null && (
-          <span className="text-xs font-mono text-text-tertiary shrink-0 mt-0.5">
+          <span className={`text-xs font-semibold font-mono ${SCORE_COLOR(score)}`}>
             {score}/100
           </span>
         )}

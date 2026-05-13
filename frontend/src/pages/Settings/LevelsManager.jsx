@@ -13,17 +13,11 @@ export default function LevelsManager() {
   const qc = useQueryClient();
   const [newName, setNewName] = useState('');
 
-  const { data: levels = [] } = useQuery({
-    queryKey: ['levels'],
-    queryFn: api.getLevels,
-  });
+  const { data: levels = [] } = useQuery({ queryKey: ['levels'], queryFn: api.getLevels });
 
   const create = useMutation({
     mutationFn: () => api.createLevel(newName),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['levels'] });
-      setNewName('');
-    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['levels'] }); setNewName(''); },
   });
 
   const del = useMutation({
@@ -33,53 +27,30 @@ export default function LevelsManager() {
   });
 
   return (
-    <div className="min-h-screen p-4">
-      <button
-        onClick={() => navigate('/settings')}
-        className="flex items-center gap-1 text-text-secondary mb-6"
-      >
-        <ArrowLeft size={18} />
-        <span className="text-sm">Paramètres</span>
+    <div className="p-6 md:p-8 max-w-lg">
+      <button onClick={() => navigate('/settings')} className="flex items-center gap-2 text-text-secondary hover:text-text-primary text-sm mb-6 transition-colors">
+        <ArrowLeft size={16} /> Paramètres
       </button>
 
-      <h2 className="text-xl font-bold text-text-primary mb-6">Niveaux</h2>
+      <h1 className="text-2xl font-bold text-text-primary mb-6">Niveaux</h1>
 
-      <div className="space-y-3 max-w-lg">
+      <div className="space-y-3">
         {levels.map(level => (
-          <GlassCard
-            key={level.id}
-            className="p-4 flex items-center justify-between"
-          >
+          <GlassCard key={level.id} className="px-4 py-3 flex items-center justify-between">
             <span className="text-[15px] text-text-primary">{level.name}</span>
-            <button
-              onClick={() => del.mutate(level.id)}
-              className="text-status-danger p-1"
-              aria-label={`Supprimer ${level.name}`}
-            >
+            <button onClick={() => del.mutate(level.id)} className="text-status-danger p-1 hover:opacity-70 transition-opacity" aria-label={`Supprimer ${level.name}`}>
               <Trash2 size={16} />
             </button>
           </GlassCard>
         ))}
 
         {levels.length === 0 && (
-          <p className="text-text-tertiary text-sm text-center py-4">
-            Aucun niveau — ajoutez-en un ci-dessous.
-          </p>
+          <p className="text-text-tertiary text-sm text-center py-6">Aucun niveau — ajoutez-en un ci-dessous.</p>
         )}
 
-        {/* Formulaire ajout */}
         <GlassCard className="p-4 space-y-3">
-          <Input
-            label="Nouveau niveau"
-            value={newName}
-            onChange={setNewName}
-            placeholder="ex : 1ère, Terminale, Terminale spé NSI"
-          />
-          <Button
-            className="w-full"
-            onClick={() => create.mutate()}
-            disabled={!newName.trim() || create.isPending}
-          >
+          <Input label="Nouveau niveau" value={newName} onChange={setNewName} placeholder="ex : 1ère, Terminale..." />
+          <Button className="w-full" onClick={() => create.mutate()} disabled={!newName.trim() || create.isPending}>
             Ajouter
           </Button>
         </GlassCard>
