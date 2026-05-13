@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { parseCorrections, writeAuditLog } from '../src/audit.js';
+import { parseCorrections, writeAuditLog } from '../backend/src/pipeline/audit.js';
 
 // --- parseCorrections ---
 

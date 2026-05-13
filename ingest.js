@@ -3,10 +3,10 @@
 import 'dotenv/config';
 import fs from 'node:fs';
 import path from 'node:path';
-import { runOCR } from './src/ocr.js';
-import { structureContent } from './src/structure.js';
-import { buildNote } from './src/format.js';
-import { writeAuditLog } from './src/audit.js';
+import { runOCR } from './backend/src/pipeline/ocr.js';
+import { structureContent } from './backend/src/pipeline/structure.js';
+import { buildNote } from './backend/src/pipeline/format.js';
+import { writeAuditLog } from './backend/src/pipeline/audit.js';
 
 const SUBJECT = process.env.SCRIP_SUBJECT ?? 'histoire';
 const LEVEL = process.env.SCRIP_LEVEL ?? '1ère';

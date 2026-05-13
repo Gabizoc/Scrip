@@ -1,7 +1,7 @@
 // tests/format.test.js
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildNote } from '../src/format.js';
+import { buildNote } from '../backend/src/pipeline/format.js';
 
 test('buildNote génère un frontmatter YAML valide', () => {
   const meta = {

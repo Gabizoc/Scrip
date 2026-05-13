@@ -19,7 +19,7 @@ const mockFetch = mock.fn(async () => ({
 
 global.fetch = mockFetch;
 
-const { runOCR } = await import('../src/ocr.js');
+const { runOCR } = await import('../backend/src/pipeline/ocr.js');
 
 test('runOCR retourne rawMarkdown et imageRegions', async () => {
   const result = await runOCR('tests/fixtures/dummy.jpg', 'fake_api_key');

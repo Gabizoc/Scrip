@@ -11,7 +11,7 @@ global.fetch = mock.fn(async () => ({
   }),
 }));
 
-const { structureContent } = await import('../src/structure.js');
+const { structureContent } = await import('../backend/src/pipeline/structure.js');
 
 test('structureContent retourne le contenu markdown du LLM (Mistral direct)', async () => {
   const result = await structureContent(
