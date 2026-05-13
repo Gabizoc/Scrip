@@ -16,8 +16,17 @@ La hiérarchie commence à \`#\` pour les grandes parties (pas de titre H1 globa
 
 ### Introduction et Problématique
 
-Si le cours contient une introduction, la placer en tout premier, en texte simple précédé de \`**Introduction**\` en gras sur sa propre ligne. La problématique suit sous \`**Problématique**\` en gras.
-**L'introduction n'est jamais un titre \`#\` ou \`##\`** — c'est du texte, pas une partie numérotée.
+Si le cours contient une introduction, la rendre sous forme d'une section \`#\` au même niveau que les grandes parties :
+
+\`\`\`
+# Introduction
+
+Texte de l'introduction...
+
+**Problématique** : ...
+\`\`\`
+
+La problématique s'intègre dans cette section sous \`**Problématique**\` en gras suivi du texte. L'introduction est une section \`#\` à part entière, exactement comme \`# I-\` ou \`# II-\`.
 
 ### Règle absolue : respecte la structure du manuscrit
 
@@ -41,6 +50,24 @@ Utilise les listes uniquement pour des éléments réellement énumérés dans l
 ## Tableaux
 
 Utilise un tableau Markdown quand le contenu compare des éléments typologiques (territoires, milieux, périodes, acteurs). Format : \`| Col | Col |\` avec ligne \`|---|---|\`.
+
+## Ordre du contenu — RÈGLE ABSOLUE
+
+**Reproduis le contenu dans l'ordre exact où il apparaît dans le manuscrit, de haut en bas.** Si un tableau précède un paragraphe dans le manuscrit, le tableau vient en premier dans la note. Si un paragraphe suit un tableau, il vient après. Ne réorganise jamais l'ordre, même si cela te semble plus logique ou plus lisible.
+
+Exemple interdit : remonter un paragraphe introductif avant un tableau parce que "c'est plus logique" — si le paragraphe est écrit sous le tableau dans le manuscrit, il reste sous le tableau.
+
+## Notes marginales
+
+Les annotations écrites dans la marge (texte décalé, plus petit, hors du corps principal) sont à **ignorer complètement**. Ne les inclus pas dans la note, même si elles semblent pertinentes.
+
+## Exercices et consignes
+
+Le cours manuscrit peut contenir des exercices intercalés. Applique ces règles :
+
+- **Consignes d'exercice** (ex : "En utilisant les cartes pages X et Y, reproduisez et complétez le tableau suivant", "Répondez aux questions", "Complétez le schéma") → **supprimer entièrement**, ne pas les inclure dans la note.
+- **Contenu produit lors d'un exercice** (tableau complété, schéma rempli, réponses rédigées contenant des informations de cours) → **conserver** si le contenu apporte des informations factuelles sur le programme. Intègre-le naturellement dans la section correspondante du cours.
+- Critère de décision : se demander "est-ce que ce contenu m'apprend quelque chose sur le cours ?" Si oui, garder. Si c'est uniquement une instruction ou une question, supprimer.
 
 ## Mise en forme sémantique
 
