@@ -5,3 +5,7 @@ node_modules/
 *.png
 !tests/fixtures/*.jpg
 logs/
+frontend/dist/
+backend/data/db.json
+pnpm-lock.yaml
+.claude/
