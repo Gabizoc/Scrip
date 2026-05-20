@@ -44,49 +44,53 @@ function MobileChip({ active, onClick, children }) {
 }
 
 // ── Composant principal ───────────────────────────────────────────────────────
-export default function SubjectSidebar({ subjects, activeSubject, onSelect, totalCount }) {
+export default function SubjectSidebar({ subjects, activeSubject, onSelect, totalCount, desktopOnly, mobileOnly }) {
   return (
     <>
       {/* ── Desktop : colonne fixe 130px ── */}
-      <aside className="hidden md:flex flex-col w-[130px] shrink-0 gap-0.5 pt-0.5 overflow-y-auto">
-        <SidebarItem
-          icon={<span className="text-sm leading-none">📁</span>}
-          name="Tous"
-          count={totalCount}
-          active={activeSubject === null}
-          onClick={() => onSelect(null)}
-        />
-        <div className="h-px bg-white/[0.05] my-1.5 mx-1" />
-        {subjects.map(([name, count]) => (
+      {!mobileOnly && (
+        <aside className="flex flex-col w-[130px] shrink-0 gap-0.5 pt-0.5 overflow-y-auto">
           <SidebarItem
-            key={name}
-            icon={<span className="text-sm leading-none">{subjectIcon(name)}</span>}
-            name={name}
-            count={count}
-            active={activeSubject === name}
-            onClick={() => onSelect(activeSubject === name ? null : name)}
+            icon={<span className="text-sm leading-none">📁</span>}
+            name="Tous"
+            count={totalCount}
+            active={activeSubject === null}
+            onClick={() => onSelect(null)}
           />
-        ))}
-      </aside>
+          <div className="h-px bg-white/[0.05] my-1.5 mx-1" />
+          {subjects.map(([name, count]) => (
+            <SidebarItem
+              key={name}
+              icon={<span className="text-sm leading-none">{subjectIcon(name)}</span>}
+              name={name}
+              count={count}
+              active={activeSubject === name}
+              onClick={() => onSelect(activeSubject === name ? null : name)}
+            />
+          ))}
+        </aside>
+      )}
 
       {/* ── Mobile : chips scrollables ── */}
-      <div
-        className="md:hidden flex gap-2 overflow-x-auto mb-3"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
-      >
-        <MobileChip active={activeSubject === null} onClick={() => onSelect(null)}>
-          Tous
-        </MobileChip>
-        {subjects.map(([name]) => (
-          <MobileChip
-            key={name}
-            active={activeSubject === name}
-            onClick={() => onSelect(activeSubject === name ? null : name)}
-          >
-            <span className="mr-1">{subjectIcon(name)}</span>{name}
+      {!desktopOnly && (
+        <div
+          className="flex gap-2 overflow-x-auto"
+          style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        >
+          <MobileChip active={activeSubject === null} onClick={() => onSelect(null)}>
+            Tous
           </MobileChip>
-        ))}
-      </div>
+          {subjects.map(([name]) => (
+            <MobileChip
+              key={name}
+              active={activeSubject === name}
+              onClick={() => onSelect(activeSubject === name ? null : name)}
+            >
+              <span className="mr-1">{subjectIcon(name)}</span>{name}
+            </MobileChip>
+          ))}
+        </div>
+      )}
     </>
   );
 }

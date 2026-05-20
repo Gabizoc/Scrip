@@ -130,7 +130,7 @@ export default function Home() {
   const hasNotes    = !isLoading && notes.length > 0;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto">
+    <div className="flex flex-col h-screen overflow-hidden px-3 pt-3 pb-0 sm:px-5 sm:pt-5 lg:px-8 lg:pt-6 max-w-screen-2xl mx-auto">
 
       {/* ── Bande récents ── */}
       {hasNotes && (
@@ -139,21 +139,37 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── Body : sidebar + contenu ── */}
-      <div className="flex gap-5 flex-1 min-h-0 overflow-hidden">
-
-        {/* Sidebar matières — desktop uniquement (hidden md:flex inside SubjectSidebar) */}
-        {hasNotes && (
+      {/* ── Chips mobile matières ── */}
+      {hasNotes && (
+        <div className="md:hidden flex-shrink-0 mb-2">
           <SubjectSidebar
             subjects={subjects}
             activeSubject={activeSubject}
             onSelect={setActiveSubject}
             totalCount={notes.length}
+            mobileOnly
           />
+        </div>
+      )}
+
+      {/* ── Body : sidebar desktop + contenu ── */}
+      <div className="flex gap-5 flex-1 min-h-0 overflow-hidden">
+
+        {/* Sidebar desktop uniquement */}
+        {hasNotes && (
+          <div className="hidden md:block flex-shrink-0">
+            <SubjectSidebar
+              subjects={subjects}
+              activeSubject={activeSubject}
+              onSelect={setActiveSubject}
+              totalCount={notes.length}
+              desktopOnly
+            />
+          </div>
         )}
 
         {/* Zone principale */}
-        <div className="flex-1 min-w-0 overflow-y-auto">
+        <div className="flex-1 min-w-0 overflow-y-auto pb-4">
 
           {/* Skeleton loading */}
           {isLoading && (
@@ -179,14 +195,15 @@ export default function Home() {
           {hasNotes && (
             <>
               {/* Header : titre + recherche + tri + toggle */}
-              <div className="flex items-center gap-2 flex-wrap mb-4 mt-1">
+              <div className="flex items-center gap-2 mb-3">
+                {/* Titre */}
                 <h2 className="flex items-center gap-1.5 text-sm font-semibold text-text-primary flex-shrink-0">
                   {folderTitle}
                   <span className="ml-0.5 text-text-tertiary font-normal text-xs">{filtered.length}</span>
                 </h2>
 
-                {/* Recherche */}
-                <div className="relative flex-1 min-w-[140px]">
+                {/* Recherche — prend tout l'espace */}
+                <div className="relative flex-1">
                   <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
                   <input
                     type="text"
