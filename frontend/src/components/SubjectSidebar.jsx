@@ -1,3 +1,4 @@
+import { Layers } from 'lucide-react';
 import { subjectIcon } from '../lib/noteUtils.js';
 
 // ── Item sidebar desktop ──────────────────────────────────────────────────────
@@ -12,16 +13,15 @@ function SidebarItem({ icon, name, count, active, onClick }) {
           : 'text-text-secondary hover:bg-white/[0.05] hover:text-text-primary',
       ].join(' ')}
     >
-      <span className="text-base flex-shrink-0 leading-none">{icon}</span>
+      <span className="w-[16px] flex-shrink-0 flex items-center justify-center leading-none">
+        {icon}
+      </span>
       <span className="flex-1 min-w-0">
         <span className="block text-[11px] font-semibold truncate">{name}</span>
-        <span className="block text-[9px] opacity-60 font-normal">{count} cours</span>
-      </span>
-      {active && (
-        <span className="flex-shrink-0 text-[9px] font-bold bg-accent/20 text-accent px-1.5 py-0.5 rounded-full">
-          {count}
+        <span className={['block text-[9px] font-normal', active ? 'opacity-70' : 'opacity-50'].join(' ')}>
+          {count} cours
         </span>
-      )}
+      </span>
     </button>
   );
 }
@@ -50,7 +50,7 @@ export default function SubjectSidebar({ subjects, activeSubject, onSelect, tota
       {/* ── Desktop : colonne fixe 130px ── */}
       <aside className="hidden md:flex flex-col w-[130px] shrink-0 gap-0.5 pt-0.5">
         <SidebarItem
-          icon="🗂️"
+          icon={<Layers size={13} />}
           name="Tous"
           count={totalCount}
           active={activeSubject === null}
@@ -60,7 +60,7 @@ export default function SubjectSidebar({ subjects, activeSubject, onSelect, tota
         {subjects.map(([name, count]) => (
           <SidebarItem
             key={name}
-            icon={subjectIcon(name)}
+            icon={<span className="text-sm leading-none">{subjectIcon(name)}</span>}
             name={name}
             count={count}
             active={activeSubject === name}
@@ -83,7 +83,7 @@ export default function SubjectSidebar({ subjects, activeSubject, onSelect, tota
             active={activeSubject === name}
             onClick={() => onSelect(activeSubject === name ? null : name)}
           >
-            {subjectIcon(name)} {name}
+            <span className="mr-1">{subjectIcon(name)}</span>{name}
           </MobileChip>
         ))}
       </div>

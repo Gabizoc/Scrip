@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { FileText } from 'lucide-react';
 import { parseScore, scoreColor, subjectColor, relativeDate } from '../lib/noteUtils.js';
 
 export default function NoteListRow({ note }) {
@@ -15,9 +16,10 @@ export default function NoteListRow({ note }) {
       className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer transition-colors duration-100 hover:bg-white/[0.04] active:bg-white/[0.07] group"
     >
       {/* Icône */}
-      <span className="text-sm flex-shrink-0 text-text-tertiary group-hover:text-text-secondary transition-colors">
-        📄
-      </span>
+      <FileText
+        size={14}
+        className="flex-shrink-0 text-text-tertiary group-hover:text-text-secondary transition-colors"
+      />
 
       {/* Titre */}
       <span className="flex-1 min-w-0 text-sm font-medium text-text-primary truncate">
