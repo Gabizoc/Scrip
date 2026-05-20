@@ -130,7 +130,7 @@ export default function Home() {
   const hasNotes    = !isLoading && notes.length > 0;
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden px-3 pt-3 pb-0 sm:px-5 sm:pt-5 lg:px-8 lg:pt-6 max-w-screen-2xl mx-auto">
+    <div className="flex flex-col h-screen px-3 pt-3 pb-0 sm:px-5 sm:pt-5 lg:px-8 lg:pt-6 max-w-screen-2xl mx-auto" style={{ overflow: 'clip' }}>
 
       {/* ── Bande récents ── */}
       {hasNotes && (
@@ -169,7 +169,7 @@ export default function Home() {
         )}
 
         {/* Zone principale */}
-        <div className="flex-1 min-w-0 overflow-y-auto px-4 pb-6 -mx-4">
+        <div className="flex-1 min-w-0 overflow-y-auto pt-2 px-3 pb-6 -mx-3">
 
           {/* Skeleton loading */}
           {isLoading && (
