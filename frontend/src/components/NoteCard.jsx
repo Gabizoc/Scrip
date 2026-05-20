@@ -1,38 +1,93 @@
 // frontend/src/components/NoteCard.jsx
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Trash2 } from 'lucide-react';
 import GlassCard from './GlassCard.jsx';
+import { api } from '../lib/api.js';
+import { parseScore, scoreColor, subjectColor } from '../lib/noteUtils.js';
 
-const SCORE_COLOR = (s) => {
-  if (s >= 80) return 'text-status-success';
-  if (s >= 60) return 'text-status-warning';
-  return 'text-status-danger';
-};
-
-export default function NoteCard({ note }) {
+export default function NoteCard({ note, index = 0 }) {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const delay = Math.min(index, 9);
+
+  const score = parseScore(note.metadata?.qualite_francais);
   const date = new Date(note.createdAt).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'short', year: 'numeric',
   });
-  const score = note.metadata?.qualite_francais;
+
+  const deleteMutation = useMutation({
+    mutationFn: () => api.deleteNote(note.id),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notes'] }),
+  });
+
+  const handleDelete = (e) => {
+    e.stopPropagation();
+    if (!confirmDelete) { setConfirmDelete(true); return; }
+    deleteMutation.mutate();
+  };
+
+  const handleBlur = () => setConfirmDelete(false);
 
   return (
     <GlassCard
-      className="p-5 cursor-pointer hover:shadow-lg transition-all duration-150 active:scale-[0.98]"
+      className={[
+        'group p-5 cursor-pointer animate-fade-in-up flex flex-col gap-3',
+        `stagger-${delay + 1}`,
+        'hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(110,108,232,0.18)]',
+        'transition-all duration-200 ease-spring',
+        'active:scale-[0.97] active:translate-y-0',
+      ].join(' ')}
       onClick={() => navigate(`/preview/${note.id}`)}
       role="button"
       tabIndex={0}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') navigate(`/preview/${note.id}`);
       }}
+      onBlur={handleBlur}
       aria-label={`Ouvrir le cours : ${note.title}`}
     >
-      <h3 className="text-[15px] font-semibold text-text-primary line-clamp-2 mb-3 leading-snug">
+      {/* Ligne du haut : matière + bouton suppression */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          {note.subject && (
+            <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${subjectColor(note.subject)}`}>
+              {note.subject}
+            </span>
+          )}
+          {note.level && (
+            <span className="text-[11px] text-text-tertiary truncate">{note.level}</span>
+          )}
+        </div>
+
+        <button
+          className={[
+            'shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150',
+            'p-1.5 rounded-md',
+            confirmDelete
+              ? 'bg-red-500 text-white'
+              : 'text-text-tertiary hover:text-status-danger hover:bg-red-50 dark:hover:bg-red-900/20',
+          ].join(' ')}
+          onClick={handleDelete}
+          title={confirmDelete ? 'Confirmer la suppression' : 'Supprimer'}
+          aria-label="Supprimer la note"
+        >
+          <Trash2 size={13} />
+        </button>
+      </div>
+
+      {/* Titre */}
+      <h3 className="text-[14px] font-semibold text-text-primary line-clamp-2 leading-snug flex-1">
         {note.title}
       </h3>
+
+      {/* Ligne du bas : date + score */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-text-tertiary">{date}</span>
         {score != null && (
-          <span className={`text-xs font-semibold font-mono ${SCORE_COLOR(score)}`}>
+          <span className={`text-xs font-semibold font-mono ${scoreColor(score)}`}>
             {score}/100
           </span>
         )}
