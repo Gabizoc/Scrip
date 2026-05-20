@@ -127,7 +127,6 @@ export default function Home() {
   }, [notes, search, activeSubject, sort]);
 
   const folderTitle  = activeSubject ?? 'Tous les cours';
-  const folderIcon   = activeSubject ? null : <span className="text-sm leading-none">📁</span>;
   const hasNotes    = !isLoading && notes.length > 0;
 
   return (
@@ -182,7 +181,6 @@ export default function Home() {
               {/* Header : titre + recherche + tri + toggle */}
               <div className="flex items-center gap-2 flex-wrap mb-4 mt-1">
                 <h2 className="flex items-center gap-1.5 text-sm font-semibold text-text-primary flex-shrink-0">
-                  {folderIcon}
                   {folderTitle}
                   <span className="ml-0.5 text-text-tertiary font-normal text-xs">{filtered.length}</span>
                 </h2>
