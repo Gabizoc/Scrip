@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import GlassCard from './GlassCard.jsx';
+import SubjectEditor from './SubjectEditor.jsx';
 import { api } from '../lib/api.js';
 import { parseScore, scoreColor, subjectColor } from '../lib/noteUtils.js';
 
@@ -11,6 +12,7 @@ export default function NoteCard({ note, index = 0 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [editorRect, setEditorRect]       = useState(null);
   const delay = Math.min(index, 9);
 
   const score = parseScore(note.metadata?.qualite_francais);
@@ -52,10 +54,23 @@ export default function NoteCard({ note, index = 0 }) {
       {/* Ligne du haut : matière + bouton suppression */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
-          {note.subject && (
-            <span className={`shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full ${subjectColor(note.subject)}`}>
-              {note.subject}
-            </span>
+          <button
+            onClick={e => { e.stopPropagation(); setEditorRect(e.currentTarget.getBoundingClientRect()); }}
+            title="Modifier la matière"
+            className={[
+              'shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full transition',
+              'hover:ring-2 hover:ring-accent/40 hover:ring-offset-1',
+              note.subject ? subjectColor(note.subject) : 'bg-black/[0.05] dark:bg-white/[0.07] text-text-tertiary',
+            ].join(' ')}
+          >
+            {note.subject ?? '+ matière'}
+          </button>
+          {editorRect && (
+            <SubjectEditor
+              note={note}
+              triggerRect={editorRect}
+              onClose={() => setEditorRect(null)}
+            />
           )}
           {note.level && (
             <span className="text-[11px] text-text-tertiary truncate">{note.level}</span>

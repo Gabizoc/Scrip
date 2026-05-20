@@ -28,17 +28,22 @@ export const api = {
   // ── Notes ──────────────────────────────────────────────
   getNotes:   ()           => request('GET',    '/notes'),
   getNote:    (id)         => request('GET',    `/notes/${id}`),
-  patchNote:  (id, md)     => request('PATCH',  `/notes/${id}`, { markdown: md }),
+  patchNote:     (id, md)   => request('PATCH',  `/notes/${id}`, { markdown: md }),
+  patchNoteMeta: (id, data) => request('PATCH',  `/notes/${id}`, data),
   deleteNote: (id)         => request('DELETE', `/notes/${id}`),
 
   // ── Ingest ─────────────────────────────────────────────
-  ingest: (photo, subjectId, levelId) => {
+  /** Démarre l'ingestion, retourne { jobId } */
+  ingest: (photos, subjectId, levelId) => {
     const fd = new FormData();
-    fd.append('photo', photo);
+    const files = Array.isArray(photos) ? photos : [photos];
+    files.forEach(f => fd.append('photos', f));
     fd.append('subjectId', subjectId);
     if (levelId) fd.append('levelId', levelId);
     return request('POST', '/ingest', fd, true);
   },
+  /** Ouvre un flux SSE pour suivre la progression d'un job */
+  ingestEvents: (jobId) => new EventSource(`/api/ingest/${jobId}/events`),
 
   // ── Levels ─────────────────────────────────────────────
   getLevels:   ()           => request('GET',    '/levels'),

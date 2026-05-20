@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { parseScore, scoreColor, subjectColor, subjectDotColor, relativeDate } from '../lib/noteUtils.js';
+import SubjectEditor from './SubjectEditor.jsx';
 
 export default function NoteListRow({ note }) {
   const navigate = useNavigate();
   const score    = parseScore(note.metadata?.qualite_francais);
   const dot      = subjectDotColor(note.subject ?? '');
+  const [editorRect, setEditorRect] = useState(null);
 
   return (
     <div
@@ -36,13 +39,23 @@ export default function NoteListRow({ note }) {
 
       {/* Matière (masquée sur mobile) */}
       <span className="hidden md:inline-flex shrink-0 w-[90px] justify-center">
-        {note.subject && (
-          <span className={[
-            'text-[10px] font-semibold px-2 py-0.5 rounded-md truncate',
-            subjectColor(note.subject),
-          ].join(' ')}>
-            {note.subject}
-          </span>
+        <button
+          onClick={e => { e.stopPropagation(); setEditorRect(e.currentTarget.getBoundingClientRect()); }}
+          title="Modifier la matière"
+          className={[
+            'text-[10px] font-semibold px-2 py-0.5 rounded-md truncate transition',
+            'hover:ring-2 hover:ring-accent/40 hover:ring-offset-1',
+            note.subject ? subjectColor(note.subject) : 'bg-black/[0.05] dark:bg-white/[0.07] text-text-tertiary',
+          ].join(' ')}
+        >
+          {note.subject ?? '+ matière'}
+        </button>
+        {editorRect && (
+          <SubjectEditor
+            note={note}
+            triggerRect={editorRect}
+            onClose={() => setEditorRect(null)}
+          />
         )}
       </span>
 
