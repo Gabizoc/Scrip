@@ -25,18 +25,18 @@ export default function NoteListRow({ note }) {
       </span>
 
       {/* Matière (masquée sur mobile) */}
-      {note.subject && (
-        <span
-          className={[
-            'hidden md:inline-flex shrink-0',
-            'items-center text-[10px] font-semibold px-2 py-0.5 rounded-full',
-            'w-[88px] justify-center truncate',
-            subjectColor(note.subject),
-          ].join(' ')}
-        >
-          {note.subject}
-        </span>
-      )}
+      <span className="hidden md:inline-flex shrink-0 w-[88px] justify-center">
+        {note.subject && (
+          <span
+            className={[
+              'items-center text-[10px] font-semibold px-2 py-0.5 rounded-full truncate',
+              subjectColor(note.subject),
+            ].join(' ')}
+          >
+            {note.subject}
+          </span>
+        )}
+      </span>
 
       {/* Date (masquée sur mobile) */}
       <span className="hidden md:block shrink-0 w-[64px] text-right text-xs text-text-tertiary">
