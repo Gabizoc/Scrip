@@ -69,12 +69,12 @@ function ViewToggle({ view, onChange }) {
 
 function ListHeader() {
   return (
-    <div className="hidden md:flex items-center gap-3 px-3 pb-1.5 mb-0.5 border-b border-black/[0.05] dark:border-white/[0.05] text-[10px] uppercase tracking-widest text-text-tertiary font-semibold select-none">
+    <div className="hidden md:flex items-center gap-3 px-4 py-2.5 border-b border-black/[0.05] dark:border-white/[0.06] text-[10px] uppercase tracking-widest text-text-tertiary font-semibold select-none bg-black/[0.02] dark:bg-white/[0.02]">
       <span className="w-[7px] ml-1 flex-shrink-0" />
       <span className="flex-1">Titre</span>
       <span className="w-[90px] text-center">Matière</span>
       <span className="w-[80px] text-right">Date</span>
-      <span className="w-[32px] text-right">Score</span>
+      <span className="w-[44px] text-right">Score</span>
     </div>
   );
 }
@@ -225,10 +225,12 @@ export default function Home() {
 
               {/* Vue liste */}
               {view === 'list' && filtered.length > 0 && (
-                <div>
+                <div className="rounded-xl border border-black/[0.06] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
                   <ListHeader />
-                  {filtered.map(note => (
-                    <NoteListRow key={note.id} note={note} />
+                  {filtered.map((note, i) => (
+                    <div key={note.id} className={i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : ''}>
+                      <NoteListRow note={note} />
+                    </div>
                   ))}
                 </div>
               )}
