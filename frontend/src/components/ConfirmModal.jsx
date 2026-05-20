@@ -48,8 +48,7 @@ export default function ConfirmModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="fixed z-[9999] left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
-          w-[min(92vw,360px)]
+        className="fixed z-[9999] inset-0 m-auto w-[min(92vw,360px)] h-fit
           bg-white dark:bg-neutral-900
           rounded-2xl shadow-2xl
           border border-black/[0.07] dark:border-white/[0.08]
@@ -75,7 +74,7 @@ export default function ConfirmModal({
         </div>
 
         {/* Boutons */}
-        <div className="flex gap-2 justify-center">
+        <div className="flex gap-2 justify-end">
           <button
             ref={cancelRef}
             onClick={onCancel}
