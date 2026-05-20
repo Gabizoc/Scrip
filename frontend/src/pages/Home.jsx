@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.jsx
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, Search, X, ChevronDown, List, LayoutGrid } from 'lucide-react';
+import { Camera, Search, X, ChevronDown, List, LayoutGrid, Layers } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { parseScore } from '../lib/noteUtils.js';
 import NoteCard from '../components/NoteCard.jsx';
@@ -126,7 +126,8 @@ export default function Home() {
     });
   }, [notes, search, activeSubject, sort]);
 
-  const folderTitle = activeSubject ?? 'Tous les cours';
+  const folderTitle  = activeSubject ?? 'Tous les cours';
+  const folderIcon   = activeSubject ? null : <Layers size={14} className="text-text-tertiary" />;
   const hasNotes    = !isLoading && notes.length > 0;
 
   return (
@@ -176,13 +177,14 @@ export default function Home() {
             <>
               {/* Header : titre + recherche + tri + toggle */}
               <div className="flex items-center gap-2 flex-wrap mb-4 mt-1">
-                <h2 className="text-sm font-semibold text-text-primary flex-shrink-0">
+                <h2 className="flex items-center gap-1.5 text-sm font-semibold text-text-primary flex-shrink-0">
+                  {folderIcon}
                   {folderTitle}
-                  <span className="ml-1.5 text-text-tertiary font-normal text-xs">{filtered.length}</span>
+                  <span className="ml-0.5 text-text-tertiary font-normal text-xs">{filtered.length}</span>
                 </h2>
 
                 {/* Recherche */}
-                <div className="relative flex-1 min-w-[140px] max-w-xs">
+                <div className="relative flex-1 min-w-[140px]">
                   <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
                   <input
                     type="text"

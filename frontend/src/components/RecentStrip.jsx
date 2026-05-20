@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Zap } from 'lucide-react';
 import { parseScore, scoreColor, subjectDotColor } from '../lib/noteUtils.js';
 
 const CHUNK = 8;
@@ -14,10 +15,12 @@ function RecentPill({ note }) {
       onClick={() => navigate(`/preview/${note.id}`)}
       className={[
         'flex-shrink-0 w-[130px] text-left',
-        'bg-white/[0.05] dark:bg-white/[0.04]',
-        'border border-white/[0.07]',
+        'bg-white/80 dark:bg-white/[0.07]',
+        'backdrop-blur-sm',
+        'border border-black/[0.06] dark:border-white/[0.10]',
+        'shadow-sm',
         'rounded-xl px-3 py-2.5 transition-all duration-150',
-        'hover:bg-white/[0.09] hover:-translate-y-0.5',
+        'hover:shadow-md hover:-translate-y-0.5',
         'active:scale-95',
       ].join(' ')}
     >
@@ -76,8 +79,9 @@ export default function RecentStrip({ notes }) {
 
   return (
     <div className="mb-6">
-      <p className="text-[10px] uppercase tracking-widest font-semibold text-text-tertiary mb-2.5">
-        ⚡ Récemment ajoutés
+      <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-semibold text-text-tertiary mb-2.5">
+        <Zap size={11} className="text-amber-400" />
+        Récemment ajoutés
       </p>
       <div
         ref={scrollRef}
