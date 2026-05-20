@@ -31,7 +31,7 @@ export default function Settings() {
   ].join(' ');
 
   return (
-    <div className="p-6 md:p-8 max-w-lg">
+    <div className="p-6 md:p-8 max-w-lg mx-auto">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text-primary">Paramètres</h1>
       </div>
