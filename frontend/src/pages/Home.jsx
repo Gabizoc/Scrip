@@ -169,7 +169,7 @@ export default function Home() {
         )}
 
         {/* Zone principale */}
-        <div className="flex-1 min-w-0 overflow-y-auto pb-4">
+        <div className="flex-1 min-w-0 overflow-y-auto px-2 pb-6 -mx-2">
 
           {/* Skeleton loading */}
           {isLoading && (
