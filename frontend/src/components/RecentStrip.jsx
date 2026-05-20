@@ -19,7 +19,7 @@ function RecentPill({ note }) {
         'backdrop-blur-sm',
         'border border-black/[0.06] dark:border-white/[0.10]',
         'shadow-sm',
-        'rounded-xl px-3 py-2.5 transition-all duration-150',
+        'rounded-lg px-3 py-2.5 transition-all duration-150',
         'hover:shadow-md hover:-translate-y-0.5',
         'active:scale-95',
       ].join(' ')}
