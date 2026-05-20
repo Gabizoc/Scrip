@@ -51,7 +51,7 @@ function ViewToggle({ view, onChange }) {
         'p-1.5 rounded-md transition-all duration-150',
         view === v
           ? 'bg-accent/20 text-accent'
-          : 'text-text-tertiary hover:text-text-secondary hover:bg-white/[0.05]',
+          : 'text-text-tertiary hover:text-text-secondary hover:bg-black/[0.06] dark:hover:bg-white/[0.08]',
       ].join(' ')}
     >
       <Icon size={15} />
