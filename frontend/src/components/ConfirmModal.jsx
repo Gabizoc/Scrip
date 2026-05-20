@@ -75,7 +75,7 @@ export default function ConfirmModal({
         </div>
 
         {/* Boutons */}
-        <div className="flex gap-2 justify-end">
+        <div className="flex gap-2 justify-center">
           <button
             ref={cancelRef}
             onClick={onCancel}
