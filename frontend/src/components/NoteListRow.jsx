@@ -17,7 +17,7 @@ export default function NoteListRow({ note }) {
       onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') navigate(`/preview/${note.id}`); }}
       aria-label={`Ouvrir le cours : ${note.title}`}
       className="group relative flex items-center gap-3 px-4 py-2.5 cursor-pointer
-        transition-colors duration-100
+        transition-colors duration-200
         hover:bg-black/[0.025] dark:hover:bg-white/[0.035]"
     >
       {/* Accent left bar on hover */}

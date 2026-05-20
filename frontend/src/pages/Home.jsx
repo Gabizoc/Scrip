@@ -242,10 +242,14 @@ export default function Home() {
 
               {/* Vue liste */}
               {view === 'list' && filtered.length > 0 && (
-                <div className="rounded-xl border border-black/[0.06] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
+                <div key={`list-${activeSubject}`} className="view-enter rounded-xl border border-black/[0.06] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
                   <ListHeader />
                   {filtered.map((note, i) => (
-                    <div key={note.id} className={i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : ''}>
+                    <div key={note.id} className={[
+                      'row-enter',
+                      `row-${Math.min(i + 1, 10)}`,
+                      i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
+                    ].join(' ')}>
                       <NoteListRow note={note} />
                     </div>
                   ))}
@@ -254,7 +258,7 @@ export default function Home() {
 
               {/* Vue cards */}
               {view === 'cards' && filtered.length > 0 && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
+                <div key={`cards-${activeSubject}`} className="view-enter grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
                   {filtered.map((note, i) => (
                     <NoteCard key={note.id} note={note} index={i} />
                   ))}

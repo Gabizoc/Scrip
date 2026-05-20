@@ -7,7 +7,7 @@ function SidebarItem({ icon, name, count, active, onClick }) {
     <button
       onClick={onClick}
       className={[
-        'w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all duration-150',
+        'w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all duration-200',
         active
           ? 'bg-accent/[0.18] text-accent'
           : 'text-text-secondary hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-text-primary',
@@ -32,7 +32,7 @@ function MobileChip({ active, onClick, children }) {
     <button
       onClick={onClick}
       className={[
-        'flex-shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition-all duration-150',
+        'flex-shrink-0 text-xs px-3 py-1.5 rounded-full font-medium transition-all duration-200',
         active
           ? 'bg-accent text-white shadow-sm'
           : 'bg-black/[0.05] dark:bg-white/[0.07] text-text-secondary hover:bg-black/[0.09] dark:hover:bg-white/[0.12]',
