@@ -5,14 +5,15 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { Trash2 } from 'lucide-react';
 import GlassCard from './GlassCard.jsx';
 import SubjectEditor from './SubjectEditor.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import { api } from '../lib/api.js';
 import { parseScore, scoreColor, subjectColor } from '../lib/noteUtils.js';
 
 export default function NoteCard({ note, index = 0 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const [confirmDelete, setConfirmDelete] = useState(false);
-  const [editorRect, setEditorRect]       = useState(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [editorRect, setEditorRect]           = useState(null);
   const delay = Math.min(index, 9);
 
   const score = parseScore(note.metadata?.qualite_francais);
@@ -27,11 +28,8 @@ export default function NoteCard({ note, index = 0 }) {
 
   const handleDelete = (e) => {
     e.stopPropagation();
-    if (!confirmDelete) { setConfirmDelete(true); return; }
-    deleteMutation.mutate();
+    setShowDeleteModal(true);
   };
-
-  const handleBlur = () => setConfirmDelete(false);
 
   return (
     <GlassCard
@@ -48,7 +46,6 @@ export default function NoteCard({ note, index = 0 }) {
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') navigate(`/preview/${note.id}`);
       }}
-      onBlur={handleBlur}
       aria-label={`Ouvrir le cours : ${note.title}`}
     >
       {/* Ligne du haut : matière + bouton suppression */}
@@ -78,15 +75,10 @@ export default function NoteCard({ note, index = 0 }) {
         </div>
 
         <button
-          className={[
-            'shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150',
-            'p-1.5 rounded-md',
-            confirmDelete
-              ? 'bg-red-500 text-white'
-              : 'text-text-tertiary hover:text-status-danger hover:bg-red-50 dark:hover:bg-red-900/20',
-          ].join(' ')}
+          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150
+            p-1.5 rounded-md text-text-tertiary hover:text-status-danger hover:bg-red-50 dark:hover:bg-red-900/20"
           onClick={handleDelete}
-          title={confirmDelete ? 'Confirmer la suppression' : 'Supprimer'}
+          title="Supprimer"
           aria-label="Supprimer la note"
         >
           <Trash2 size={13} />
@@ -107,6 +99,17 @@ export default function NoteCard({ note, index = 0 }) {
           </span>
         )}
       </div>
+
+      {/* Modal de confirmation suppression */}
+      {showDeleteModal && (
+        <ConfirmModal
+          title="Supprimer ce cours ?"
+          message={`« ${note.title} » sera définitivement supprimé.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => { setShowDeleteModal(false); deleteMutation.mutate(); }}
+          onCancel={() => setShowDeleteModal(false)}
+        />
+      )}
     </GlassCard>
   );
 }
