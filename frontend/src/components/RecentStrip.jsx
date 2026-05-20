@@ -10,9 +10,12 @@ function RecentPill({ note }) {
   const score = parseScore(note.metadata?.qualite_francais);
   const dot   = subjectDotColor(note.subject ?? '');
 
+  const startX = useRef(0);
+
   return (
     <button
-      onClick={() => navigate(`/preview/${note.id}`)}
+      onMouseDown={e => { startX.current = e.pageX; }}
+      onClick={e => { if (Math.abs(e.pageX - startX.current) > 5) { e.preventDefault(); return; } navigate(`/preview/${note.id}`); }}
       className={[
         'flex-shrink-0 w-[130px] text-left',
         'bg-white/80 dark:bg-white/[0.07]',
@@ -50,6 +53,27 @@ export default function RecentStrip({ notes }) {
   const sentinelRef = useRef(null);
   const [visible, setVisible] = useState(CHUNK);
 
+  // ── Drag-to-scroll ────────────────────────────────────────────────────────
+  const drag = useRef({ active: false, startX: 0, scrollLeft: 0 });
+
+  function onMouseDown(e) {
+    drag.current = { active: true, startX: e.pageX, scrollLeft: scrollRef.current.scrollLeft };
+    scrollRef.current.style.cursor = 'grabbing';
+    scrollRef.current.style.userSelect = 'none';
+  }
+
+  function onMouseMove(e) {
+    if (!drag.current.active) return;
+    const dx = e.pageX - drag.current.startX;
+    scrollRef.current.scrollLeft = drag.current.scrollLeft - dx;
+  }
+
+  function onMouseUp() {
+    drag.current.active = false;
+    scrollRef.current.style.cursor = 'grab';
+    scrollRef.current.style.userSelect = '';
+  }
+
   const sorted = useMemo(
     () => [...notes].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt)),
     [notes],
@@ -86,7 +110,11 @@ export default function RecentStrip({ notes }) {
       <div
         ref={scrollRef}
         className="flex gap-2.5 overflow-x-auto pb-1"
-        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+        style={{ scrollbarWidth: 'none', msOverflowStyle: 'none', cursor: 'grab' }}
+        onMouseDown={onMouseDown}
+        onMouseMove={onMouseMove}
+        onMouseUp={onMouseUp}
+        onMouseLeave={onMouseUp}
       >
         {displayed.map(note => <RecentPill key={note.id} note={note} />)}
         {hasMore && (
