@@ -37,7 +37,7 @@ export default function NoteCard({ note, index = 0 }) {
         'group p-5 cursor-pointer animate-fade-in-up flex flex-col gap-3',
         `stagger-${delay + 1}`,
         'hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(110,108,232,0.18)]',
-        'transition-all duration-200 ease-spring',
+        'transition-all duration-300 ease-out',
         'active:scale-[0.97] active:translate-y-0',
       ].join(' ')}
       onClick={() => navigate(`/preview/${note.id}`)}

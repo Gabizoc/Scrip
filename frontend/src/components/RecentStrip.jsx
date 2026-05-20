@@ -22,7 +22,7 @@ function RecentPill({ note }) {
         'backdrop-blur-sm',
         'border border-black/[0.06] dark:border-white/[0.10]',
         'shadow-sm',
-        'rounded-lg px-3 py-2.5 transition-all duration-150',
+        'rounded-lg px-3 py-2.5 transition-all duration-300 ease-out',
         'hover:shadow-md hover:-translate-y-0.5',
         'active:scale-95',
       ].join(' ')}
@@ -104,7 +104,6 @@ export default function RecentStrip({ notes }) {
   return (
     <div className="mb-6">
       <p className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest font-semibold text-text-tertiary mb-2.5">
-        <Zap size={11} className="text-amber-400" />
         Récemment ajoutés
       </p>
       <div
