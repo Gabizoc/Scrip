@@ -131,13 +131,17 @@ export default function Home() {
   const hasNotes    = !isLoading && notes.length > 0;
 
   return (
-    <div className="p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto">
+    <div className="flex flex-col h-screen overflow-hidden p-4 sm:p-6 lg:p-8 max-w-screen-2xl mx-auto">
 
       {/* ── Bande récents ── */}
-      {hasNotes && <RecentStrip notes={notes} />}
+      {hasNotes && (
+        <div className="flex-shrink-0">
+          <RecentStrip notes={notes} />
+        </div>
+      )}
 
       {/* ── Body : sidebar + contenu ── */}
-      <div className="flex gap-5 items-start">
+      <div className="flex gap-5 flex-1 min-h-0 overflow-hidden">
 
         {/* Sidebar matières — desktop uniquement (hidden md:flex inside SubjectSidebar) */}
         {hasNotes && (
@@ -150,7 +154,7 @@ export default function Home() {
         )}
 
         {/* Zone principale */}
-        <div className="flex-1 min-w-0">
+        <div className="flex-1 min-w-0 overflow-y-auto">
 
           {/* Skeleton loading */}
           {isLoading && (

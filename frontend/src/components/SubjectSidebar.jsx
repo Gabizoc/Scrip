@@ -48,7 +48,7 @@ export default function SubjectSidebar({ subjects, activeSubject, onSelect, tota
   return (
     <>
       {/* ── Desktop : colonne fixe 130px ── */}
-      <aside className="hidden md:flex flex-col w-[130px] shrink-0 gap-0.5 pt-0.5">
+      <aside className="hidden md:flex flex-col w-[130px] shrink-0 gap-0.5 pt-0.5 overflow-y-auto">
         <SidebarItem
           icon={<Layers size={13} />}
           name="Tous"
