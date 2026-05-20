@@ -174,11 +174,6 @@ export default function Home() {
           {/* Contenu */}
           {hasNotes && (
             <>
-              {/* Chips mobile (md:hidden dans SubjectSidebar — déjà rendu au-dessus, mais
-                  la sidebar n'est visible que sur desktop. Sur mobile, les chips sont dans
-                  le SubjectSidebar rendu ci-dessus mais affichés par le md:hidden de la div
-                  interne. Elles apparaissent ici grâce au flux normal du DOM.) */}
-
               {/* Header : titre + recherche + tri + toggle */}
               <div className="flex items-center gap-2 flex-wrap mb-4 mt-1">
                 <h2 className="text-sm font-semibold text-text-primary flex-shrink-0">
@@ -190,7 +185,7 @@ export default function Home() {
                 <div className="relative flex-1 min-w-[140px] max-w-xs">
                   <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
                   <input
-                    type="search"
+                    type="text"
                     placeholder="Rechercher…"
                     value={search}
                     onChange={e => setSearch(e.target.value)}
