@@ -39,7 +39,7 @@ export default function ConfirmModal({
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-[2px] animate-fade-in"
-        onClick={onCancel}
+        onClick={e => { e.stopPropagation(); onCancel(); }}
         aria-hidden
       />
 
