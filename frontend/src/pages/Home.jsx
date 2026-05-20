@@ -69,12 +69,12 @@ function ViewToggle({ view, onChange }) {
 
 function ListHeader() {
   return (
-    <div className="hidden md:flex items-center gap-3 px-3 pb-2 mb-1 border-b border-white/[0.05] text-[10px] uppercase tracking-wider text-text-tertiary font-semibold select-none">
-      <span className="w-[18px] flex-shrink-0" />
+    <div className="hidden md:flex items-center gap-3 px-3 pb-1.5 mb-0.5 border-b border-black/[0.05] dark:border-white/[0.05] text-[10px] uppercase tracking-widest text-text-tertiary font-semibold select-none">
+      <span className="w-[7px] ml-1 flex-shrink-0" />
       <span className="flex-1">Titre</span>
-      <span className="w-[88px] text-center">Matière</span>
-      <span className="w-[64px] text-right">Date</span>
-      <span className="w-[52px] text-right">Score</span>
+      <span className="w-[90px] text-center">Matière</span>
+      <span className="w-[80px] text-right">Date</span>
+      <span className="w-[32px] text-right">Score</span>
     </div>
   );
 }
