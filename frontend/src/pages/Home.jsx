@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.jsx
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, Search, X, ChevronDown, List, LayoutGrid, Layers } from 'lucide-react';
+import { Camera, Search, X, ChevronDown, List, LayoutGrid, Folder } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { parseScore } from '../lib/noteUtils.js';
 import NoteCard from '../components/NoteCard.jsx';
@@ -127,7 +127,7 @@ export default function Home() {
   }, [notes, search, activeSubject, sort]);
 
   const folderTitle  = activeSubject ?? 'Tous les cours';
-  const folderIcon   = activeSubject ? null : <Layers size={14} className="text-text-tertiary" />;
+  const folderIcon   = activeSubject ? null : <Folder size={14} className="text-text-tertiary" />;
   const hasNotes    = !isLoading && notes.length > 0;
 
   return (

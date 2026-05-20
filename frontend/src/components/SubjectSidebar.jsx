@@ -1,4 +1,4 @@
-import { Layers } from 'lucide-react';
+import { Folder } from 'lucide-react';
 import { subjectIcon } from '../lib/noteUtils.js';
 
 // ── Item sidebar desktop ──────────────────────────────────────────────────────
@@ -50,7 +50,7 @@ export default function SubjectSidebar({ subjects, activeSubject, onSelect, tota
       {/* ── Desktop : colonne fixe 130px ── */}
       <aside className="hidden md:flex flex-col w-[130px] shrink-0 gap-0.5 pt-0.5 overflow-y-auto">
         <SidebarItem
-          icon={<Layers size={13} />}
+          icon={<Folder size={13} />}
           name="Tous"
           count={totalCount}
           active={activeSubject === null}
