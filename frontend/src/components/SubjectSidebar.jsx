@@ -10,7 +10,7 @@ function SidebarItem({ icon, name, count, active, onClick }) {
         'w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-left transition-all duration-150',
         active
           ? 'bg-accent/[0.18] text-accent'
-          : 'text-text-secondary hover:bg-white/[0.05] hover:text-text-primary',
+          : 'text-text-secondary hover:bg-black/[0.06] dark:hover:bg-white/[0.08] hover:text-text-primary',
       ].join(' ')}
     >
       <span className="w-[16px] flex-shrink-0 flex items-center justify-center leading-none">
