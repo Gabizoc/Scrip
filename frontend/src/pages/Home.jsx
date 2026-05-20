@@ -153,7 +153,7 @@ export default function Home() {
       )}
 
       {/* ── Body : sidebar desktop + contenu ── */}
-      <div className="flex gap-5 flex-1 min-h-0 overflow-hidden">
+      <div className="flex gap-5 flex-1 min-h-0">
 
         {/* Sidebar desktop uniquement */}
         {hasNotes && (
@@ -169,7 +169,7 @@ export default function Home() {
         )}
 
         {/* Zone principale */}
-        <div className="flex-1 min-w-0 overflow-y-auto px-2 pb-6 -mx-2">
+        <div className="flex-1 min-w-0 overflow-y-auto px-4 pb-6 -mx-4">
 
           {/* Skeleton loading */}
           {isLoading && (
