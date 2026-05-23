@@ -14,7 +14,7 @@ export function createApp() {
   app.use(cors({
     origin: process.env.NODE_ENV === 'production'
       ? false       // Nginx handles CORS in prod (same-origin)
-      : 'http://localhost:5173',
+      : 'http://localhost:5000',
   }));
   app.use(express.json());
 

@@ -356,9 +356,15 @@ export default {
 
 ### Backup cron
 
-```
+```bash
+# Créer le backup du jour
 0 3 * * * zip -r /home/scrip/backups/vault-$(date +%Y%m%d).zip /home/scrip/vault/
+
+# Supprimer les backups de plus de 30 jours
+0 3 * * * find /home/scrip/backups/ -name "vault-*.zip" -mtime +30 -delete
 ```
+
+Rétention : 30 jours glissants. Les deux lignes s'exécutent à 3h du matin, la purge après la création.
 
 ### Workflow de déploiement
 

@@ -17,11 +17,11 @@ export default {
         'status-danger':  'rgb(var(--danger) / <alpha-value>)',
       },
       borderRadius: {
-        'sm':  '6px',
-        'md':  '10px',
-        'lg':  '14px',
-        'xl':  '18px',
-        '2xl': '24px',
+        'sm':  '8px',
+        'md':  '14px',
+        'lg':  '20px',
+        'xl':  '28px',
+        '2xl': '36px',
       },
       backdropBlur: {
         'glass':    '20px',

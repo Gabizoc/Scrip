@@ -1,0 +1,277 @@
+<h2>Design combiné A+C — aperçu complet</h2>
+<p class="subtitle">Récents en haut · Sidebar matières · Contenu en liste ou cards</p>
+
+<style>
+* { box-sizing: border-box; }
+.mock-frame { background: #0f0f14; border-radius: 12px; padding: 14px; font-family: system-ui; color: #e0e0e8; font-size: 12px; overflow: hidden; }
+
+/* ── Top bar récents ── */
+.recent-bar { margin-bottom: 14px; }
+.section-label { font-size: 9px; text-transform: uppercase; letter-spacing: .08em; color: #5a5a80; font-weight: 700; margin-bottom: 7px; }
+.recent-scroll { display: flex; gap: 7px; overflow: hidden; }
+.recent-pill { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: 7px 10px; flex-shrink: 0; width: 120px; cursor: default; }
+.recent-pill .rp-title { font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 3px; }
+.recent-pill .rp-meta { font-size: 9px; color: #6060a0; display: flex; align-items: center; gap: 4px; }
+.rp-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+.rp-score { margin-left: auto; font-size: 8px; font-weight: 700; padding: 1px 4px; border-radius: 3px; }
+.score-good { background: rgba(52,211,153,.2); color: #34d399; }
+.score-ok   { background: rgba(245,158,11,.2); color: #f59e0b; }
+
+/* ── Body (sidebar + main) ── */
+.body-split { display: flex; gap: 10px; }
+
+/* ── Sidebar ── */
+.folder-sidebar { width: 110px; flex-shrink: 0; }
+.folder-item { display: flex; align-items: center; gap: 7px; padding: 7px 8px; border-radius: 7px; margin-bottom: 3px; cursor: default; }
+.folder-item.active { background: rgba(124,122,255,.18); }
+.folder-item .f-icon { font-size: 14px; flex-shrink: 0; }
+.folder-item .f-label { flex: 1; min-width: 0; }
+.folder-item .f-name { font-size: 10px; font-weight: 600; color: #e0e0e8; }
+.folder-item.active .f-name { color: #a0a0ff; }
+.folder-item .f-count { font-size: 8px; color: #5050a0; }
+.folder-item .f-badge { font-size: 8px; background: rgba(124,122,255,.25); color: #a0a0ff; padding: 1px 4px; border-radius: 3px; margin-left: auto; flex-shrink: 0; }
+.divider { height: 1px; background: rgba(255,255,255,.05); margin: 8px 4px; }
+
+/* ── Main panel ── */
+.main-panel { flex: 1; min-width: 0; }
+.main-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.main-title { font-size: 11px; font-weight: 700; color: #e0e0e8; }
+.view-toggle { display: flex; gap: 3px; }
+.vt-btn { width: 22px; height: 22px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 11px; cursor: default; }
+.vt-btn.active { background: rgba(124,122,255,.25); }
+.vt-btn:not(.active) { color: #5050a0; }
+
+/* ── List view (file explorer) ── */
+.list-view .list-header { display: flex; padding: 0 8px 5px; font-size: 8px; text-transform: uppercase; letter-spacing: .07em; color: #404070; font-weight: 700; border-bottom: 1px solid rgba(255,255,255,.05); margin-bottom: 4px; }
+.list-view .list-header .col-title { flex: 1; }
+.list-view .list-header .col-subject { width: 70px; }
+.list-view .list-header .col-date { width: 50px; text-align: right; }
+.list-view .list-header .col-score { width: 45px; text-align: right; }
+.list-row { display: flex; align-items: center; padding: 6px 8px; border-radius: 6px; gap: 6px; cursor: default; }
+.list-row:hover, .list-row.hover { background: rgba(255,255,255,.04); }
+.list-row .lr-icon { font-size: 13px; flex-shrink: 0; }
+.lr-title { flex: 1; min-width: 0; font-size: 10px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lr-subject { width: 70px; flex-shrink: 0; }
+.lr-subject-badge { display: inline-flex; align-items: center; gap: 3px; font-size: 8px; padding: 2px 5px; border-radius: 3px; }
+.lr-date { width: 50px; flex-shrink: 0; text-align: right; font-size: 9px; color: #5060a0; }
+.lr-score { width: 45px; flex-shrink: 0; text-align: right; font-size: 8px; font-weight: 700; }
+
+/* ── Card view ── */
+.card-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 7px; }
+.mini-card { background: rgba(255,255,255,.05); border: 1px solid rgba(255,255,255,.07); border-radius: 8px; padding: 9px 11px; }
+.mc-subject { font-size: 8px; display: flex; align-items: center; gap: 4px; margin-bottom: 5px; }
+.mc-title { font-size: 10px; font-weight: 600; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mc-footer { display: flex; justify-content: space-between; align-items: center; }
+.mc-date { font-size: 8px; color: #5060a0; }
+</style>
+
+<!-- LAYOUT PRINCIPAL -->
+<div class="mockup">
+  <div class="mockup-header">🏠 Accueil — Vue liste (file explorer)</div>
+  <div class="mockup-body" style="padding:0">
+    <div class="mock-frame">
+
+      <!-- Bande récents -->
+      <div class="recent-bar">
+        <div class="section-label">⚡ Récemment ajoutés</div>
+        <div class="recent-scroll">
+          <div class="recent-pill">
+            <div class="rp-title">La Révolution fr…</div>
+            <div class="rp-meta"><div class="rp-dot" style="background:#7c7aff"></div>Histoire<span class="rp-score score-good">98</span></div>
+          </div>
+          <div class="recent-pill">
+            <div class="rp-title">Les biomes</div>
+            <div class="rp-meta"><div class="rp-dot" style="background:#34d399"></div>SVT<span class="rp-score score-good">91</span></div>
+          </div>
+          <div class="recent-pill">
+            <div class="rp-title">Mondialisation</div>
+            <div class="rp-meta"><div class="rp-dot" style="background:#f59e0b"></div>Géo<span class="rp-score score-ok">72</span></div>
+          </div>
+          <div class="recent-pill">
+            <div class="rp-title">Démocratie</div>
+            <div class="rp-meta"><div class="rp-dot" style="background:#ec4899"></div>EMC<span class="rp-score score-good">88</span></div>
+          </div>
+          <div class="recent-pill" style="opacity:.4">
+            <div class="rp-title">Le 19ème siècle</div>
+            <div class="rp-meta"><div class="rp-dot" style="background:#7c7aff"></div>Histoire<span class="rp-score score-good">95</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Body : sidebar + main -->
+      <div class="body-split">
+
+        <!-- Sidebar dossiers -->
+        <div class="folder-sidebar">
+          <div class="section-label">Matières</div>
+          <div class="folder-item active">
+            <div class="f-icon">🗂️</div>
+            <div class="f-label"><div class="f-name">Tous</div><div class="f-count">33 cours</div></div>
+          </div>
+          <div class="divider"></div>
+          <div class="folder-item">
+            <div class="f-icon">📜</div>
+            <div class="f-label"><div class="f-name">Histoire</div><div class="f-count">12 cours</div></div>
+            <div class="f-badge">12</div>
+          </div>
+          <div class="folder-item">
+            <div class="f-icon">🌍</div>
+            <div class="f-label"><div class="f-name">Géographie</div><div class="f-count">8 cours</div></div>
+            <div class="f-badge">8</div>
+          </div>
+          <div class="folder-item">
+            <div class="f-icon">🧬</div>
+            <div class="f-label"><div class="f-name">SVT</div><div class="f-count">5 cours</div></div>
+            <div class="f-badge">5</div>
+          </div>
+          <div class="folder-item">
+            <div class="f-icon">⚖️</div>
+            <div class="f-label"><div class="f-name">EMC</div><div class="f-count">4 cours</div></div>
+            <div class="f-badge">4</div>
+          </div>
+          <div class="folder-item">
+            <div class="f-icon">➕</div>
+            <div class="f-label"><div class="f-name" style="color:#5050a0">Maths…</div></div>
+          </div>
+        </div>
+
+        <!-- Main : liste style file explorer -->
+        <div class="main-panel">
+          <div class="main-header">
+            <span class="main-title">Tous les cours <span style="color:#5050a0;font-weight:400">33</span></span>
+            <div class="view-toggle">
+              <div class="vt-btn active">☰</div>
+              <div class="vt-btn">⊞</div>
+            </div>
+          </div>
+          <div class="list-view">
+            <div class="list-header">
+              <span class="col-title">Titre</span>
+              <span class="col-subject">Matière</span>
+              <span class="col-date">Date</span>
+              <span class="col-score">Score</span>
+            </div>
+            <div class="list-row hover">
+              <span class="lr-icon">📄</span>
+              <span class="lr-title">La Révolution française et ses causes</span>
+              <span class="lr-subject"><span class="lr-subject-badge" style="background:rgba(124,122,255,.15);color:#9090e0"><span style="width:5px;height:5px;border-radius:50%;background:#7c7aff;display:inline-block"></span>Histoire</span></span>
+              <span class="lr-date">il y a 2 j</span>
+              <span class="lr-score score-good">98/100</span>
+            </div>
+            <div class="list-row">
+              <span class="lr-icon">📄</span>
+              <span class="lr-title">Les biomes et la biodiversité</span>
+              <span class="lr-subject"><span class="lr-subject-badge" style="background:rgba(52,211,153,.12);color:#34d399"><span style="width:5px;height:5px;border-radius:50%;background:#34d399;display:inline-block"></span>SVT</span></span>
+              <span class="lr-date">il y a 5 j</span>
+              <span class="lr-score score-good">91/100</span>
+            </div>
+            <div class="list-row">
+              <span class="lr-icon">📄</span>
+              <span class="lr-title">Mondialisation et territoires</span>
+              <span class="lr-subject"><span class="lr-subject-badge" style="background:rgba(245,158,11,.12);color:#f59e0b"><span style="width:5px;height:5px;border-radius:50%;background:#f59e0b;display:inline-block"></span>Géo</span></span>
+              <span class="lr-date">il y a 1 sem</span>
+              <span class="lr-score score-ok">72/100</span>
+            </div>
+            <div class="list-row">
+              <span class="lr-icon">📄</span>
+              <span class="lr-title">Démocratie et citoyenneté</span>
+              <span class="lr-subject"><span class="lr-subject-badge" style="background:rgba(236,72,153,.12);color:#ec4899"><span style="width:5px;height:5px;border-radius:50%;background:#ec4899;display:inline-block"></span>EMC</span></span>
+              <span class="lr-date">il y a 2 sem</span>
+              <span class="lr-score score-good">88/100</span>
+            </div>
+            <div class="list-row" style="opacity:.5">
+              <span class="lr-icon">📄</span>
+              <span class="lr-title">Le 19ème siècle industriel</span>
+              <span class="lr-subject"><span class="lr-subject-badge" style="background:rgba(124,122,255,.15);color:#9090e0"><span style="width:5px;height:5px;border-radius:50%;background:#7c7aff;display:inline-block"></span>Histoire</span></span>
+              <span class="lr-date">il y a 3 sem</span>
+              <span class="lr-score score-good">95/100</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Vue CARDS pour comparaison -->
+<div class="mockup" style="margin-top:16px">
+  <div class="mockup-header">🏠 Accueil — Vue cards (toggle ⊞)</div>
+  <div class="mockup-body" style="padding:0">
+    <div class="mock-frame">
+      <div class="body-split">
+        <div class="folder-sidebar">
+          <div class="section-label">Matières</div>
+          <div class="folder-item">
+            <div class="f-icon">🗂️</div>
+            <div class="f-label"><div class="f-name">Tous</div></div>
+          </div>
+          <div class="divider"></div>
+          <div class="folder-item active">
+            <div class="f-icon">📜</div>
+            <div class="f-label"><div class="f-name">Histoire</div><div class="f-count">12 cours</div></div>
+          </div>
+          <div class="folder-item">
+            <div class="f-icon">🌍</div>
+            <div class="f-label"><div class="f-name">Géographie</div></div>
+          </div>
+          <div class="folder-item">
+            <div class="f-icon">🧬</div>
+            <div class="f-label"><div class="f-name">SVT</div></div>
+          </div>
+        </div>
+        <div class="main-panel">
+          <div class="main-header">
+            <span class="main-title">Histoire <span style="color:#5050a0;font-weight:400">12</span></span>
+            <div class="view-toggle">
+              <div class="vt-btn">☰</div>
+              <div class="vt-btn active">⊞</div>
+            </div>
+          </div>
+          <div class="card-grid">
+            <div class="mini-card">
+              <div class="mc-subject"><span style="width:6px;height:6px;border-radius:50%;background:#7c7aff;display:inline-block"></span>Histoire</div>
+              <div class="mc-title">La Révolution française</div>
+              <div class="mc-footer"><span class="mc-date">il y a 2 j</span><span class="rp-score score-good">98</span></div>
+            </div>
+            <div class="mini-card">
+              <div class="mc-subject"><span style="width:6px;height:6px;border-radius:50%;background:#7c7aff;display:inline-block"></span>Histoire</div>
+              <div class="mc-title">Le 19ème siècle industriel</div>
+              <div class="mc-footer"><span class="mc-date">il y a 3 sem</span><span class="rp-score score-good">95</span></div>
+            </div>
+            <div class="mini-card">
+              <div class="mc-subject"><span style="width:6px;height:6px;border-radius:50%;background:#7c7aff;display:inline-block"></span>Histoire</div>
+              <div class="mc-title">Napoléon et l'Empire</div>
+              <div class="mc-footer"><span class="mc-date">il y a 1 mois</span><span class="rp-score score-good">90</span></div>
+            </div>
+            <div class="mini-card">
+              <div class="mc-subject"><span style="width:6px;height:6px;border-radius:50%;background:#7c7aff;display:inline-block"></span>Histoire</div>
+              <div class="mc-title">La Première Guerre mondiale</div>
+              <div class="mc-footer"><span class="mc-date">il y a 1 mois</span><span class="rp-score score-ok">76</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div style="margin-top:18px">
+<h3>Quelques détails à confirmer</h3>
+<p class="subtitle">Réponds en bas ou clique pour sélectionner</p>
+</div>
+
+<div class="options" style="margin-top:10px">
+  <div class="option" data-choice="recent-5" onclick="toggleSelect(this)">
+    <div class="letter">5</div>
+    <div class="content"><h3>5 cours récents</h3><p>Bande compacte, défilable</p></div>
+  </div>
+  <div class="option" data-choice="recent-8" onclick="toggleSelect(this)">
+    <div class="letter">8</div>
+    <div class="content"><h3>8 cours récents</h3><p>Plus de couverture, scroll horizontal</p></div>
+  </div>
+  <div class="option" data-choice="recent-3" onclick="toggleSelect(this)">
+    <div class="letter">3</div>
+    <div class="content"><h3>3 cours récents</h3><p>Minimaliste, juste les derniers</p></div>
+  </div>
+</div>

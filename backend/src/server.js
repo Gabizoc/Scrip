@@ -1,9 +1,18 @@
 // backend/src/server.js
-import 'dotenv/config';
-import { createApp } from './app.js';
-import { initDb } from './db.js';
+import { config } from 'dotenv';
+import { resolve, dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const PORT = process.env.PORT ?? 3001;
+// Charge .env depuis la racine du repo, peu importe le CWD
+// IMPORTANT : doit être fait avant tout import qui lit process.env au niveau module
+const __dirname = dirname(fileURLToPath(import.meta.url));
+config({ path: resolve(__dirname, '../..', '.env') });
+
+// Imports dynamiques — garantit que .env est chargé avant que les modules lisent process.env
+const { createApp } = await import('./app.js');
+const { initDb } = await import('./db.js');
+
+const PORT = process.env.PORT ?? 5001;
 
 await initDb();
 const app = createApp();

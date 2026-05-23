@@ -2,12 +2,20 @@
   "name": "scrip",
   "type": "module",
   "version": "1.0.0",
-  "workspaces": ["backend", "frontend"],
+  "workspaces": [
+    "backend",
+    "frontend"
+  ],
   "scripts": {
     "test": "node --test tests/*.test.js",
     "start": "node ingest.js",
+    "dev": "concurrently -n backend,frontend -c cyan,magenta \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
-    "build": "npm run build --workspace=frontend"
+    "build": "npm run build --workspace=frontend",
+    "db:reset": "node backend/scripts/reset-db.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
   }
 }

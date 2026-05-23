@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import GlassCard from '../../components/GlassCard.jsx';
 import ThemeToggle from '../../components/ThemeToggle.jsx';
+import Dropdown from '../../components/Dropdown.jsx';
 
 const NAV_ITEMS = [
   { label: 'Gérer les niveaux',  path: '/settings/levels' },
@@ -22,13 +23,6 @@ export default function Settings() {
     mutationFn: api.putSettings,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   });
-
-  const selectClass = [
-    'w-full h-12 px-4 rounded-md text-[15px]',
-    'bg-black/[0.03] dark:bg-white/[0.04]',
-    'border border-black/[0.08] dark:border-white/[0.06]',
-    'text-text-primary focus:outline-none focus:border-accent/50',
-  ].join(' ');
 
   return (
     <div className="p-6 md:p-8 max-w-lg mx-auto">
@@ -48,14 +42,17 @@ export default function Settings() {
         {/* Niveau courant */}
         <GlassCard className="p-4 space-y-3">
           <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Niveau actuel</h3>
-          <select
+          <Dropdown
             value={settings?.currentLevelId ?? ''}
-            onChange={e => updateSettings.mutate({ currentLevelId: e.target.value })}
-            className={selectClass}
-          >
-            <option value="">Choisir un niveau...</option>
-            {levels.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-          </select>
+            onChange={v => updateSettings.mutate({ currentLevelId: v })}
+            options={levels.map(l => ({ value: l.id, label: l.name }))}
+            placeholder="Choisir un niveau…"
+            fullWidth
+            className="h-12 px-4 rounded-md text-[15px]
+              bg-black/[0.03] dark:bg-white/[0.04]
+              border border-black/[0.08] dark:border-white/[0.06]
+              text-text-primary"
+          />
         </GlassCard>
 
         {/* Navigation */}
@@ -75,7 +72,10 @@ export default function Settings() {
             key={settings?.vaultPath}
             defaultValue={settings?.vaultPath ?? ''}
             onBlur={e => updateSettings.mutate({ vaultPath: e.target.value })}
-            className={selectClass + ' font-mono text-sm'}
+            className="w-full h-12 px-4 rounded-md text-sm font-mono
+              bg-black/[0.03] dark:bg-white/[0.04]
+              border border-black/[0.08] dark:border-white/[0.06]
+              text-text-primary focus:outline-none focus:border-accent/50"
             placeholder="/home/scrip/vault"
           />
         </GlassCard>

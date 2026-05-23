@@ -9,19 +9,8 @@ import Settings from './pages/Settings/index.jsx';
 import LevelsManager from './pages/Settings/LevelsManager.jsx';
 import SubjectsManager from './pages/Settings/SubjectsManager.jsx';
 
-function BackgroundDots() {
-  return (
-    <div
-      className="fixed inset-0 -z-10 pointer-events-none"
-      aria-hidden="true"
-      style={{
-        backgroundImage: 'radial-gradient(circle, rgba(98,86,220,0.1) 1px, transparent 1px)',
-        backgroundSize: '28px 28px',
-        maskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
-        WebkitMaskImage: 'radial-gradient(ellipse 80% 80% at 50% 50%, black 40%, transparent 100%)',
-      }}
-    />
-  );
+function Background() {
+  return <div className="fixed inset-0 -z-10 pointer-events-none bg-bg-base" aria-hidden="true" />;
 }
 
 function PageWrapper({ children }) {
@@ -36,7 +25,7 @@ function PageWrapper({ children }) {
 export default function App() {
   return (
     <div className="min-h-screen bg-bg-base text-text-primary">
-      <BackgroundDots />
+      <Background />
       <Sidebar />
       <BottomNav />
       <div className="md:pl-56 min-h-screen pb-16 md:pb-0">

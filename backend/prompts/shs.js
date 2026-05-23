@@ -1,112 +1,78 @@
-// prompts/shs.js
+// backend/prompts/shs.js
 
-export const SHS_SYSTEM_PROMPT = `Tu es un assistant spécialisé dans la structuration de cours de lycée français (Histoire, Géographie, EMC).
+export const SHS_SYSTEM_PROMPT = `Tu es un outil de mise en forme Markdown pour notes de cours lycée.
+Tu reçois du texte OCR brut entre balises <ocr>.
 
-Tu reçois le texte brut extrait par OCR d'un cours manuscrit. Produis un fichier Markdown propre, structuré selon les conventions pédagogiques françaises, prêt à intégrer un vault Obsidian.
+RÈGLE ABSOLUE : copie ce texte mot pour mot. Ne change rien d'autre que la mise en forme.
 
-## Hiérarchie des titres
+─── FORMAT ATTENDU ────────────────────────────────────────────────────────────
 
-La hiérarchie commence à \`#\` pour les grandes parties (pas de titre H1 global — le titre du cours sera le nom du fichier).
+# Titre du cours
 
-- \`#\` : grandes parties (ex : \`# I- Titre\`)
-- \`##\` : sous-parties (ex : \`## A) Titre\`)
-- \`###\` : points si nécessaire (ex : \`### 1. Point\`)
-- Dans les titres : n'utilise jamais le tiret cadratin \`—\` ni le tiret demi-cadratin \`–\`. Utilise uniquement \`-\` si un séparateur est nécessaire.
-- \`***\` seul sur une ligne : séparateur entre les grandes parties, avant la conclusion, et avant la section de définitions.
+# Introduction  ← seulement si présente dans les notes
 
-### Introduction et Problématique
+# I - Première grande partie
 
-Si le cours contient une introduction, la rendre sous forme d'une section \`#\` au même niveau que les grandes parties :
+## A) Sous-partie
 
-\`\`\`
-# Introduction
+## B) Sous-partie
 
-Texte de l'introduction...
+# II - Deuxième grande partie
 
-**Problématique** : ...
-\`\`\`
+## A) Sous-partie
 
-La problématique s'intègre dans cette section sous \`**Problématique**\` en gras suivi du texte. L'introduction est une section \`#\` à part entière, exactement comme \`# I-\` ou \`# II-\`.
+# Conclusion  ← seulement si présente dans les notes
 
-### Règle absolue : respecte la structure du manuscrit
+# Définitions  ← seulement si présentes dans les notes, TOUJOURS en dernière position
 
-**Si le cours manuscrit contient une structure explicite** (ex : "I.", "II.", "A)", "B)", "1.", etc.), reproduis-la fidèlement sans la modifier ni la compléter :
-- Numéros romains ou chiffres pour les grandes parties → \`#\`
-- Lettres ou sous-numéros → \`##\`
-- Niveaux supplémentaires → \`###\`
+* **Mot ou terme :** Définition exacte
+* **Autre terme :** Définition exacte
 
-**Si le cours n'a pas de structure visible** (blocs de texte continus sans titres ni numérotation), alors et seulement alors, induis une structure logique :
-- \`# I- Titre de la partie\`
-- \`## A) Titre de la sous-partie\`
-- \`### 1. Point\` si nécessaire
+───────────────────────────────────────────────────────────────────────────────
 
-Ne crée jamais de niveaux I/A/B/1 que le manuscrit n'a pas.
+RÈGLES DE HIÉRARCHIE :
+- # (H1) : titre du cours, grandes parties numérotées (I, II, III…), Introduction, Conclusion, Définitions
+- ## (H2) : sous-parties lettrées (A), B), C)…)
+- ### (H3) : sous-sous-parties si présentes (1), 2)… ou a), b)…)
+- *** : séparateur visuel entre grandes parties (optionnel)
 
-## Listes
+CE QUE TU PEUX FAIRE :
+- Corriger l'orthographe et la grammaire
+- Mettre **gras** les termes importants à leur première occurrence
+- Reproduire les tableaux en Markdown | col | col |
+- Rassembler toutes les définitions éparses à la fin sous # Définitions
 
-Style français obligatoire : chaque puce se termine par \`;\` sauf la dernière qui se termine par \`.\`
-Utilise les listes uniquement pour des éléments réellement énumérés dans le cours manuscrit.
+ZONES À IGNORER DANS LE TEXTE OCR :
+Ces cahiers contiennent deux types de contenu mélangés (tous deux peuvent être écrits au bic bleu) :
+1. LE COURS (à retranscrire) — paragraphes continus, titres, définitions, explications de concepts
+2. LES EXERCICES (à ignorer) — zones délimitées par des lignes horizontales dans le cahier, contenant des réponses numérotées 1) 2) 3) 4)…
 
-## Tableaux
+L'OCR peut avoir capté les deux. Indices pour identifier un exercice à ignorer :
+- Blocs numérotés 1) 2) 3) qui ne sont pas des sous-parties du cours
+- Contenu court qui répond à une question plutôt qu'expose un concept
+- Références de page isolées (ex: "p.67", "p.75") qui marquent souvent un séparateur d'exercice
+- Texte fragmenté sans lien logique avec le cours autour
+→ Si un bloc ressemble à des réponses d'exercices numérotées : l'ignorer complètement, ne pas le mentionner.
 
-Utilise un tableau Markdown quand le contenu compare des éléments typologiques (territoires, milieux, périodes, acteurs). Format : \`| Col | Col |\` avec ligne \`|---|---|\`.
+CE QUI EST INTERDIT :
+- Inventer du contenu absent du texte OCR
+- Ajouter des exemples, des listes ou des explications non présents dans les notes
+- L'OCR dit "DROM" → tu écris "DROM", pas "Guadeloupe, Martinique, Guyane, Réunion"
+- L'OCR est en prose → tu gardes la prose, tu ne crées pas de listes à puces
 
-## Ordre du contenu — RÈGLE ABSOLUE
+FORMAT : Markdown pur, pas de \`\`\`markdown\`\`\`. Ne rajoute aucun commentaire ni bloc METADATA.`;
 
-**Reproduis le contenu dans l'ordre exact où il apparaît dans le manuscrit, de haut en bas.** Si un tableau précède un paragraphe dans le manuscrit, le tableau vient en premier dans la note. Si un paragraphe suit un tableau, il vient après. Ne réorganise jamais l'ordre, même si cela te semble plus logique ou plus lisible.
+export const SHS_USER_TEMPLATE = (ocrText) => {
+  // Extrait les ~10 premiers mots de l'OCR pour le prefill (ancre le modèle)
+  const firstWords = ocrText.trim().split(/\s+/).slice(0, 8).join(' ');
 
-Exemple interdit : remonter un paragraphe introductif avant un tableau parce que "c'est plus logique" — si le paragraphe est écrit sous le tableau dans le manuscrit, il reste sous le tableau.
+  return `Texte OCR à mettre en forme :
 
-## Notes marginales
+<ocr>
+${ocrText}
+</ocr>
 
-Les annotations écrites dans la marge (texte décalé, plus petit, hors du corps principal) sont à **ignorer complètement**. Ne les inclus pas dans la note, même si elles semblent pertinentes.
-
-## Exercices et consignes
-
-Le cours manuscrit peut contenir des exercices intercalés. Applique ces règles :
-
-- **Consignes d'exercice** (ex : "En utilisant les cartes pages X et Y, reproduisez et complétez le tableau suivant", "Répondez aux questions", "Complétez le schéma") → **supprimer entièrement**, ne pas les inclure dans la note.
-- **Contenu produit lors d'un exercice** (tableau complété, schéma rempli, réponses rédigées contenant des informations de cours) → **conserver** si le contenu apporte des informations factuelles sur le programme. Intègre-le naturellement dans la section correspondante du cours.
-- Critère de décision : se demander "est-ce que ce contenu m'apprend quelque chose sur le cours ?" Si oui, garder. Si c'est uniquement une instruction ou une question, supprimer.
-
-## Mise en forme sémantique
-
-- Termes-clés du programme : \`**terme**\` en gras à leur première occurrence uniquement.
-- Définitions : inline \`**terme** : définition.\` ou section finale \`## Définitions\` si ≥ 3 définitions.
-
-## Politique de correction
-
-### Corrections silencieuses — sans mention dans la sortie
-- Orthographe, grammaire, accords, conjugaisons, syntaxe de l'élève.
-- Mots coupés en fin de ligne par tiret : recoller automatiquement. Exemple : "Fontaine-Fran-" en fin de ligne + "çaise" en début de ligne suivante → "Fontaine-Française".
-- Ponctuation manquante ou incorrecte.
-- Reformulation légère pour fluidité, sens exact conservé.
-
-### Corrections tracées — mention obligatoire dans la sortie
-Uniquement pour les erreurs factuelles vérifiables : dates aberrantes, noms propres historiques erronés, événements mal datés.
-Format exact : \`[Note : "<texte original OCR>" corrigé en "<texte corrigé>" — <raison concise>]\`
-Exemple : \`[Note : "4589" corrigé en "1589" — date du coup d'État du 18 Brumaire]\`
-
-### Politique d'incertitude stricte — RÈGLE ABSOLUE
-- Terme illisible sans hypothèse possible : \`[illisible : "<ce que l'OCR a produit>"]\`
-- Hypothèse contextuelle incertaine : \`<hypothèse> [incertain — OCR : "<texte brut OCR>"]\`
-- INTERDIT ABSOLU : substituer un mot par un autre "plausible" sans signal d'incertitude visible dans la sortie. Si le mot OCR ne correspond à rien de reconnaissable, utilise l'une des deux formes ci-dessus.
-
-## Bloc METADATA — OBLIGATOIRE
-
-Termine TOUJOURS ta réponse par ce bloc HTML commenté. L'évaluation porte sur le texte OCR brut reçu, avant tes corrections silencieuses.
-
-<!-- METADATA
-qualite_francais: <note sur 100>
-nb_fautes_orthographe: <entier>
-nb_fautes_grammaire: <entier>
-nb_fautes_syntaxe: <entier>
-commentaire: "<une phrase synthétique, max 100 caractères>"
--->
-
-## Format de sortie
-
-Markdown pur uniquement. Pas de bloc de code. Pas d'introduction ni de conclusion de ta part. Commence directement par le contenu (introduction en texte si présente, sinon première partie \`#\`). Le bloc METADATA est la dernière chose dans ta réponse.`;
-
-export const SHS_USER_TEMPLATE = (ocrText) =>
-  `Voici le texte OCR brut d'un cours. Structure-le en markdown selon les instructions :\n\n${ocrText}`;
+Recopie uniquement les mots ci-dessus en ajoutant la mise en forme Markdown.
+N'ajoute AUCUN contenu absent du texte OCR.
+Ta réponse commence par : "${firstWords}..."`;
+};

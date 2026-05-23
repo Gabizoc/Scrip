@@ -1,7 +1,8 @@
 // frontend/src/pages/Home.jsx
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, Search, X, ChevronDown, List, LayoutGrid } from 'lucide-react';
+import { Camera, Search, X, List, LayoutGrid } from 'lucide-react';
+import Dropdown from '../components/Dropdown.jsx';
 import { api } from '../lib/api.js';
 import { parseScore } from '../lib/noteUtils.js';
 import NoteCard from '../components/NoteCard.jsx';
@@ -18,25 +19,18 @@ const SORT_OPTIONS = [
   { value: 'title-asc',  label: 'A → Z' },
 ];
 
-// ── SortSelect ────────────────────────────────────────────────────────────────
+// ── SortDropdown ──────────────────────────────────────────────────────────────
 
-function SortSelect({ value, onChange }) {
+function SortDropdown({ value, onChange }) {
   return (
-    <div className="relative flex-shrink-0">
-      <select
-        value={value}
-        onChange={e => onChange(e.target.value)}
-        className="appearance-none pl-3 pr-7 py-1.5 rounded-full text-xs font-medium
-          bg-black/[0.05] dark:bg-white/[0.07] text-text-secondary
-          hover:bg-black/[0.09] dark:hover:bg-white/[0.12]
-          focus:outline-none focus:ring-2 focus:ring-accent/30 transition cursor-pointer"
-      >
-        {SORT_OPTIONS.map(o => (
-          <option key={o.value} value={o.value}>{o.label}</option>
-        ))}
-      </select>
-      <ChevronDown size={11} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
-    </div>
+    <Dropdown
+      value={value}
+      onChange={onChange}
+      options={SORT_OPTIONS}
+      className="flex-shrink-0 pl-3 pr-2 py-1.5 rounded-full text-xs font-medium
+        bg-black/[0.05] dark:bg-white/[0.07] text-text-secondary
+        hover:bg-black/[0.09] dark:hover:bg-white/[0.12]"
+    />
   );
 }
 
@@ -224,7 +218,7 @@ export default function Home() {
                   )}
                 </div>
 
-                <SortSelect value={sort} onChange={setSort} />
+                <SortDropdown value={sort} onChange={setSort} />
                 <ViewToggle view={view} onChange={setView} />
               </div>
 

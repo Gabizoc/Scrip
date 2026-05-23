@@ -1,48 +1,69 @@
-// src/structure.js
+// backend/src/pipeline/structure.js
 import { SHS_SYSTEM_PROMPT, SHS_USER_TEMPLATE } from '../../prompts/shs.js';
 
-const MISTRAL_ENDPOINT = 'https://api.mistral.ai/v1/chat/completions';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
+const NVIDIA_ENDPOINT     = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
-const OPENROUTER_FALLBACKS = [
+// Modèles NVIDIA NIM — bons pour l'instruction-following strict
+const NVIDIA_MODELS = [
+  'mistralai/mistral-medium-3-instruct',
+  'meta/llama-4-maverick-17b-128e-instruct',
+  'nvidia/llama-3.1-nemotron-ultra-253b-v1',
+  'qwen/qwq-32b',
+];
+
+// Modèles OpenRouter gratuits — filet de sécurité
+const OPENROUTER_MODELS = [
+  'google/gemma-4-26b-a4b-it:free',
   'google/gemma-4-31b-it:free',
-  'nvidia/nemotron-3-super-120b-a12b:free',
-  'qwen/qwen3-next-80b-a3b-instruct:free',
   'openrouter/auto',
+  'meta-llama/llama-3.3-70b-instruct:free',
+  'qwen/qwen3-coder:free',
+  'qwen/qwen3-next-80b-a3b-instruct:free',
+  'nousresearch/hermes-3-llama-3.1-405b:free',
+  'openai/gpt-oss-120b:free',
+  'nvidia/nemotron-3-super-120b-a12b:free',
 ];
 
 const PROMPTS = {
-  // Clé par nom de prompt (système backend — subjects[].prompt)
   shs:        { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
-  // Compat backward CLI (SCRIP_SUBJECT=histoire)
   histoire:   { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
   géographie: { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
   emc:        { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
 };
 
-async function callMistral(messages, apiKey) {
-  const response = await fetch(MISTRAL_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({ model: 'mistral-small-latest', temperature: 0.2, messages }),
-  });
+const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-  if (response.status === 429) return null;
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Mistral erreur ${response.status}: ${errorText}`);
-  }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
+/**
+ * Calcule un max_tokens proportionnel à la taille de l'OCR.
+ * Overhead Markdown ~30% + métadonnées ~200 tokens. Minimum 1024, maximum 8192.
+ */
+function calcMaxTokens(ocrText) {
+  // ~4 chars par token en français
+  const ocrTokens = Math.ceil(ocrText.length / 4);
+  return Math.min(Math.max(Math.ceil(ocrTokens * 1.4) + 200, 1024), 8192);
 }
 
-async function callOpenRouter(messages, apiKey, model) {
-  const response = await fetch(OPENROUTER_ENDPOINT, {
+async function callNvidia(messages, apiKey, model, maxTokens) {
+  const res = await fetch(NVIDIA_ENDPOINT, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages }),
+  });
+  if (res.status === 429) return null;
+  if (!res.ok) {
+    const txt = await res.text();
+    if (res.status === 404 || res.status === 400) {
+      process.stderr.write(`    ⚠ NVIDIA ${model} indisponible (${res.status}), skip\n`);
+      return null;
+    }
+    throw new Error(`NVIDIA NIM erreur ${res.status}: ${txt}`);
+  }
+  return (await res.json()).choices[0].message.content;
+}
+
+async function callOpenRouter(messages, apiKey, model, maxTokens) {
+  const res = await fetch(OPENROUTER_ENDPOINT, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -50,48 +71,84 @@ async function callOpenRouter(messages, apiKey, model) {
       'HTTP-Referer': 'https://scrip.local',
       'X-Title': 'Scrip',
     },
-    body: JSON.stringify({ model, temperature: 0.2, messages }),
+    body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages }),
   });
-
-  if (response.status === 429) return null;
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`OpenRouter erreur ${response.status}: ${errorText}`);
+  if (res.status === 429) return null;
+  if (!res.ok) {
+    const txt = await res.text();
+    if (res.status === 404 || res.status === 400) {
+      process.stderr.write(`    ⚠ ${model} indisponible (${res.status}), skip\n`);
+      return null;
+    }
+    throw new Error(`OpenRouter erreur ${res.status}: ${txt}`);
   }
-
-  const data = await response.json();
-  return data.choices[0].message.content;
+  return (await res.json()).choices[0].message.content;
 }
 
 /**
- * Envoie le texte OCR brut au LLM pour structuration markdown.
- * Essaie d'abord Mistral direct, puis la chaîne OpenRouter sur 429.
- * @param {string} rawMarkdown - Sortie brute de l'OCR
- * @param {string} subject - Matière (ex: 'histoire')
- * @param {string} level - Niveau scolaire (ex: '1ère')
- * @param {string} openrouterKey - Clé API OpenRouter
- * @param {string} mistralKey - Clé API Mistral
- * @returns {Promise<string>} Markdown structuré
+ * Structuration du texte OCR brut via LLM.
+ *
+ * Ordre de priorité :
+ *   1. NVIDIA NIM (bonne instruction-following, quota généreux)
+ *   2. OpenRouter (vagues avec backoff si rate-limited)
+ *
+ * max_tokens est volontairement limité à ~1.4× la taille de l'OCR pour empêcher
+ * la sur-génération (le modèle ne peut pas inventer plus de contenu que l'original).
  */
-export async function structureContent(rawMarkdown, subject, level, openrouterKey, mistralKey) {
+export async function structureContent(rawMarkdown, subject, level, openrouterKey, mistralKey, nvidiaKey) {
   const prompt = PROMPTS[subject] ?? PROMPTS['histoire'];
+  const maxTokens = calcMaxTokens(rawMarkdown);
+
+  process.stderr.write(`    OCR: ${rawMarkdown.length} chars → max_tokens: ${maxTokens}\n`);
+
   const messages = [
     { role: 'system', content: prompt.system },
-    { role: 'user', content: prompt.userTemplate(rawMarkdown) },
+    { role: 'user',   content: prompt.userTemplate(rawMarkdown) },
   ];
 
-  process.stderr.write(`    → mistral-small-latest (direct)\n`);
-  const mistralResult = await callMistral(messages, mistralKey);
-  if (mistralResult !== null) return mistralResult;
-  process.stderr.write(`    ⚠ 429 sur Mistral, bascule OpenRouter...\n`);
-
-  for (const model of OPENROUTER_FALLBACKS) {
-    process.stderr.write(`    → ${model}\n`);
-    const result = await callOpenRouter(messages, openrouterKey, model);
-    if (result !== null) return result;
-    process.stderr.write(`    ⚠ 429 sur ${model}, essai suivant...\n`);
+  // ── 1. NVIDIA NIM ─────────────────────────────────────────────────────────
+  if (nvidiaKey) {
+    for (const model of NVIDIA_MODELS) {
+      process.stderr.write(`    → NVIDIA ${model}\n`);
+      const result = await callNvidia(messages, nvidiaKey, model, maxTokens);
+      if (result !== null) {
+        process.stderr.write(`    ✓ NVIDIA ${model} → ${result.length} chars\n`);
+        return result;
+      }
+      process.stderr.write(`    ⚠ 429 sur NVIDIA ${model}\n`);
+      await sleep(1000);
+    }
+    process.stderr.write(`    ⚠ Tous les modèles NVIDIA en 429 → bascule OpenRouter\n`);
   }
 
-  throw new Error('Tous les modèles LLM sont rate-limited. Réessaie dans quelques minutes.');
+  // ── 2. OpenRouter — vagues avec backoff ───────────────────────────────────
+  const RETRY_DELAYS = [0, 3000, 15000];
+
+  for (let round = 0; round < RETRY_DELAYS.length; round++) {
+    if (RETRY_DELAYS[round] > 0) {
+      process.stderr.write(`    ⏳ attente ${RETRY_DELAYS[round] / 1000}s avant vague ${round + 1}...\n`);
+      await sleep(RETRY_DELAYS[round]);
+    }
+    process.stderr.write(`    ── vague OpenRouter ${round + 1} ──\n`);
+
+    const models = round < 2 ? OPENROUTER_MODELS : ['openrouter/auto'];
+    for (const model of models) {
+      process.stderr.write(`    → ${model}\n`);
+      const result = await callOpenRouter(messages, openrouterKey, model, maxTokens);
+      if (result !== null) {
+        process.stderr.write(`    ✓ ${model} → ${result.length} chars\n`);
+        return result;
+      }
+      process.stderr.write(`    ⚠ 429 sur ${model}\n`);
+      await sleep(800);
+    }
+  }
+
+  // ── Dernier recours ───────────────────────────────────────────────────────
+  process.stderr.write(`    ⏳ dernier espoir — attente 45s puis openrouter/auto...\n`);
+  await sleep(45000);
+  const last = await callOpenRouter(messages, openrouterKey, 'openrouter/auto', maxTokens);
+  if (last !== null) return last;
+
+  throw new Error('Tous les modèles LLM sont saturés. Réessaie dans quelques minutes.');
 }

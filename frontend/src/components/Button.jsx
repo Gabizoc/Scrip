@@ -1,9 +1,9 @@
 // frontend/src/components/Button.jsx
 
 const VARIANTS = {
-  primary:   'bg-accent text-white font-semibold dark:text-bg-base',
-  secondary: 'border border-black/[0.08] dark:border-white/10 text-text-primary',
-  danger:    'bg-status-danger/10 text-status-danger border border-status-danger/20',
+  primary:   'bg-accent text-white font-semibold shadow-[0_4px_16px_rgba(110,108,232,0.35)] hover:shadow-[0_6px_24px_rgba(110,108,232,0.5)] hover:bg-accent/90',
+  secondary: 'glass-card text-text-primary hover:bg-white/60 dark:hover:bg-white/[0.08]',
+  danger:    'bg-status-danger/10 text-status-danger border border-status-danger/20 hover:bg-status-danger/20',
 };
 
 export default function Button({

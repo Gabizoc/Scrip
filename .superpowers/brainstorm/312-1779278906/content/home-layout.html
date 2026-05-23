@@ -1,0 +1,126 @@
+<h2>Comment organiser la page d'accueil ?</h2>
+<p class="subtitle">3 approches pour les dossiers + accès rapide aux récents</p>
+
+<style>
+.mock-home { background: #0f0f14; border-radius: 10px; padding: 16px; font-family: system-ui; color: #e0e0e8; font-size: 12px; min-height: 220px; }
+.mock-section-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: #7878a0; margin-bottom: 8px; font-weight: 600; }
+.mock-recent-row { display: flex; gap: 8px; margin-bottom: 16px; overflow: hidden; }
+.mock-note-sm { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 7px; padding: 8px 10px; flex-shrink: 0; width: 110px; }
+.mock-note-sm .t { font-size: 10px; font-weight: 600; color: #e0e0e8; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mock-note-sm .s { font-size: 9px; color: #7878a0; }
+.mock-note-sm .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; }
+.mock-folder-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+.mock-folder { background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.08); border-radius: 8px; padding: 10px; }
+.mock-folder .icon { font-size: 18px; margin-bottom: 4px; }
+.mock-folder .name { font-size: 11px; font-weight: 600; color: #e0e0e8; }
+.mock-folder .count { font-size: 9px; color: #7878a0; margin-top: 2px; }
+.mock-folder .last { font-size: 9px; color: #5050a0; margin-top: 2px; }
+.mock-list-row { display: flex; align-items: center; gap: 10px; padding: 8px; background: rgba(255,255,255,.04); border-radius: 6px; margin-bottom: 5px; }
+.mock-list-icon { font-size: 16px; }
+.mock-list-name { flex: 1; font-size: 11px; font-weight: 600; color: #e0e0e8; }
+.mock-list-meta { font-size: 9px; color: #7878a0; text-align: right; }
+.mock-split { display: flex; gap: 10px; }
+.mock-sidebar-panel { width: 90px; flex-shrink: 0; }
+.mock-sidebar-item { padding: 7px 8px; border-radius: 6px; font-size: 10px; margin-bottom: 4px; cursor: default; }
+.mock-sidebar-item.active { background: rgba(124,122,255,.25); color: #a0a0ff; font-weight: 700; }
+.mock-sidebar-item:not(.active) { color: #7878a0; }
+.mock-main-panel { flex: 1; }
+.mock-note-row { display: flex; justify-content: space-between; align-items: center; padding: 7px 8px; background: rgba(255,255,255,.05); border-radius: 6px; margin-bottom: 4px; }
+.mock-note-row .title { font-size: 10px; font-weight: 600; }
+.mock-note-row .meta { font-size: 9px; color: #7878a0; }
+.badge { display: inline-block; padding: 1px 5px; border-radius: 3px; font-size: 8px; font-weight: 700; margin-left: 4px; }
+</style>
+
+<div class="cards">
+
+  <!-- Option A -->
+  <div class="card" data-choice="a" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-home">
+        <div class="mock-section-label">⚡ Récemment ajoutés</div>
+        <div class="mock-recent-row">
+          <div class="mock-note-sm"><div class="t">La Révolution fr…</div><div class="s"><span class="dot" style="background:#7c7aff"></span>Histoire</div></div>
+          <div class="mock-note-sm"><div class="t">Les biomes</div><div class="s"><span class="dot" style="background:#34d399"></span>SVT</div></div>
+          <div class="mock-note-sm"><div class="t">Mondialisation</div><div class="s"><span class="dot" style="background:#f59e0b"></span>Géo</div></div>
+          <div class="mock-note-sm"><div class="t">Démocratie</div><div class="s"><span class="dot" style="background:#ec4899"></span>EMC</div></div>
+        </div>
+        <div class="mock-section-label">📁 Matières</div>
+        <div class="mock-folder-grid">
+          <div class="mock-folder"><div class="icon">📜</div><div class="name">Histoire</div><div class="count">12 cours</div><div class="last">il y a 2 j</div></div>
+          <div class="mock-folder"><div class="icon">🌍</div><div class="name">Géo</div><div class="count">8 cours</div><div class="last">il y a 5 j</div></div>
+          <div class="mock-folder"><div class="icon">🧬</div><div class="name">SVT</div><div class="count">5 cours</div><div class="last">il y a 1 sem</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>A — Récents + Dossiers</h3>
+      <p>Bande de <strong>notes récentes</strong> en haut (toutes matières), puis une grille de <strong>dossiers par matière</strong>. Cliquer sur un dossier filtre les notes.</p>
+    </div>
+  </div>
+
+  <!-- Option B -->
+  <div class="card" data-choice="b" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-home">
+        <div class="mock-section-label">📁 Mes matières</div>
+        <div style="display:flex; flex-direction:column; gap:6px; margin-bottom: 12px;">
+          <div class="mock-list-row">
+            <div class="mock-list-icon">📜</div>
+            <div class="mock-list-name">Histoire <span class="badge" style="background:rgba(124,122,255,.2);color:#a0a0ff">12</span></div>
+            <div class="mock-list-meta">La Révolution…<br>il y a 2 j</div>
+          </div>
+          <div class="mock-list-row">
+            <div class="mock-list-icon">🌍</div>
+            <div class="mock-list-name">Géographie <span class="badge" style="background:rgba(52,211,153,.2);color:#34d399">8</span></div>
+            <div class="mock-list-meta">Mondialisation<br>il y a 5 j</div>
+          </div>
+          <div class="mock-list-row">
+            <div class="mock-list-icon">🧬</div>
+            <div class="mock-list-name">SVT <span class="badge" style="background:rgba(245,158,11,.2);color:#f59e0b">5</span></div>
+            <div class="mock-list-meta">Les biomes<br>il y a 1 sem</div>
+          </div>
+        </div>
+        <div class="mock-section-label">⚡ Les 3 derniers</div>
+        <div class="mock-recent-row">
+          <div class="mock-note-sm"><div class="t">La Révolution fr…</div><div class="s">Histoire · 98/100</div></div>
+          <div class="mock-note-sm"><div class="t">Les biomes</div><div class="s">SVT · 85/100</div></div>
+          <div class="mock-note-sm"><div class="t">Mondialisation</div><div class="s">Géo · 91/100</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>B — Liste matières + Récents</h3>
+      <p><strong>Liste de dossiers</strong> avec aperçu du dernier cours, puis <strong>mini-bande de récents</strong> en bas. Plus compact, navigation directe vers la matière.</p>
+    </div>
+  </div>
+
+  <!-- Option C -->
+  <div class="card" data-choice="c" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <div class="mock-home">
+        <div class="mock-split">
+          <div class="mock-sidebar-panel">
+            <div class="mock-section-label" style="font-size:8px">Matières</div>
+            <div class="mock-sidebar-item active">⚡ Récents</div>
+            <div class="mock-sidebar-item">📜 Histoire</div>
+            <div class="mock-sidebar-item">🌍 Géo</div>
+            <div class="mock-sidebar-item">🧬 SVT</div>
+            <div class="mock-sidebar-item">⚖️ EMC</div>
+          </div>
+          <div class="mock-main-panel">
+            <div class="mock-section-label" style="font-size:8px">4 derniers cours</div>
+            <div class="mock-note-row"><span class="title">La Révolution fr…</span><span class="meta">Histoire · 2j</span></div>
+            <div class="mock-note-row"><span class="title">Les biomes</span><span class="meta">SVT · 5j</span></div>
+            <div class="mock-note-row"><span class="title">Mondialisation</span><span class="meta">Géo · 1sem</span></div>
+            <div class="mock-note-row"><span class="title">Démocratie</span><span class="meta">EMC · 2sem</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card-body">
+      <h3>C — Panneau latéral matières</h3>
+      <p><strong>Sidebar de matières</strong> à gauche (toujours visible), notes filtrées à droite. "Récents" est la vue par défaut. Ressemble à un explorateur de fichiers.</p>
+    </div>
+  </div>
+
+</div>

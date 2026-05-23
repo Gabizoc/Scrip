@@ -10,7 +10,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DATA = {
   settings: {
     theme: 'auto',
-    vaultPath: '/home/scrip/vault',
+    vaultPath: path.join(__dirname, '../../vault'),
     currentLevelId: null,
   },
   levels: [],

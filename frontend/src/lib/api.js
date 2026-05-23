@@ -26,11 +26,12 @@ async function request(method, path, body, isMultipart = false) {
 
 export const api = {
   // ── Notes ──────────────────────────────────────────────
-  getNotes:   ()           => request('GET',    '/notes'),
-  getNote:    (id)         => request('GET',    `/notes/${id}`),
-  patchNote:     (id, md)   => request('PATCH',  `/notes/${id}`, { markdown: md }),
-  patchNoteMeta: (id, data) => request('PATCH',  `/notes/${id}`, data),
-  deleteNote: (id)         => request('DELETE', `/notes/${id}`),
+  getNotes:       ()           => request('GET',    '/notes'),
+  getNote:        (id)         => request('GET',    `/notes/${id}`),
+  patchNote:      (id, md)     => request('PATCH',  `/notes/${id}`, { markdown: md }),
+  patchNoteMeta:  (id, data)   => request('PATCH',  `/notes/${id}`, data),
+  deleteNote:     (id)         => request('DELETE', `/notes/${id}`),
+  getNoteSources: (id)         => request('GET',    `/notes/${id}/sources`),
 
   // ── Ingest ─────────────────────────────────────────────
   /** Démarre l'ingestion, retourne { jobId } */

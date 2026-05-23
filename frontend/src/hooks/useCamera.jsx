@@ -1,42 +1,54 @@
-// frontend/src/hooks/useCamera.js
+// frontend/src/hooks/useCamera.jsx
 import { useRef, useCallback } from 'react';
 
 /**
- * Gère la capture photo via l'input file natif.
- * - Sur mobile : ouvre la caméra arrière (capture="environment")
- * - Sur desktop : ouvre l'explorateur de fichiers
+ * Retourne deux déclencheurs :
+ * - triggerCamera  : ouvre directement la caméra (capture="environment")
+ * - triggerGallery : ouvre la galerie / explorateur de fichiers
+ * - CameraInputs   : les deux <input> cachés à monter dans le DOM
  *
- * Retourne :
- * - trigger()    : ouvre le sélecteur de fichier
- * - CameraInput  : composant <input hidden> à placer dans le DOM
+ * @param {{ onCapture: (files: File[]) => void, multiple?: boolean }} opts
  */
-export function useCamera({ onCapture }) {
-  const inputRef = useRef(null);
+export function useCamera({ onCapture, multiple = false }) {
+  const cameraRef  = useRef(null);
+  const galleryRef = useRef(null);
 
-  function trigger() {
-    inputRef.current?.click();
-  }
+  const triggerCamera  = useCallback(() => cameraRef.current?.click(),  []);
+  const triggerGallery = useCallback(() => galleryRef.current?.click(), []);
 
-  const handleChange = useCallback(function handleChange(e) {
-    const file = e.target.files?.[0];
-    if (file) onCapture(file);
-    // Reset pour permettre de re-sélectionner le même fichier
+  const handleChange = useCallback((e) => {
+    const files = Array.from(e.target.files ?? []);
+    if (files.length) onCapture(files);
     e.target.value = '';
   }, [onCapture]);
 
-  const CameraInput = useCallback(function CameraInput() {
+  const CameraInputs = useCallback(function CameraInputs() {
     return (
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        capture="environment"
-        onChange={handleChange}
-        className="hidden"
-        aria-hidden="true"
-      />
+      <>
+        {/* Ouvre directement la caméra arrière */}
+        <input
+          ref={cameraRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          multiple={multiple}
+          onChange={handleChange}
+          className="hidden"
+          aria-hidden="true"
+        />
+        {/* Ouvre la galerie / explorateur */}
+        <input
+          ref={galleryRef}
+          type="file"
+          accept="image/*"
+          multiple={multiple}
+          onChange={handleChange}
+          className="hidden"
+          aria-hidden="true"
+        />
+      </>
     );
-  }, []); // inputRef et handleChange sont des refs stables
+  }, [multiple, handleChange]);
 
-  return { trigger, CameraInput };
+  return { triggerCamera, triggerGallery, CameraInputs };
 }

@@ -1,5 +1,5 @@
 // frontend/src/components/Sidebar.jsx
-import { NavLink } from 'react-router-dom';
+import { NavLink, useLocation } from 'react-router-dom';
 import { BookOpen, Camera, Settings, Moon, Sun, Monitor } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme.js';
 
@@ -17,13 +17,15 @@ const THEMES = [
 
 export default function Sidebar() {
   const { theme, setTheme } = useTheme();
+  const { pathname } = useLocation();
+  const isPreview = pathname.startsWith('/preview');
 
   return (
     <aside className="sidebar-glass hidden md:flex flex-col fixed left-0 top-0 h-screen w-56 z-20">
 
       {/* Logo */}
       <div className="px-6 h-16 flex items-center shrink-0
-        border-b border-black/[0.07] dark:border-white/[0.06]">
+        border-b border-black/[0.06] dark:border-white/[0.06]">
         <span className="font-display text-[22px] font-bold tracking-tight text-text-primary">
           Scrip
         </span>
@@ -39,9 +41,9 @@ export default function Sidebar() {
             className={({ isActive }) => [
               'group flex items-center gap-3 px-3 py-2.5 rounded-md text-sm font-medium',
               'transition-all duration-200 animate-slide-in-left',
-              isActive
-                ? 'bg-accent/15 text-accent shadow-[0_2px_8px_rgba(110,108,232,0.2)]'
-                : 'text-text-secondary hover:text-text-primary hover:bg-white/40 dark:hover:bg-white/[0.06]',
+              (isActive || (to === '/' && isPreview))
+                ? 'bg-accent/[0.12] text-accent'
+                : 'text-text-secondary hover:text-text-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
             ].join(' ')}
             style={{ animationDelay: `${i * 60}ms` }}
           >
@@ -52,13 +54,13 @@ export default function Sidebar() {
       </nav>
 
       {/* Theme switcher */}
-      <div className="p-4 shrink-0 border-t border-white/60 dark:border-white/[0.06]">
-        <p className="text-[11px] font-semibold text-text-tertiary uppercase tracking-widest mb-2.5 px-1">
+      <div className="p-4 shrink-0 border-t border-black/[0.06] dark:border-white/[0.06]">
+        <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-widest mb-2.5 px-1">
           Thème
         </p>
         <div className="flex rounded-md overflow-hidden
-          border border-white/70 dark:border-white/[0.08]
-          bg-white/30 dark:bg-white/[0.03]">
+          border border-black/[0.07] dark:border-white/[0.08]
+          bg-black/[0.03] dark:bg-white/[0.03]">
           {THEMES.map(({ val, Icon, label }) => (
             <button
               key={val}
@@ -67,8 +69,8 @@ export default function Sidebar() {
               className={[
                 'flex-1 flex items-center justify-center py-2 transition-all duration-200',
                 theme === val
-                  ? 'bg-accent text-white shadow-[0_2px_8px_rgba(110,108,232,0.4)]'
-                  : 'text-text-tertiary hover:text-text-primary hover:bg-white/50 dark:hover:bg-white/[0.06]',
+                  ? 'bg-accent text-white'
+                  : 'text-text-tertiary hover:text-text-primary hover:bg-black/[0.04] dark:hover:bg-white/[0.06]',
               ].join(' ')}
             >
               <Icon size={13} />

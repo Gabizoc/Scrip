@@ -1,0 +1,24 @@
+---
+matière: Histoire
+niveau: 2nd
+date_cours: 2026-05-23
+date_ingestion: 2026-05-23T16:46:49.187Z
+tags: [cours, Histoire, 2nd]
+sources: [IMG_2663.jpeg, IMG_2664.jpeg]
+---
+
+# I - La méditerranée : carrefour de 3 civilisations
+
+## A) L'Occident chrétien
+
+L'**Occident chrétien** est un ensemble culturel et politique qui s'est constitué progressivement après l'effondrement de l'empire romain d'Occident en 476, les peuples germaniques installés dans ce territoire ont fondé des royaumes sur ces territoires christianisés (exemples : les francs).
+
+L'**Église** impose des obligations aux fidèles (comme les sacrements) et les pousse à adopter des comportements adaptés au maintien d'un ordre social jugé adapté au plan de l'enfer. Elle renforce progressivement son contrôle sur les chrétiens et exclut les minorités religieuses. Toute personne non respectant pas les enseignements de l'Église et les sacrements peut être frappée d'excommunication.
+
+Dans ces royaumes, les rois ont un pouvoir limité car la société est sincedare pour les seigneurs féodaux et par l'Église. Le pouvoir des seigneurs repose sur leurs liens vassaliques et la remise de fiefs. Ils assurent l'ordre et exercent leur pouvoir sur des territoires plus ou moins étendus. Les châteaux-fort symbolisent le pouvoir de ces puissants seigneurs.
+
+## B) L'empire byzantin
+
+L'**empereur byzantin** (basileus) tire son pouvoir de Dieu et est même considéré comme supérieur hiérarchiquement aux autres humains. La civilisation byzantine est un carrefour des cultures of héritage antiques (romain, grec, persan), les Byzantins sont chrétiens, ils croient au christ mais ne pratiquent pas la religion comme les catholiques. C'est l'**Église Orthodoxe** avec après le schisme en 1054. Son chef est le Patriarche.
+
+Constantinople reste une capitale dynamique, centre commercial entre l'Asie et l'Europe, mais depuis le début du Moyen Age l'empire Byzantin est en déclin. Son territoire est de plus en plus réduit (surtout à cause de l'expansion arabe).
