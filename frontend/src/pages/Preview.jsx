@@ -612,12 +612,77 @@ export default function Preview() {
   const activeId    = useActiveHeading(headingIds);
 
   if (isLoading) return (
-    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
-      <div className="relative w-10 h-10">
-        <div className="absolute inset-0 rounded-full border-2 border-black/[0.06] dark:border-white/[0.06]" />
-        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-spin" />
+    <div className="px-4 py-6 md:py-8 animate-pulse">
+      <div className="flex gap-8 justify-center max-w-[88rem] mx-auto">
+        <div className="w-full max-w-3xl min-w-0">
+
+          {/* Toolbar */}
+          <div className="flex items-center justify-between mb-5">
+            <div className="h-4 w-20 rounded-full bg-black/[0.06] dark:bg-white/[0.07]" />
+            <div className="flex gap-2">
+              <div className="h-8 w-20 rounded-md bg-black/[0.05] dark:bg-white/[0.06]" />
+              <div className="h-8 w-24 rounded-md bg-black/[0.05] dark:bg-white/[0.06]" />
+            </div>
+          </div>
+
+          {/* Méta */}
+          <div className="flex items-center gap-2 mb-6">
+            <div className="h-5 w-16 rounded-full bg-accent/20" />
+            <div className="h-3.5 w-12 rounded-full bg-black/[0.05] dark:bg-white/[0.06]" />
+            <div className="ml-auto h-3.5 w-28 rounded-full bg-black/[0.05] dark:bg-white/[0.06]" />
+          </div>
+
+          {/* Carte contenu */}
+          <div className="rounded-2xl border border-black/[0.07] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm p-6 md:p-8 space-y-5">
+            {/* Titre H1 */}
+            <div className="h-6 w-3/4 rounded-full bg-black/[0.08] dark:bg-white/[0.10]" />
+
+            {/* Sous-titre H2 */}
+            <div className="pt-2 space-y-3">
+              <div className="h-4 w-2/5 rounded-full bg-black/[0.06] dark:bg-white/[0.08]" />
+              {/* Paragraphe */}
+              <div className="space-y-2">
+                {[100, 92, 97, 85, 100, 60].map((w, i) => (
+                  <div key={i} className="h-3 rounded-full bg-black/[0.05] dark:bg-white/[0.06]" style={{ width: `${w}%` }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Deuxième section */}
+            <div className="pt-2 space-y-3">
+              <div className="h-4 w-1/3 rounded-full bg-black/[0.06] dark:bg-white/[0.08]" />
+              <div className="space-y-2">
+                {[95, 100, 88, 72].map((w, i) => (
+                  <div key={i} className="h-3 rounded-full bg-black/[0.05] dark:bg-white/[0.06]" style={{ width: `${w}%` }} />
+                ))}
+              </div>
+            </div>
+
+            {/* Troisième section — fade */}
+            <div className="pt-2 space-y-3 opacity-50">
+              <div className="h-4 w-2/5 rounded-full bg-black/[0.06] dark:bg-white/[0.08]" />
+              <div className="space-y-2">
+                {[100, 90, 78].map((w, i) => (
+                  <div key={i} className="h-3 rounded-full bg-black/[0.05] dark:bg-white/[0.06]" style={{ width: `${w}%` }} />
+                ))}
+              </div>
+            </div>
+
+            <div className="opacity-20 space-y-2">
+              {[94, 65].map((w, i) => (
+                <div key={i} className="h-3 rounded-full bg-black/[0.05] dark:bg-white/[0.06]" style={{ width: `${w}%` }} />
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Sidebar TOC — desktop uniquement */}
+        <div className="hidden xl:block w-52 shrink-0 space-y-2 pt-16">
+          {[60, 45, 55, 40, 50].map((w, i) => (
+            <div key={i} className="h-3 rounded-full bg-black/[0.05] dark:bg-white/[0.06]" style={{ width: `${w}%`, opacity: 1 - i * 0.15 }} />
+          ))}
+        </div>
       </div>
-      <p className="text-xs text-text-tertiary tracking-wide">Chargement du cours…</p>
     </div>
   );
   if (error)     return <div className="p-8 text-status-danger text-sm">{error.message}</div>;
