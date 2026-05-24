@@ -611,7 +611,15 @@ export default function Preview() {
   const headingIds  = useMemo(() => headings.map(h => h.id), [headings]);
   const activeId    = useActiveHeading(headingIds);
 
-  if (isLoading) return <div className="p-8 text-text-tertiary text-sm animate-pulse">Chargement…</div>;
+  if (isLoading) return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+      <div className="relative w-10 h-10">
+        <div className="absolute inset-0 rounded-full border-2 border-black/[0.06] dark:border-white/[0.06]" />
+        <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-accent animate-spin" />
+      </div>
+      <p className="text-xs text-text-tertiary tracking-wide">Chargement du cours…</p>
+    </div>
+  );
   if (error)     return <div className="p-8 text-status-danger text-sm">{error.message}</div>;
 
   return (
