@@ -229,3 +229,50 @@ body, aside, nav, .glass-card {
 .animate-slide-up {
   animation: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
 }
+
+/* ── Modal responsive : bottom-sheet mobile → modal centrée desktop ─────────
+   Évite les conflits entre classes Tailwind left-0/right-0 et md:left-1/2   */
+.modal-sheet {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 9999;
+  border-radius: 1rem 1rem 0 0;
+  animation: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (min-width: 768px) {
+  .modal-sheet {
+    bottom: auto;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    width: min(92vw, 440px);
+    transform: translate(-50%, -50%);
+    border-radius: 1rem;
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+.modal-sheet-sm {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 9999;
+  border-radius: 1rem 1rem 0 0;
+  animation: slide-up 0.22s cubic-bezier(0.32, 0.72, 0, 1);
+}
+@media (min-width: 768px) {
+  .modal-sheet-sm {
+    bottom: auto;
+    top: 50%;
+    left: 50%;
+    right: auto;
+    width: min(92vw, 360px);
+    transform: translate(-50%, -50%);
+    border-radius: 1rem;
+    animation: scaleIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}

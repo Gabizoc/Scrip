@@ -66,18 +66,13 @@ export default function MoveNoteSheet({ note, onClose }) {
       {/* Overlay */}
       <div className="fixed inset-0 bg-black/30 dark:bg-black/50 z-[9998] backdrop-blur-[2px]" />
 
-      {/* Sheet (mobile) / Modal (desktop) */}
+      {/* Sheet (mobile) / Modal centrée (desktop) */}
       <div
         ref={sheetRef}
-        className="fixed z-[9999]
-          bottom-0 left-0 right-0 w-full
-          md:bottom-auto md:left-1/2 md:top-1/2 md:right-auto
-          md:-translate-x-1/2 md:-translate-y-1/2 md:w-[min(92vw,440px)]
+        className="modal-sheet
           bg-white dark:bg-neutral-900 shadow-2xl
-          rounded-t-2xl md:rounded-2xl
-          border-t border-black/[0.08] dark:border-white/[0.08] md:border
-          p-5 space-y-4
-          animate-slide-up md:animate-scale-in"
+          border border-black/[0.08] dark:border-white/[0.08]
+          p-5 space-y-4"
       >
         {/* Header */}
         <div className="flex items-center justify-between">

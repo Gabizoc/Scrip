@@ -48,15 +48,10 @@ export default function ConfirmModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
-        className="fixed z-[9999]
-          bottom-0 left-0 right-0 w-full h-auto
-          md:bottom-auto md:left-1/2 md:top-1/2 md:right-auto
-          md:-translate-x-1/2 md:-translate-y-1/2 md:w-[min(92vw,360px)]
+        className="modal-sheet-sm
           bg-white dark:bg-neutral-900 shadow-2xl
-          rounded-t-2xl md:rounded-2xl
-          border-t border-black/[0.07] dark:border-white/[0.08] md:border
-          p-6 flex flex-col gap-4
-          animate-slide-up md:animate-scale-in"
+          border border-black/[0.07] dark:border-white/[0.08]
+          p-6 flex flex-col gap-4"
       >
         {/* Icône + titre */}
         <div className="flex items-start gap-3">
