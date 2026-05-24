@@ -2,20 +2,25 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trash2, FolderOpen } from 'lucide-react';
+import { Trash2, FolderOpen, MoreHorizontal } from 'lucide-react';
 import GlassCard from './GlassCard.jsx';
 import SubjectEditor from './SubjectEditor.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
+import MoveNoteSheet from './MoveNoteSheet.jsx';
 import { api } from '../lib/api.js';
-import { parseScore, scoreColor, subjectColor } from '../lib/noteUtils.js';
+import { parseScore, scoreColor, subjectColor, subjectColorStyle } from '../lib/noteUtils.js';
+import { useSubjectByName } from '../lib/SubjectsContext.jsx';
 
 export default function NoteCard({ note, index = 0 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [editorRect, setEditorRect]           = useState(null);
+  const [showMove, setShowMove] = useState(false);
   const delay = Math.min(index, 9);
 
+  const subjectData = useSubjectByName(note.subject);
+  const customStyle = subjectColorStyle(subjectData?.color ?? null);
   const score = parseScore(note.metadata?.qualite_francais);
   const date = new Date(note.createdAt).toLocaleDateString('fr-FR', {
     day: 'numeric', month: 'short', year: 'numeric',
@@ -57,8 +62,10 @@ export default function NoteCard({ note, index = 0 }) {
             className={[
               'shrink-0 text-[10px] font-semibold px-2 py-0.5 rounded-full transition',
               'hover:ring-2 hover:ring-accent/40 hover:ring-offset-1',
-              note.subject ? subjectColor(note.subject) : 'bg-black/[0.05] dark:bg-white/[0.07] text-text-tertiary',
+              !customStyle && note.subject ? subjectColor(note.subject) : '',
+              !customStyle && !note.subject ? 'bg-black/[0.05] dark:bg-white/[0.07] text-text-tertiary' : '',
             ].join(' ')}
+            style={customStyle ?? undefined}
           >
             {note.subject ?? '+ matière'}
           </button>
@@ -74,21 +81,37 @@ export default function NoteCard({ note, index = 0 }) {
           )}
         </div>
 
-        <button
-          className="shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-150
-            p-1.5 rounded-md text-text-tertiary hover:text-status-danger hover:bg-red-50 dark:hover:bg-red-900/20"
-          onClick={handleDelete}
-          title="Supprimer"
-          aria-label="Supprimer la note"
-        >
-          <Trash2 size={13} />
-        </button>
+        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+          <button
+            className="shrink-0 p-1.5 rounded-md text-text-tertiary hover:text-accent hover:bg-accent/10"
+            onClick={e => { e.stopPropagation(); setShowMove(true); }}
+            title="Déplacer"
+            aria-label="Déplacer la note"
+          >
+            <MoreHorizontal size={13} />
+          </button>
+          <button
+            className="shrink-0 p-1.5 rounded-md text-text-tertiary hover:text-status-danger hover:bg-red-50 dark:hover:bg-red-900/20"
+            onClick={handleDelete}
+            title="Supprimer"
+            aria-label="Supprimer la note"
+          >
+            <Trash2 size={13} />
+          </button>
+        </div>
       </div>
 
-      {/* Titre */}
-      <h3 className="text-[14px] font-semibold text-text-primary line-clamp-2 leading-snug flex-1">
-        {note.title}
-      </h3>
+      {/* Titre + résumé */}
+      <div className="flex-1 min-h-0 flex flex-col gap-1">
+        <h3 className="text-[14px] font-semibold text-text-primary line-clamp-2 leading-snug">
+          {note.title}
+        </h3>
+        {note.metadata?.resume && (
+          <p className="text-[11px] text-text-secondary italic line-clamp-2 leading-snug opacity-80">
+            {note.metadata.resume}
+          </p>
+        )}
+      </div>
 
       {/* Sous-dossier */}
       {note.subfolder && (
@@ -107,6 +130,11 @@ export default function NoteCard({ note, index = 0 }) {
           </span>
         )}
       </div>
+
+      {/* Sheet de déplacement */}
+      {showMove && (
+        <MoveNoteSheet note={note} onClose={() => setShowMove(false)} />
+      )}
 
       {/* Modal de confirmation suppression */}
       {showDeleteModal && (
