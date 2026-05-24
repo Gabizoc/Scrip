@@ -8,6 +8,7 @@ import remarkGfm from 'remark-gfm';
 import { ArrowLeft, Edit2, Trash2, Check, X, ChevronDown, ImageIcon } from 'lucide-react';
 import { api } from '../lib/api.js';
 import GlassCard from '../components/GlassCard.jsx';
+import ConfirmModal from '../components/ConfirmModal.jsx';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -486,9 +487,10 @@ export default function Preview() {
   const { noteId } = useParams();
   const navigate   = useNavigate();
   const qc         = useQueryClient();
-  const [editing, setEditing]       = useState(false);
-  const [draft, setDraft]           = useState('');
-  const [titleDraft, setTitleDraft] = useState('');
+  const [editing, setEditing]         = useState(false);
+  const [draft, setDraft]             = useState('');
+  const [titleDraft, setTitleDraft]   = useState('');
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const textareaRef                 = useRef(null);
 
   const { data, isLoading, error } = useQuery({
@@ -517,6 +519,61 @@ export default function Preview() {
       navigate('/');
     },
   });
+
+  // ── Double-clic / double-tap → ouvre éditeur au bon endroit ─────────────────
+  const lastTapRef = useRef(0);
+
+  const openEditorAt = useCallback((el) => {
+    // Remonte jusqu'au premier bloc significatif (heading, p, li, td…)
+    let target = el;
+    while (target && target.dataset?.mdzone === undefined) {
+      if (/^(H[1-6]|P|LI|TD|TH|BLOCKQUOTE|PRE)$/.test(target.tagName)) break;
+      target = target.parentElement;
+    }
+    const clickedText = target?.textContent?.trim().slice(0, 60) ?? '';
+
+    setEditing(true);
+
+    // Attend que le textarea soit monté puis scroll au bon endroit
+    setTimeout(() => {
+      const ta = textareaRef.current;
+      if (!ta) return;
+      ta.focus();
+      if (!clickedText) return;
+
+      const lines = draft.split('\n');
+      let charPos = 0;
+      for (let i = 0; i < lines.length; i++) {
+        const clean = lines[i]
+          .replace(/^#{1,6}\s*/, '')
+          .replace(/\*\*/g, '').replace(/\*/g, '').replace(/_/g, '')
+          .replace(/`/g, '').trim();
+        if (clean.length > 4 && clickedText.startsWith(clean.slice(0, Math.min(clean.length, 30)))) {
+          const lineHeight = ta.scrollHeight / Math.max(lines.length, 1);
+          ta.scrollTop = Math.max(0, i * lineHeight - 80);
+          ta.setSelectionRange(charPos, charPos + lines[i].length);
+          return;
+        }
+        charPos += lines[i].length + 1;
+      }
+    }, 60);
+  }, [draft]);
+
+  const handleContentDblClick = useCallback((e) => {
+    if (editing) return;
+    openEditorAt(e.target);
+  }, [editing, openEditorAt]);
+
+  // Double-tap mobile (deux touches < 300 ms)
+  const handleContentTouchEnd = useCallback((e) => {
+    if (editing) return;
+    const now = Date.now();
+    if (now - lastTapRef.current < 300) {
+      e.preventDefault();
+      openEditorAt(e.target);
+    }
+    lastTapRef.current = now;
+  }, [editing, openEditorAt]);
 
   const handleHeadingClick = useCallback((id) => {
     if (editing) {
@@ -606,7 +663,7 @@ export default function Preview() {
                     <Edit2 size={14} /> Éditer
                   </button>
                   <button
-                    onClick={() => confirm('Supprimer ce cours ?') && deleteNote.mutate()}
+                    onClick={() => setConfirmDelete(true)}
                     className="flex items-center gap-1.5 text-sm text-status-danger
                       hover:text-status-danger/70 px-3 py-1.5 rounded-md
                       border border-status-danger/20 transition-colors"
@@ -660,10 +717,21 @@ export default function Preview() {
               />
             </div>
           ) : (
-            <GlassCard className="p-6 md:p-8">
+            <GlassCard
+              className="p-6 md:p-8 group/preview relative cursor-text"
+              onDoubleClick={handleContentDblClick}
+              onTouchEnd={handleContentTouchEnd}
+            >
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                 {markdown}
               </ReactMarkdown>
+              {/* Hint discret */}
+              <span className="absolute bottom-3 right-4
+                text-[10px] text-text-tertiary opacity-0
+                group-hover/preview:opacity-60 transition-opacity duration-300
+                pointer-events-none select-none hidden md:block">
+                double-clic pour éditer
+              </span>
             </GlassCard>
           )}
 
@@ -681,6 +749,16 @@ export default function Preview() {
         )}
 
       </div>
+
+      {confirmDelete && (
+        <ConfirmModal
+          title="Supprimer ce cours ?"
+          message={`« ${data?.note?.title} » sera définitivement supprimé.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => { setConfirmDelete(false); deleteNote.mutate(); }}
+          onCancel={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
   );
 }
