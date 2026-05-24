@@ -19,6 +19,54 @@ notesRouter.get('/', async (req, res) => {
   res.json(notes);
 });
 
+// GET /notes/search?q=xxx — recherche full-text dans les titres et le contenu markdown
+notesRouter.get('/search', async (req, res) => {
+  const q = (req.query.q ?? '').toLowerCase().trim();
+  if (q.length < 2) return res.json([]);
+
+  await db.read();
+  const results = [];
+
+  for (const note of db.data.notes) {
+    const subject = db.data.subjects.find(s => s.id === note.subjectId);
+    const level   = db.data.levels.find(l => l.id === note.levelId);
+    const enriched = {
+      ...note,
+      subject: subject?.name ?? note.subjectId,
+      level:   level?.name   ?? note.levelId,
+    };
+
+    // Cherche d'abord dans le titre (pas besoin de lire le fichier)
+    if (note.title?.toLowerCase().includes(q)) {
+      results.push({ ...enriched, snippet: null });
+      continue;
+    }
+
+    // Cherche dans le contenu markdown
+    if (!note.path || !fs.existsSync(note.path)) continue;
+    let raw;
+    try { raw = fs.readFileSync(note.path, 'utf8'); } catch { continue; }
+
+    const lower = raw.toLowerCase();
+    const idx   = lower.indexOf(q);
+    if (idx === -1) continue;
+
+    // Extrait un extrait de 90 chars centré sur le match
+    const start   = Math.max(0, idx - 40);
+    const end     = Math.min(raw.length, idx + q.length + 50);
+    const snippet =
+      (start > 0 ? '…' : '') +
+      raw.slice(start, end).replace(/[#*`\n]/g, ' ').replace(/\s+/g, ' ').trim() +
+      (end < raw.length ? '…' : '');
+
+    results.push({ ...enriched, snippet });
+  }
+
+  // Titres en premier (snippet null), puis contenu ; max 50 résultats
+  results.sort((a, b) => (a.snippet === null ? -1 : b.snippet === null ? 1 : 0));
+  res.json(results.slice(0, 50));
+});
+
 notesRouter.get('/:id', async (req, res) => {
   await db.read();
   const note = db.data.notes.find(n => n.id === req.params.id);
@@ -44,9 +92,12 @@ notesRouter.get('/:id', async (req, res) => {
 });
 
 notesRouter.patch('/:id', async (req, res) => {
-  const { markdown, subject, title } = req.body;
-  if (markdown === undefined && subject === undefined && title === undefined) {
-    return res.status(400).json({ error: 'markdown, subject ou title requis' });
+  const { markdown, subject, title, subjectId, subfolder } = req.body;
+  if (
+    markdown === undefined && subject === undefined && title === undefined &&
+    subjectId === undefined && subfolder === undefined
+  ) {
+    return res.status(400).json({ error: 'markdown, subject, title, subjectId ou subfolder requis' });
   }
 
   await db.read();
@@ -73,6 +124,23 @@ notesRouter.patch('/:id', async (req, res) => {
       db.data.subjects.push(sub);
     }
     note.subjectId = sub.id;
+  }
+
+  // Mise à jour de la matière par ID direct
+  if (typeof subjectId === 'string' && subjectId.trim().length > 0) {
+    const sub = db.data.subjects.find(s => s.id === subjectId);
+    if (!sub) return res.status(400).json({ error: 'matière introuvable' });
+    note.subjectId = sub.id;
+  }
+
+  // Mise à jour du sous-dossier (chaîne vide = suppression)
+  if (subfolder !== undefined) {
+    const sf = String(subfolder).trim();
+    if (sf) {
+      note.subfolder = sf;
+    } else {
+      delete note.subfolder;
+    }
   }
 
   note.updatedAt = new Date().toISOString();
