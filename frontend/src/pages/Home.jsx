@@ -75,38 +75,45 @@ function ListHeader() {
 
 // ── File Manager ──────────────────────────────────────────────────────────────
 
-/** Ligne "dossier" clickable style explorateur */
+/** Ligne dossier — même gabarit qu'une NoteListRow */
 function FolderRow({ name, count, index, onClick }) {
   return (
     <div className={['row-enter', `row-${Math.min(index + 1, 10)}`].join(' ')}>
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
-        className="group w-full flex items-center gap-3 px-4 py-2.5 cursor-pointer
+        onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') onClick(); }}
+        className="group relative flex items-center gap-3 px-4 py-2.5 cursor-pointer
+          transition-colors duration-300 ease-out
           hover:bg-black/[0.025] dark:hover:bg-white/[0.035]
-          transition-colors duration-150"
+          bg-white dark:bg-neutral-950"
       >
-        {/* Icône dossier */}
-        <span className="flex-shrink-0 w-7 h-7 rounded-lg
-          bg-accent/10 dark:bg-accent/15
-          flex items-center justify-center
-          group-hover:bg-accent/20 transition-colors">
-          <Folder size={14} className="text-accent" />
-        </span>
+        {/* Barre accent gauche (hover) */}
+        <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full
+          bg-accent opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
+
+        {/* Icône dossier — même taille que le dot */}
+        <Folder size={13} className="flex-shrink-0 ml-1 text-accent opacity-70 group-hover:opacity-100 transition-opacity" />
 
         {/* Nom */}
-        <span className="flex-1 min-w-0 text-left">
-          <span className="text-[13px] font-medium text-text-primary truncate block">
-            {name}
-          </span>
-          <span className="text-[10px] text-text-tertiary">
-            {count} cours
-          </span>
+        <span className="flex-1 min-w-0 text-[13px] font-medium text-text-primary truncate">
+          {name}
         </span>
 
-        {/* Flèche */}
-        <ChevronRight size={14}
-          className="shrink-0 text-text-tertiary group-hover:text-text-secondary transition-colors" />
-      </button>
+        {/* Compte — colonne date sur desktop */}
+        <span className="hidden md:block shrink-0 w-[80px] text-right text-[11px] text-text-tertiary tabular-nums">
+          {count} cours
+        </span>
+
+        {/* Chevron — colonne score */}
+        <span className="shrink-0 w-[44px] flex justify-end">
+          <ChevronRight size={13} className="text-text-tertiary group-hover:text-accent transition-colors" />
+        </span>
+
+        {/* Espace bouton ⋯ — pour aligner avec NoteListRow */}
+        <span className="shrink-0 w-[28px]" />
+      </div>
     </div>
   );
 }
@@ -200,11 +207,11 @@ function FileManagerView({ notes, ftResults }) {
 
       {/* Séparateur si on a des dossiers ET des notes non-classées */}
       {hasFolders && unfiled.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-1.5
+        <div className="flex items-center gap-2 px-4 py-1
           border-t border-black/[0.05] dark:border-white/[0.06]
-          bg-black/[0.015] dark:bg-white/[0.015]">
-          <span className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold select-none">
-            Non classés
+          bg-black/[0.02] dark:bg-white/[0.02]">
+          <span className="text-[9px] uppercase tracking-widest text-text-tertiary/60 font-semibold select-none">
+            Sans dossier
           </span>
         </div>
       )}
