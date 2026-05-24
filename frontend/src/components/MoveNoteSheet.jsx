@@ -1,5 +1,5 @@
 // frontend/src/components/MoveNoteSheet.jsx
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, FolderInput } from 'lucide-react';
@@ -14,7 +14,6 @@ import { api } from '../lib/api.js';
  */
 export default function MoveNoteSheet({ note, onClose }) {
   const qc = useQueryClient();
-  const sheetRef = useRef(null);
 
   const { data: subjects = [] } = useQuery({
     queryKey: ['subjects'],
@@ -41,15 +40,6 @@ export default function MoveNoteSheet({ note, onClose }) {
     },
   });
 
-  // Fermer sur clic extérieur
-  useEffect(() => {
-    function onDown(e) {
-      if (sheetRef.current && !sheetRef.current.contains(e.target)) onClose();
-    }
-    const t = setTimeout(() => document.addEventListener('mousedown', onDown), 50);
-    return () => { clearTimeout(t); document.removeEventListener('mousedown', onDown); };
-  }, [onClose]);
-
   // Fermer sur Escape
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
@@ -69,7 +59,6 @@ export default function MoveNoteSheet({ note, onClose }) {
       {/* Wrapper flex — centre le contenu sur desktop, colle en bas sur mobile */}
       <div className="modal-wrapper" onClick={onClose}>
       <div
-        ref={sheetRef}
         onClick={e => e.stopPropagation()}
         className="modal-sheet
           bg-white dark:bg-neutral-900 shadow-2xl
