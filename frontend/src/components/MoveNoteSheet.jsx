@@ -4,9 +4,12 @@ import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { X, FolderInput, ChevronDown, Check } from 'lucide-react';
 import { api } from '../lib/api.js';
+import SubjectIcon from './SubjectIcon.jsx';
+import { subjectIcon } from '../lib/noteUtils.js';
 
 /**
  * Dropdown custom (sans <select> natif).
+ * options: [{ value, name, icon }]  — icon = emoji string ou data URL
  */
 function CustomSelect({ value, onChange, options, placeholder = '— Choisir —' }) {
   const [open, setOpen] = useState(false);
@@ -36,9 +39,14 @@ function CustomSelect({ value, onChange, options, placeholder = '— Choisir —
           text-text-primary hover:border-accent/40 focus:outline-none focus:border-accent/40
           transition-colors"
       >
-        <span className={selected ? 'text-text-primary' : 'text-text-tertiary'}>
-          {selected ? selected.label : placeholder}
-        </span>
+        {selected ? (
+          <span className="flex items-center gap-2 min-w-0">
+            <SubjectIcon value={selected.icon || null} fallback={subjectIcon(selected.name, null)} size={15} />
+            <span className="truncate">{selected.name}</span>
+          </span>
+        ) : (
+          <span className="text-text-tertiary">{placeholder}</span>
+        )}
         <ChevronDown
           size={14}
           className={`shrink-0 text-text-tertiary transition-transform duration-150 ${open ? 'rotate-180' : ''}`}
@@ -59,11 +67,12 @@ function CustomSelect({ value, onChange, options, placeholder = '— Choisir —
               <button
                 type="button"
                 onClick={() => { onChange(o.value); setOpen(false); }}
-                className="w-full flex items-center justify-between gap-2 px-3 py-2.5 text-[13px]
+                className="w-full flex items-center gap-2 px-3 py-2.5 text-[13px]
                   text-text-primary hover:bg-accent/10 hover:text-accent
                   transition-colors text-left"
               >
-                {o.label}
+                <SubjectIcon value={o.icon || null} fallback={subjectIcon(o.name, null)} size={15} />
+                <span className="flex-1 truncate">{o.name}</span>
                 {String(o.value) === String(value) && (
                   <Check size={12} className="shrink-0 text-accent" />
                 )}
@@ -124,7 +133,8 @@ export default function MoveNoteSheet({ note, onClose }) {
 
   const subjectOptions = subjects.map(s => ({
     value: s.id,
-    label: `${s.emoji ? s.emoji + ' ' : ''}${s.name}`,
+    name:  s.name,
+    icon:  s.emoji ?? null,   // emoji string ou data URL
   }));
 
   return createPortal(
