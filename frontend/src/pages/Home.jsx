@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.jsx
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, Search, X, List, LayoutGrid } from 'lucide-react';
+import { Camera, Search, X, List, LayoutGrid, Folder, ChevronRight } from 'lucide-react';
 import Dropdown from '../components/Dropdown.jsx';
 import { api } from '../lib/api.js';
 import { parseScore } from '../lib/noteUtils.js';
@@ -69,6 +69,67 @@ function ListHeader() {
       <span className="w-[90px] text-center">Matière</span>
       <span className="w-[80px] text-right">Date</span>
       <span className="w-[44px] text-right">Score</span>
+    </div>
+  );
+}
+
+// ── Groupement par sous-dossier ───────────────────────────────────────────────
+
+/** Retourne [['', notes…], ['chapitre 1', notes…], …] — sans-dossier en premier */
+function groupByFolder(notes) {
+  const map = new Map();
+  for (const note of notes) {
+    const key = note.subfolder ?? '';
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(note);
+  }
+  return [...map.entries()].sort(([a], [b]) => {
+    if (!a && b) return -1;
+    if (a && !b) return 1;
+    return a.localeCompare(b, 'fr');
+  });
+}
+
+/** En-tête collapsible d'un dossier + ses notes */
+function FolderGroup({ folder, notes, startIndex }) {
+  const [open, setOpen] = useState(true);
+
+  return (
+    <div>
+      {/* En-tête dossier — affiché seulement si un sous-dossier existe */}
+      {folder && (
+        <button
+          onClick={() => setOpen(o => !o)}
+          className="w-full flex items-center gap-2 px-4 py-2 text-[11px] font-semibold
+            text-text-tertiary uppercase tracking-wider
+            bg-black/[0.025] dark:bg-white/[0.025]
+            hover:bg-black/[0.05] dark:hover:bg-white/[0.04]
+            border-t border-b border-black/[0.05] dark:border-white/[0.06]
+            transition-colors select-none"
+        >
+          <ChevronRight
+            size={11}
+            className={`shrink-0 transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
+          />
+          <Folder size={11} className="shrink-0 opacity-60" />
+          <span className="truncate">{folder}</span>
+          <span className="ml-auto font-normal normal-case opacity-50">{notes.length}</span>
+        </button>
+      )}
+
+      {/* Notes du groupe */}
+      {open && notes.map((note, i) => (
+        <div
+          key={note.id}
+          className={[
+            'row-enter',
+            `row-${Math.min(startIndex + i + 1, 10)}`,
+            i > 0 || folder ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
+          ].join(' ')}
+        >
+          <NoteListRow note={note} snippet={note.snippet ?? null} />
+        </div>
+      ))}
     </div>
   );
 }
@@ -290,20 +351,45 @@ export default function Home() {
               )}
 
               {/* Vue liste */}
-              {view === 'list' && filtered.length > 0 && (
-                <div key={`list-${activeSubject}`} className="view-enter rounded-xl border border-black/[0.06] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
-                  <ListHeader />
-                  {filtered.map((note, i) => (
-                    <div key={note.id} className={[
-                      'row-enter',
-                      `row-${Math.min(i + 1, 10)}`,
-                      i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
-                    ].join(' ')}>
-                      <NoteListRow note={note} snippet={note.snippet ?? null} />
-                    </div>
-                  ))}
-                </div>
-              )}
+              {view === 'list' && filtered.length > 0 && (() => {
+                const groups = groupByFolder(filtered);
+                // En recherche FT ou tri actif → pas de groupement (résultats mixtes)
+                const useTree = ftResults === null && groups.some(([f]) => f !== '');
+                return (
+                  <div key={`list-${activeSubject}`} className="view-enter rounded-xl border border-black/[0.06] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
+                    <ListHeader />
+                    {useTree ? (
+                      /* ── Arborescence dossiers ── */
+                      (() => {
+                        let idx = 0;
+                        return groups.map(([folder, notes]) => {
+                          const el = (
+                            <FolderGroup
+                              key={folder || '__root__'}
+                              folder={folder}
+                              notes={notes}
+                              startIndex={idx}
+                            />
+                          );
+                          idx += notes.length;
+                          return el;
+                        });
+                      })()
+                    ) : (
+                      /* ── Liste plate (recherche ou pas de sous-dossiers) ── */
+                      filtered.map((note, i) => (
+                        <div key={note.id} className={[
+                          'row-enter',
+                          `row-${Math.min(i + 1, 10)}`,
+                          i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
+                        ].join(' ')}>
+                          <NoteListRow note={note} snippet={note.snippet ?? null} />
+                        </div>
+                      ))
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Vue cards */}
               {view === 'cards' && filtered.length > 0 && (
