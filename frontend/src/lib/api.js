@@ -32,6 +32,7 @@ export const api = {
   patchNoteMeta:  (id, data)   => request('PATCH',  `/notes/${id}`, data),
   deleteNote:     (id)         => request('DELETE', `/notes/${id}`),
   getNoteSources: (id)         => request('GET',    `/notes/${id}/sources`),
+  searchNotes:    (q)          => request('GET',    `/notes/search?q=${encodeURIComponent(q)}`),
 
   // ── Ingest ─────────────────────────────────────────────
   /** Démarre l'ingestion, retourne { jobId } */
