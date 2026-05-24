@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.jsx
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, Search, X, List, LayoutGrid, Folder, ChevronRight } from 'lucide-react';
+import { Camera, Search, X, List, LayoutGrid, Folder, FolderOpen, ChevronRight, ArrowLeft } from 'lucide-react';
 import Dropdown from '../components/Dropdown.jsx';
 import { api } from '../lib/api.js';
 import { parseScore } from '../lib/noteUtils.js';
@@ -73,64 +73,151 @@ function ListHeader() {
   );
 }
 
-// ── Groupement par sous-dossier ───────────────────────────────────────────────
+// ── File Manager ──────────────────────────────────────────────────────────────
 
-/** Retourne [['', notes…], ['chapitre 1', notes…], …] — sans-dossier en premier */
-function groupByFolder(notes) {
-  const map = new Map();
-  for (const note of notes) {
-    const key = note.subfolder ?? '';
-    if (!map.has(key)) map.set(key, []);
-    map.get(key).push(note);
-  }
-  return [...map.entries()].sort(([a], [b]) => {
-    if (!a && b) return -1;
-    if (a && !b) return 1;
-    return a.localeCompare(b, 'fr');
-  });
+/** Ligne "dossier" clickable style explorateur */
+function FolderRow({ name, count, index, onClick }) {
+  return (
+    <div className={['row-enter', `row-${Math.min(index + 1, 10)}`].join(' ')}>
+      <button
+        onClick={onClick}
+        className="group w-full flex items-center gap-3 px-4 py-2.5 cursor-pointer
+          hover:bg-black/[0.025] dark:hover:bg-white/[0.035]
+          transition-colors duration-150"
+      >
+        {/* Icône dossier */}
+        <span className="flex-shrink-0 w-7 h-7 rounded-lg
+          bg-accent/10 dark:bg-accent/15
+          flex items-center justify-center
+          group-hover:bg-accent/20 transition-colors">
+          <Folder size={14} className="text-accent" />
+        </span>
+
+        {/* Nom */}
+        <span className="flex-1 min-w-0 text-left">
+          <span className="text-[13px] font-medium text-text-primary truncate block">
+            {name}
+          </span>
+          <span className="text-[10px] text-text-tertiary">
+            {count} cours
+          </span>
+        </span>
+
+        {/* Flèche */}
+        <ChevronRight size={14}
+          className="shrink-0 text-text-tertiary group-hover:text-text-secondary transition-colors" />
+      </button>
+    </div>
+  );
 }
 
-/** En-tête collapsible d'un dossier + ses notes */
-function FolderGroup({ folder, notes, startIndex }) {
-  const [open, setOpen] = useState(true);
-
+/** Breadcrumb quand on est dans un dossier */
+function FolderBreadcrumb({ folder, onBack }) {
   return (
-    <div>
-      {/* En-tête dossier — affiché seulement si un sous-dossier existe */}
-      {folder && (
-        <button
-          onClick={() => setOpen(o => !o)}
-          className="w-full flex items-center gap-2 px-4 py-2 text-[11px] font-semibold
-            text-text-tertiary uppercase tracking-wider
-            bg-black/[0.025] dark:bg-white/[0.025]
-            hover:bg-black/[0.05] dark:hover:bg-white/[0.04]
-            border-t border-b border-black/[0.05] dark:border-white/[0.06]
-            transition-colors select-none"
-        >
-          <ChevronRight
-            size={11}
-            className={`shrink-0 transition-transform duration-150 ${open ? 'rotate-90' : ''}`}
-          />
-          <Folder size={11} className="shrink-0 opacity-60" />
-          <span className="truncate">{folder}</span>
-          <span className="ml-auto font-normal normal-case opacity-50">{notes.length}</span>
-        </button>
+    <div className="flex items-center gap-2 px-4 py-2.5
+      bg-accent/[0.06] dark:bg-accent/[0.08]
+      border-b border-accent/[0.12]">
+      <button
+        onClick={onBack}
+        className="flex items-center gap-1.5 text-[12px] text-accent
+          hover:text-accent/70 transition-colors font-medium"
+      >
+        <ArrowLeft size={13} />
+        Retour
+      </button>
+      <span className="text-text-tertiary text-[11px]">/</span>
+      <span className="flex items-center gap-1.5 text-[12px] font-medium text-text-primary">
+        <FolderOpen size={13} className="text-accent" />
+        {folder}
+      </span>
+    </div>
+  );
+}
+
+/** Vue file-manager : dossiers cliquables puis fichiers */
+function FileManagerView({ notes, ftResults }) {
+  const [openFolder, setOpenFolder] = useState(null);
+
+  // Réinitialise quand les notes changent (changement de matière, etc.)
+  useEffect(() => { setOpenFolder(null); }, [notes]);
+
+  // Recherche FT → liste plate, pas de navigation
+  if (ftResults !== null) {
+    return ftResults.map((note, i) => (
+      <div key={note.id} className={[
+        'row-enter', `row-${Math.min(i + 1, 10)}`,
+        i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
+      ].join(' ')}>
+        <NoteListRow note={note} snippet={note.snippet ?? null} />
+      </div>
+    ));
+  }
+
+  // Calcule dossiers + notes non-classées
+  const folderMap = new Map();
+  const unfiled   = [];
+  for (const note of notes) {
+    if (note.subfolder) {
+      if (!folderMap.has(note.subfolder)) folderMap.set(note.subfolder, []);
+      folderMap.get(note.subfolder).push(note);
+    } else {
+      unfiled.push(note);
+    }
+  }
+  const folders = [...folderMap.keys()].sort((a, b) => a.localeCompare(b, 'fr'));
+  const hasFolders = folders.length > 0;
+
+  // ── Vue à l'intérieur d'un dossier ──────────────────────────────────────────
+  if (openFolder !== null) {
+    const folderNotes = folderMap.get(openFolder) ?? [];
+    return (
+      <>
+        <FolderBreadcrumb folder={openFolder} onBack={() => setOpenFolder(null)} />
+        {folderNotes.map((note, i) => (
+          <div key={note.id} className={[
+            'row-enter', `row-${Math.min(i + 1, 10)}`,
+            i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
+          ].join(' ')}>
+            <NoteListRow note={note} snippet={null} />
+          </div>
+        ))}
+      </>
+    );
+  }
+
+  // ── Racine : dossiers puis notes non-classées ────────────────────────────────
+  return (
+    <>
+      {folders.map((folder, i) => (
+        <FolderRow
+          key={folder}
+          name={folder}
+          count={folderMap.get(folder).length}
+          index={i}
+          onClick={() => setOpenFolder(folder)}
+        />
+      ))}
+
+      {/* Séparateur si on a des dossiers ET des notes non-classées */}
+      {hasFolders && unfiled.length > 0 && (
+        <div className="flex items-center gap-2 px-4 py-1.5
+          border-t border-black/[0.05] dark:border-white/[0.06]
+          bg-black/[0.015] dark:bg-white/[0.015]">
+          <span className="text-[10px] uppercase tracking-widest text-text-tertiary font-semibold select-none">
+            Non classés
+          </span>
+        </div>
       )}
 
-      {/* Notes du groupe */}
-      {open && notes.map((note, i) => (
-        <div
-          key={note.id}
-          className={[
-            'row-enter',
-            `row-${Math.min(startIndex + i + 1, 10)}`,
-            i > 0 || folder ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
-          ].join(' ')}
-        >
-          <NoteListRow note={note} snippet={note.snippet ?? null} />
+      {unfiled.map((note, i) => (
+        <div key={note.id} className={[
+          'row-enter', `row-${Math.min(folders.length + i + 1, 10)}`,
+          (hasFolders || i > 0) ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
+        ].join(' ')}>
+          <NoteListRow note={note} snippet={null} />
         </div>
       ))}
-    </div>
+    </>
   );
 }
 
@@ -350,46 +437,13 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Vue liste */}
-              {view === 'list' && filtered.length > 0 && (() => {
-                const groups = groupByFolder(filtered);
-                // En recherche FT ou tri actif → pas de groupement (résultats mixtes)
-                const useTree = ftResults === null && groups.some(([f]) => f !== '');
-                return (
-                  <div key={`list-${activeSubject}`} className="view-enter rounded-xl border border-black/[0.06] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
-                    <ListHeader />
-                    {useTree ? (
-                      /* ── Arborescence dossiers ── */
-                      (() => {
-                        let idx = 0;
-                        return groups.map(([folder, notes]) => {
-                          const el = (
-                            <FolderGroup
-                              key={folder || '__root__'}
-                              folder={folder}
-                              notes={notes}
-                              startIndex={idx}
-                            />
-                          );
-                          idx += notes.length;
-                          return el;
-                        });
-                      })()
-                    ) : (
-                      /* ── Liste plate (recherche ou pas de sous-dossiers) ── */
-                      filtered.map((note, i) => (
-                        <div key={note.id} className={[
-                          'row-enter',
-                          `row-${Math.min(i + 1, 10)}`,
-                          i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
-                        ].join(' ')}>
-                          <NoteListRow note={note} snippet={note.snippet ?? null} />
-                        </div>
-                      ))
-                    )}
-                  </div>
-                );
-              })()}
+              {/* Vue liste / file manager */}
+              {view === 'list' && filtered.length > 0 && (
+                <div key={`list-${activeSubject}`} className="view-enter rounded-xl border border-black/[0.06] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
+                  <ListHeader />
+                  <FileManagerView notes={filtered} ftResults={ftResults} />
+                </div>
+              )}
 
               {/* Vue cards */}
               {view === 'cards' && filtered.length > 0 && (
