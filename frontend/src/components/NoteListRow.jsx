@@ -13,7 +13,7 @@ import { api } from '../lib/api.js';
 const SWIPE_REVEAL  = 72;  // px — largeur du bouton suppression révélé
 const SWIPE_TRIGGER = 55;  // px — distance minimale pour déclencher l'ouverture
 
-export default function NoteListRow({ note, snippet = null }) {
+export default function NoteListRow({ note, snippet = null, hideSubfolder = false }) {
   const navigate    = useNavigate();
   const qc          = useQueryClient();
   const subjectData = useSubjectByName(note.subject);
@@ -117,7 +117,7 @@ export default function NoteListRow({ note, snippet = null }) {
           <span className="text-[13px] font-medium text-text-primary truncate">
             {note.title}
           </span>
-          {note.subfolder && (
+          {note.subfolder && !hideSubfolder && (
             <span className="flex items-center gap-0.5 text-[10px] text-text-tertiary leading-none mt-0.5">
               <FolderOpen size={9} className="shrink-0 opacity-50" />
               <span className="truncate opacity-70">{note.subfolder}</span>

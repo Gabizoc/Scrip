@@ -185,7 +185,7 @@ function FileManagerView({ notes, ftResults }) {
             'row-enter', `row-${Math.min(i + 1, 10)}`,
             i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
           ].join(' ')}>
-            <NoteListRow note={note} snippet={null} />
+            <NoteListRow note={note} snippet={null} hideSubfolder />
           </div>
         ))}
       </>
