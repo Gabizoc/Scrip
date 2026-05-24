@@ -365,7 +365,7 @@ export default function Home() {
         )}
 
         {/* Zone principale */}
-        <div className="flex-1 min-w-0 overflow-y-auto pt-2 px-3 pb-6 -mx-3">
+        <div className="flex-1 min-w-0 overflow-y-auto overflow-x-visible pt-2 px-3 pb-6 -mx-3">
 
           {/* Skeleton loading */}
           {isLoading && (
@@ -498,7 +498,7 @@ export default function Home() {
 
               {/* Vue cards */}
               {view === 'cards' && filtered.length > 0 && (
-                <div key={`cards-${activeSubject}`} className="view-enter grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4">
+                <div key={`cards-${activeSubject}`} className="view-enter grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 pt-2">
                   {filtered.map((note, i) => (
                     <NoteCard key={note.id} note={note} index={i} />
                   ))}
