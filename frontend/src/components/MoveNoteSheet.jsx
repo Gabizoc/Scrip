@@ -66,9 +66,11 @@ export default function MoveNoteSheet({ note, onClose }) {
       {/* Overlay */}
       <div className="fixed inset-0 bg-black/30 dark:bg-black/50 z-[9998] backdrop-blur-[2px]" />
 
-      {/* Sheet (mobile) / Modal centrée (desktop) */}
+      {/* Wrapper flex — centre le contenu sur desktop, colle en bas sur mobile */}
+      <div className="modal-wrapper" onClick={onClose}>
       <div
         ref={sheetRef}
+        onClick={e => e.stopPropagation()}
         className="modal-sheet
           bg-white dark:bg-neutral-900 shadow-2xl
           border border-black/[0.08] dark:border-white/[0.08]
@@ -158,6 +160,7 @@ export default function MoveNoteSheet({ note, onClose }) {
             Annuler
           </button>
         </div>
+      </div>
       </div>
     </>,
     document.body,

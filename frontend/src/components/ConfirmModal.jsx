@@ -39,15 +39,17 @@ export default function ConfirmModal({
       {/* Backdrop */}
       <div
         className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-[2px] animate-fade-in"
-        onClick={e => { e.stopPropagation(); onCancel(); }}
         aria-hidden
       />
 
-      {/* Boîte — bottom sheet sur mobile, modal centrée sur desktop */}
+      {/* Wrapper flex — centre sur desktop, bas sur mobile */}
+      <div className="modal-wrapper" onClick={e => { e.stopPropagation(); onCancel(); }}>
+      {/* Boîte */}
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="confirm-title"
+        onClick={e => e.stopPropagation()}
         className="modal-sheet-sm
           bg-white dark:bg-neutral-900 shadow-2xl
           border border-black/[0.07] dark:border-white/[0.08]
@@ -96,6 +98,7 @@ export default function ConfirmModal({
             {confirmLabel}
           </button>
         </div>
+      </div>
       </div>
     </>,
     document.body,
