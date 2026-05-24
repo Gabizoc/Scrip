@@ -17,6 +17,7 @@ import { scoreNote } from '../pipeline/score.js';
 import { isOutputValid, applyRulesFormat } from '../pipeline/format-rules.js';
 import { saveDebugLog } from '../pipeline/debug-log.js';
 import { createJob, getJob, emitStep, emitDone, emitError, emitWarning } from '../jobs.js';
+import { summarizeNote } from '../pipeline/summarize.js';
 
 // PIPELINE_MODE=vision → LLM multimodal direct (1 étape)
 // PIPELINE_MODE=ocr    → pixtral OCR + LLM texte (2 étapes, défaut)
@@ -244,6 +245,14 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
   const lineCount = contentForFile.split('\n').filter(l => l.trim()).length;
   step('format', 'Mise en forme', 'done', `${lineCount} lignes`);
 
+  // 4.5 Résumé automatique
+  step('summary', 'Résumé automatique', 'running');
+  let resume = null;
+  try {
+    resume = await summarizeNote(note, level.name, openrouterKey);
+  } catch { /* non-bloquant */ }
+  step('summary', 'Résumé automatique', 'done', resume ? undefined : 'ignoré');
+
   // 4. Sauvegarde
   step('save', 'Sauvegarde de la note', 'running');
   const titleMatch = contentForFile.match(/^#\s+(.+)$/m);
@@ -318,6 +327,9 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
       validation_ratio: (structured.length / rawMarkdown.length).toFixed(2),
     });
   }
+
+  // Ajoute le résumé aux métadonnées si disponible
+  if (resume) metadata.resume = resume;
 
   const subfolderId = subfolderSegments.length > 0 ? subfolderSegments.join('/') : null;
 
