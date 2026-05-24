@@ -1,5 +1,5 @@
 // frontend/src/pages/Home.jsx
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Camera, Search, X, List, LayoutGrid } from 'lucide-react';
 import Dropdown from '../components/Dropdown.jsx';
@@ -93,6 +93,11 @@ export default function Home() {
     () => localStorage.getItem('scrip-home-view') ?? 'list',
   );
 
+  // Full-text search state
+  const [ftResults, setFtResults]   = useState(null);   // null = not active, [] = no results
+  const [ftLoading, setFtLoading]   = useState(false);
+  const ftDebounceRef               = useRef(null);
+
   // Persister la préférence de vue
   useEffect(() => {
     localStorage.setItem('scrip-home-view', view);
@@ -100,6 +105,31 @@ export default function Home() {
 
   // Réinitialiser la recherche quand on change de dossier
   useEffect(() => { setSearch(''); }, [activeSubject]);
+
+  // Recherche full-text (≥ 3 chars) — debounced 400ms
+  useEffect(() => {
+    if (ftDebounceRef.current) clearTimeout(ftDebounceRef.current);
+    if (search.trim().length < 3) {
+      setFtResults(null);
+      setFtLoading(false);
+      return;
+    }
+    setFtLoading(true);
+    ftDebounceRef.current = setTimeout(async () => {
+      try {
+        const results = await api.searchNotes(search.trim());
+        const filtered = activeSubject
+          ? results.filter(n => n.subject === activeSubject)
+          : results;
+        setFtResults(filtered);
+      } catch {
+        setFtResults([]);
+      } finally {
+        setFtLoading(false);
+      }
+    }, 400);
+    return () => clearTimeout(ftDebounceRef.current);
+  }, [search, activeSubject]);
 
   // Map name → emoji pour la sidebar
   const emojiMap = useMemo(() => {
@@ -119,6 +149,9 @@ export default function Home() {
   }, [notes, emojiMap]);
 
   const filtered = useMemo(() => {
+    // When full-text search is active, use backend results (already filtered/sorted)
+    if (ftResults !== null) return ftResults;
+
     const q = search.toLowerCase().trim();
     let result = notes.filter(n => {
       if (activeSubject && n.subject !== activeSubject) return false;
@@ -132,7 +165,7 @@ export default function Home() {
       if (sort === 'title-asc')  return (a.title ?? '').localeCompare(b.title ?? '', 'fr');
       return 0;
     });
-  }, [notes, search, activeSubject, sort]);
+  }, [notes, search, activeSubject, sort, ftResults]);
 
   const folderTitle  = activeSubject ?? 'Tous les cours';
   const hasNotes    = !isLoading && notes.length > 0;
@@ -206,8 +239,13 @@ export default function Home() {
               <div className="flex items-center gap-2 mb-3">
                 {/* Titre */}
                 <h2 className="flex items-center gap-1.5 text-sm font-semibold text-text-primary flex-shrink-0">
-                  {folderTitle}
+                  {ftResults !== null ? 'Résultats' : folderTitle}
                   <span className="ml-0.5 text-text-tertiary font-normal text-xs">{filtered.length}</span>
+                  {ftResults !== null && (
+                    <span className="text-[10px] text-accent font-normal bg-accent/10 px-1.5 py-0.5 rounded-full">
+                      contenu
+                    </span>
+                  )}
                 </h2>
 
                 {/* Recherche — prend tout l'espace */}
@@ -222,7 +260,10 @@ export default function Home() {
                       bg-black/[0.05] dark:bg-white/[0.07] text-text-primary placeholder:text-text-tertiary
                       focus:outline-none focus:ring-2 focus:ring-accent/30 transition"
                   />
-                  {search && (
+                  {ftLoading && (
+                    <span className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3 h-3 rounded-full border-2 border-accent/40 border-t-accent animate-spin pointer-events-none" />
+                  )}
+                  {search && !ftLoading && (
                     <button
                       onClick={() => setSearch('')}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
@@ -258,7 +299,7 @@ export default function Home() {
                       `row-${Math.min(i + 1, 10)}`,
                       i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : '',
                     ].join(' ')}>
-                      <NoteListRow note={note} />
+                      <NoteListRow note={note} snippet={note.snippet ?? null} />
                     </div>
                   ))}
                 </div>
