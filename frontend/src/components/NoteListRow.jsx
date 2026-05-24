@@ -6,6 +6,7 @@ import { FolderOpen, MoreHorizontal, Trash2 } from 'lucide-react';
 import { parseScore, scoreColor, subjectColor, subjectColorStyle, subjectDotColor, relativeDate } from '../lib/noteUtils.js';
 import SubjectEditor from './SubjectEditor.jsx';
 import MoveNoteSheet from './MoveNoteSheet.jsx';
+import ConfirmModal from './ConfirmModal.jsx';
 import { useSubjectByName } from '../lib/SubjectsContext.jsx';
 import { api } from '../lib/api.js';
 
@@ -20,8 +21,9 @@ export default function NoteListRow({ note, snippet = null }) {
   const dot         = subjectDotColor(note.subject ?? '', subjectData?.color ?? null);
   const customStyle = subjectColorStyle(subjectData?.color ?? null);
 
-  const [editorRect, setEditorRect] = useState(null);
-  const [showMove, setShowMove]     = useState(false);
+  const [editorRect, setEditorRect]   = useState(null);
+  const [showMove, setShowMove]       = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   // ── Swipe delete ────────────────────────────────────────────────────────────
   const touchStartX = useRef(0);
@@ -69,7 +71,7 @@ export default function NoteListRow({ note, snippet = null }) {
       >
         <button
           onPointerDown={e => e.stopPropagation()}
-          onClick={e => { e.stopPropagation(); deleteMutation.mutate(); }}
+          onClick={e => { e.stopPropagation(); setConfirmDelete(true); }}
           className="flex flex-col items-center gap-0.5 text-white px-3"
           disabled={deleteMutation.isPending}
           aria-label="Supprimer"
@@ -182,6 +184,17 @@ export default function NoteListRow({ note, snippet = null }) {
       {/* Sheet de déplacement */}
       {showMove && (
         <MoveNoteSheet note={note} onClose={() => setShowMove(false)} />
+      )}
+
+      {/* Confirmation suppression */}
+      {confirmDelete && (
+        <ConfirmModal
+          title="Supprimer ce cours ?"
+          message={`« ${note.title} » sera définitivement supprimé.`}
+          confirmLabel="Supprimer"
+          onConfirm={() => { setConfirmDelete(false); deleteMutation.mutate(); }}
+          onCancel={() => { setConfirmDelete(false); closeSwipe(); }}
+        />
       )}
     </div>
   );
