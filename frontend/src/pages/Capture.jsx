@@ -2,8 +2,9 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Images, Plus, X, FileImage, CheckCircle, Circle, XCircle, Loader2, Scan, BrainCircuit, Wand2, Save } from 'lucide-react';
+import { Images, Plus, X, FileImage, CheckCircle, Circle, XCircle, Loader2, Scan, BrainCircuit, Wand2, Save, MessageSquarePlus, FolderOpen } from 'lucide-react';
 import { api } from '../lib/api.js';
+import { subjectIcon } from '../lib/noteUtils.js';
 import { useCamera } from '../hooks/useCamera.jsx';
 import Button from '../components/Button.jsx';
 import GlassCard from '../components/GlassCard.jsx';
@@ -227,6 +228,10 @@ export default function Capture() {
   const qc = useQueryClient();
   const [pages, setPages] = useState([]);
   const [subjectId, setSubjectId] = useState('');
+  const [subfolder, setSubfolder] = useState('');
+  const [userNote, setUserNote] = useState('');
+  const [dragIdx, setDragIdx] = useState(null);
+  const [dragOverIdx, setDragOverIdx] = useState(null);
 
   // État du pipeline SSE
   const [processing, setProcessing] = useState(false);
@@ -242,6 +247,13 @@ export default function Capture() {
     enabled: !!settings?.currentLevelId,
   });
 
+  const { data: existingFolders = [] } = useQuery({
+    queryKey: ['subject-folders', subjectId],
+    queryFn: () => api.getSubjectFolders(subjectId),
+    enabled: !!subjectId,
+    staleTime: 10_000,
+  });
+
   const addPages = useCallback((files) => {
     setPages(prev => [...prev, ...files.map(file => ({ file, url: URL.createObjectURL(file) }))]);
   }, []);
@@ -253,6 +265,22 @@ export default function Capture() {
   const clearAll = useCallback(() => {
     setPages(prev => { prev.forEach(p => URL.revokeObjectURL(p.url)); return []; });
   }, []);
+
+  // Drag-and-drop reorder
+  const handleDragStart = useCallback((idx) => setDragIdx(idx), []);
+  const handleDragOver  = useCallback((e, idx) => { e.preventDefault(); setDragOverIdx(idx); }, []);
+  const handleDrop      = useCallback((idx) => {
+    if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setDragOverIdx(null); return; }
+    setPages(prev => {
+      const next = [...prev];
+      const [moved] = next.splice(dragIdx, 1);
+      next.splice(idx, 0, moved);
+      return next;
+    });
+    setDragIdx(null);
+    setDragOverIdx(null);
+  }, [dragIdx]);
+  const handleDragEnd = useCallback(() => { setDragIdx(null); setDragOverIdx(null); }, []);
 
   // Ferme le flux SSE si le composant est démonté
   useEffect(() => () => esRef.current?.close(), []);
@@ -269,7 +297,7 @@ export default function Capture() {
 
     let jobId;
     try {
-      const res = await api.ingest(pages.map(p => p.file), subjectId, settings?.currentLevelId);
+      const res = await api.ingest(pages.map(p => p.file), subjectId, settings?.currentLevelId, userNote, subfolder);
       jobId = res.jobId;
     } catch (err) {
       setPipelineError(err.message);
@@ -357,13 +385,35 @@ export default function Capture() {
                   <div className="grid grid-cols-3 gap-2">
                     {pages.map(({ url }, idx) => (
                       <div key={url}
-                        className="relative group rounded-md overflow-hidden aspect-[3/4]
-                          animate-scale-in ring-1 ring-black/[0.06] dark:ring-white/[0.08]">
-                        <img src={url} alt={`Page ${idx + 1}`} className="w-full h-full object-cover" />
+                        draggable
+                        onDragStart={() => handleDragStart(idx)}
+                        onDragOver={e => handleDragOver(e, idx)}
+                        onDrop={() => handleDrop(idx)}
+                        onDragEnd={handleDragEnd}
+                        className={[
+                          'relative group rounded-md overflow-hidden aspect-[3/4]',
+                          'animate-scale-in ring-1 ring-black/[0.06] dark:ring-white/[0.08]',
+                          'cursor-grab active:cursor-grabbing select-none transition-all duration-150',
+                          dragIdx === idx ? 'opacity-30 scale-95' : '',
+                          dragOverIdx === idx && dragIdx !== idx
+                            ? 'ring-2 ring-accent/70 scale-[1.03]'
+                            : '',
+                        ].join(' ')}>
+                        <img src={url} alt={`Page ${idx + 1}`} className="w-full h-full object-cover pointer-events-none" />
+                        {/* Badge numéro de page */}
                         <div className="absolute bottom-1.5 left-1.5
                           bg-black/60 text-white text-[10px] font-semibold
                           px-1.5 py-0.5 rounded-sm leading-none">
                           p.{idx + 1}
+                        </div>
+                        {/* Poignée drag visible au hover */}
+                        <div className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity
+                          pointer-events-none text-white/80">
+                          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
+                            <circle cx="2.5" cy="2.5" r="1.5"/><circle cx="7.5" cy="2.5" r="1.5"/>
+                            <circle cx="2.5" cy="7"   r="1.5"/><circle cx="7.5" cy="7"   r="1.5"/>
+                            <circle cx="2.5" cy="11.5" r="1.5"/><circle cx="7.5" cy="11.5" r="1.5"/>
+                          </svg>
                         </div>
                         <button onClick={() => removePage(idx)}
                           className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white
@@ -403,7 +453,7 @@ export default function Capture() {
               <Dropdown
                 value={subjectId}
                 onChange={setSubjectId}
-                options={subjects.map(s => ({ value: s.id, label: s.name }))}
+                options={subjects.map(s => ({ value: s.id, label: s.name, icon: subjectIcon(s.name, s.emoji ?? null) }))}
                 placeholder="Choisir une matière…"
                 fullWidth
                 className={dropdownClass}
@@ -416,6 +466,74 @@ export default function Capture() {
                   </button>
                 </p>
               )}
+            </GlassCard>
+          )}
+
+          {/* Sous-dossier facultatif */}
+          {!processing && subjectId && (
+            <GlassCard className="p-4">
+              <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-2">
+                <FolderOpen size={14} className="text-text-tertiary" />
+                Sous-dossier
+                <span className="text-[11px] font-normal text-text-tertiary ml-auto">facultatif</span>
+              </label>
+              <input
+                list="folder-suggestions"
+                value={subfolder}
+                onChange={e => setSubfolder(e.target.value)}
+                placeholder="ex : Chapitre 1 ou Chapitre 1/Thème A"
+                className="w-full px-3 py-2 rounded-lg text-sm text-text-primary
+                  bg-black/[0.03] dark:bg-white/[0.04]
+                  border border-black/[0.08] dark:border-white/[0.06]
+                  placeholder:text-text-tertiary
+                  focus:outline-none focus:border-accent/40 transition-colors"
+              />
+              {existingFolders.length > 0 && (
+                <datalist id="folder-suggestions">
+                  {existingFolders.map(f => <option key={f} value={f} />)}
+                </datalist>
+              )}
+              {existingFolders.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  {existingFolders.slice(0, 6).map(f => (
+                    <button
+                      key={f}
+                      type="button"
+                      onClick={() => setSubfolder(f)}
+                      className={[
+                        'text-[11px] px-2 py-0.5 rounded-full border transition-colors',
+                        subfolder === f
+                          ? 'border-accent/60 text-accent bg-accent/10'
+                          : 'border-black/[0.1] dark:border-white/[0.1] text-text-tertiary hover:text-text-secondary hover:border-accent/30',
+                      ].join(' ')}
+                    >
+                      {f}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </GlassCard>
+          )}
+
+          {/* Note facultative pour l'IA */}
+          {!processing && (
+            <GlassCard className="p-4">
+              <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-2">
+                <MessageSquarePlus size={14} className="text-text-tertiary" />
+                Note pour l'IA
+                <span className="text-[11px] font-normal text-text-tertiary ml-auto">facultatif</span>
+              </label>
+              <textarea
+                value={userNote}
+                onChange={e => setUserNote(e.target.value)}
+                placeholder={'Ex : "ne traite pas ce qui est écrit en noir" ou "ignorer la partie III"'}
+                rows={2}
+                className="w-full px-3 py-2 rounded-lg text-sm text-text-primary
+                  bg-black/[0.03] dark:bg-white/[0.04]
+                  border border-black/[0.08] dark:border-white/[0.06]
+                  placeholder:text-text-tertiary
+                  resize-none focus:outline-none focus:border-accent/40 transition-colors"
+              />
             </GlassCard>
           )}
 

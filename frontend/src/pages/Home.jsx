@@ -81,6 +81,11 @@ export default function Home() {
     queryFn: api.getNotes,
   });
 
+  const { data: subjectsList = [] } = useQuery({
+    queryKey: ['subjects'],
+    queryFn: () => api.getSubjects(),
+  });
+
   const [activeSubject, setActiveSubject] = useState(null);
   const [search, setSearch]               = useState('');
   const [sort, setSort]                   = useState('date-desc');
@@ -96,13 +101,22 @@ export default function Home() {
   // Réinitialiser la recherche quand on change de dossier
   useEffect(() => { setSearch(''); }, [activeSubject]);
 
+  // Map name → emoji pour la sidebar
+  const emojiMap = useMemo(() => {
+    const m = new Map();
+    for (const s of subjectsList) if (s.emoji) m.set(s.name, s.emoji);
+    return m;
+  }, [subjectsList]);
+
   const subjects = useMemo(() => {
     const map = new Map();
     for (const n of notes) {
       if (n.subject) map.set(n.subject, (map.get(n.subject) ?? 0) + 1);
     }
-    return [...map.entries()].sort((a, b) => b[1] - a[1]);
-  }, [notes]);
+    return [...map.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => [name, count, emojiMap.get(name) ?? null]);
+  }, [notes, emojiMap]);
 
   const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();

@@ -1,5 +1,6 @@
 
 import { subjectIcon } from '../lib/noteUtils.js';
+import SubjectIcon from './SubjectIcon.jsx';
 
 // ── Item sidebar desktop ──────────────────────────────────────────────────────
 function SidebarItem({ icon, name, count, active, onClick }) {
@@ -58,10 +59,16 @@ export default function SubjectSidebar({ subjects, activeSubject, onSelect, tota
             onClick={() => onSelect(null)}
           />
           <div className="h-px bg-white/[0.05] my-1.5 mx-1" />
-          {subjects.map(([name, count]) => (
+          {subjects.map(([name, count, emoji]) => (
             <SidebarItem
               key={name}
-              icon={<span className="text-sm leading-none">{subjectIcon(name)}</span>}
+              icon={
+                <SubjectIcon
+                  value={emoji || null}
+                  fallback={subjectIcon(name, null)}
+                  size={15}
+                />
+              }
               name={name}
               count={count}
               active={activeSubject === name}
@@ -80,13 +87,16 @@ export default function SubjectSidebar({ subjects, activeSubject, onSelect, tota
           <MobileChip active={activeSubject === null} onClick={() => onSelect(null)}>
             Tous
           </MobileChip>
-          {subjects.map(([name]) => (
+          {subjects.map(([name, , emoji]) => (
             <MobileChip
               key={name}
               active={activeSubject === name}
               onClick={() => onSelect(activeSubject === name ? null : name)}
             >
-              <span className="mr-1">{subjectIcon(name)}</span>{name}
+              <span className="mr-1 inline-flex items-center">
+                <SubjectIcon value={emoji || null} fallback={subjectIcon(name, null)} size={13} />
+              </span>
+              {name}
             </MobileChip>
           ))}
         </div>

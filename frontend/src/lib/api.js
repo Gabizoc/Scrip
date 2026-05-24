@@ -35,12 +35,14 @@ export const api = {
 
   // ── Ingest ─────────────────────────────────────────────
   /** Démarre l'ingestion, retourne { jobId } */
-  ingest: (photos, subjectId, levelId) => {
+  ingest: (photos, subjectId, levelId, userNote, subfolder) => {
     const fd = new FormData();
     const files = Array.isArray(photos) ? photos : [photos];
     files.forEach(f => fd.append('photos', f));
     fd.append('subjectId', subjectId);
-    if (levelId) fd.append('levelId', levelId);
+    if (levelId)           fd.append('levelId',   levelId);
+    if (userNote?.trim())  fd.append('userNote',  userNote.trim());
+    if (subfolder?.trim()) fd.append('subfolder', subfolder.trim());
     return request('POST', '/ingest', fd, true);
   },
   /** Ouvre un flux SSE pour suivre la progression d'un job */
@@ -53,10 +55,11 @@ export const api = {
   deleteLevel: (id)         => request('DELETE', `/levels/${id}`),
 
   // ── Subjects ───────────────────────────────────────────
-  getSubjects:   (levelId) => request('GET',    `/subjects${levelId ? `?levelId=${levelId}` : ''}`),
-  createSubject: (data)    => request('POST',   '/subjects', data),
-  patchSubject:  (id, data)=> request('PATCH',  `/subjects/${id}`, data),
-  deleteSubject: (id)      => request('DELETE', `/subjects/${id}`),
+  getSubjects:      (levelId) => request('GET',    `/subjects${levelId ? `?levelId=${levelId}` : ''}`),
+  getSubjectFolders:(id)     => request('GET',    `/subjects/${id}/folders`),
+  createSubject:    (data)   => request('POST',   '/subjects', data),
+  patchSubject:     (id, data)=> request('PATCH', `/subjects/${id}`, data),
+  deleteSubject:    (id)     => request('DELETE', `/subjects/${id}`),
 
   // ── Settings ───────────────────────────────────────────
   getSettings: ()     => request('GET', '/settings'),

@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { FolderOpen } from 'lucide-react';
 import { parseScore, scoreColor, subjectColor, subjectDotColor, relativeDate } from '../lib/noteUtils.js';
 import SubjectEditor from './SubjectEditor.jsx';
 
@@ -32,9 +33,17 @@ export default function NoteListRow({ note }) {
         style={{ background: dot }}
       />
 
-      {/* Titre */}
-      <span className="flex-1 min-w-0 text-[13px] font-medium text-text-primary truncate group-hover:text-text-primary">
-        {note.title}
+      {/* Titre + sous-dossier */}
+      <span className="flex-1 min-w-0 flex flex-col justify-center">
+        <span className="text-[13px] font-medium text-text-primary truncate group-hover:text-text-primary">
+          {note.title}
+        </span>
+        {note.subfolder && (
+          <span className="flex items-center gap-0.5 text-[10px] text-text-tertiary leading-none mt-0.5">
+            <FolderOpen size={9} className="shrink-0 opacity-50" />
+            <span className="truncate opacity-70">{note.subfolder}</span>
+          </span>
+        )}
       </span>
 
       {/* Matière (masquée sur mobile) */}

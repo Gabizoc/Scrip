@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { Trash2 } from 'lucide-react';
+import { Trash2, FolderOpen } from 'lucide-react';
 import GlassCard from './GlassCard.jsx';
 import SubjectEditor from './SubjectEditor.jsx';
 import ConfirmModal from './ConfirmModal.jsx';
@@ -89,6 +89,14 @@ export default function NoteCard({ note, index = 0 }) {
       <h3 className="text-[14px] font-semibold text-text-primary line-clamp-2 leading-snug flex-1">
         {note.title}
       </h3>
+
+      {/* Sous-dossier */}
+      {note.subfolder && (
+        <div className="flex items-center gap-1 text-[10px] text-text-tertiary">
+          <FolderOpen size={10} className="shrink-0 opacity-60" />
+          <span className="truncate">{note.subfolder}</span>
+        </div>
+      )}
 
       {/* Ligne du bas : date + score */}
       <div className="flex items-center justify-between">

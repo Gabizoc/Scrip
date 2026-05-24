@@ -41,7 +41,8 @@ export function subjectDotColor(name = '') {
 
 /** Emoji déterministe pour une matière */
 const SUBJECT_ICONS = ['📜','🌍','🧬','⚖️','🔢','🔬','💬','🎨','🏛️','📐'];
-export function subjectIcon(name = '') {
+export function subjectIcon(name = '', emoji = null) {
+  if (emoji) return emoji;
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
   return SUBJECT_ICONS[h % SUBJECT_ICONS.length];

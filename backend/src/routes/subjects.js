@@ -1,6 +1,8 @@
 // backend/src/routes/subjects.js
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import { db } from '../db.js';
 
 export const subjectsRouter = Router();
@@ -15,7 +17,7 @@ subjectsRouter.get('/', async (req, res) => {
 });
 
 subjectsRouter.post('/', async (req, res) => {
-  const { name, levelId, prompt, outputFolder } = req.body;
+  const { name, levelId, prompt, outputFolder, emoji } = req.body;
   if (!name?.trim() || !levelId || !prompt || !outputFolder) {
     return res.status(400).json({ error: 'name, levelId, prompt et outputFolder requis' });
   }
@@ -23,7 +25,7 @@ subjectsRouter.post('/', async (req, res) => {
   if (!db.data.levels.some(l => l.id === levelId)) {
     return res.status(400).json({ error: 'niveau introuvable' });
   }
-  const subject = { id: randomUUID(), name: name.trim(), levelId, prompt, outputFolder };
+  const subject = { id: randomUUID(), name: name.trim(), levelId, prompt, outputFolder, ...(emoji ? { emoji } : {}) };
   db.data.subjects.push(subject);
   await db.write();
   res.status(201).json(subject);
@@ -33,11 +35,40 @@ subjectsRouter.patch('/:id', async (req, res) => {
   await db.read();
   const subject = db.data.subjects.find(s => s.id === req.params.id);
   if (!subject) return res.status(404).json({ error: 'matière introuvable' });
-  for (const key of ['name', 'prompt', 'outputFolder']) {
+  for (const key of ['name', 'prompt', 'outputFolder', 'emoji']) {
     if (req.body[key] !== undefined) subject[key] = req.body[key];
   }
   await db.write();
   res.json(subject);
+});
+
+// GET /api/subjects/:id/folders — sous-dossiers existants dans le vault pour cette matière
+subjectsRouter.get('/:id/folders', async (req, res) => {
+  await db.read();
+  const subject = db.data.subjects.find(s => s.id === req.params.id);
+  if (!subject) return res.status(404).json({ error: 'matière introuvable' });
+
+  const level    = db.data.levels.find(l => l.id === subject.levelId);
+  const vault    = db.data.settings?.vaultPath;
+  if (!vault || !level) return res.json([]);
+
+  const base = path.join(vault, level.name, subject.outputFolder);
+  const folders = [];
+
+  function walk(dir, prefix = '') {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); }
+    catch { return; }
+    for (const e of entries) {
+      if (!e.isDirectory() || e.name.startsWith('_') || e.name.startsWith('.')) continue;
+      const rel = prefix ? `${prefix}/${e.name}` : e.name;
+      folders.push(rel);
+      walk(path.join(dir, e.name), rel);
+    }
+  }
+
+  walk(base);
+  res.json(folders.sort());
 });
 
 subjectsRouter.delete('/:id', async (req, res) => {

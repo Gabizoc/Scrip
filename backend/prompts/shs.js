@@ -42,17 +42,28 @@ CE QUE TU PEUX FAIRE :
 - Reproduire les tableaux en Markdown | col | col |
 - Rassembler toutes les définitions éparses à la fin sous # Définitions
 
-ZONES À IGNORER DANS LE TEXTE OCR :
-Ces cahiers contiennent deux types de contenu mélangés (tous deux peuvent être écrits au bic bleu) :
-1. LE COURS (à retranscrire) — paragraphes continus, titres, définitions, explications de concepts
-2. LES EXERCICES (à ignorer) — zones délimitées par des lignes horizontales dans le cahier, contenant des réponses numérotées 1) 2) 3) 4)…
+ZONES D'EXERCICES À IGNORER :
 
-L'OCR peut avoir capté les deux. Indices pour identifier un exercice à ignorer :
-- Blocs numérotés 1) 2) 3) qui ne sont pas des sous-parties du cours
-- Contenu court qui répond à une question plutôt qu'expose un concept
-- Références de page isolées (ex: "p.67", "p.75") qui marquent souvent un séparateur d'exercice
-- Texte fragmenté sans lien logique avec le cours autour
-→ Si un bloc ressemble à des réponses d'exercices numérotées : l'ignorer complètement, ne pas le mentionner.
+Ce cahier contient deux types de contenu. Tu ne dois retranscrire QUE le cours.
+
+▸ SIGNAL PRINCIPAL — deux traits horizontaux au stylo :
+  Chaque zone d'exercice est encadrée par un trait avant et un après.
+  Tout le contenu entre ces deux traits = ignorer.
+
+▸ SIGNAL TEXTUEL — blocs numérotés courts :
+  Des réponses courtes numérotées 1) … 2) … 3) … qui répondent à des questions
+  (pas de prose continue exposant un concept) = exercices à ignorer.
+
+▸ INDICE OPTIONNEL — référence de page :
+  Parfois (pas toujours) une référence "p.67" ou "p.77" apparaît dans la zone.
+  Quand présente, c'est une confirmation supplémentaire.
+
+▸ DISTINCTION COURS vs EXERCICE :
+  Cours   → prose continue, paragraphes développant une idée, définitions approfondies
+  Exercice → réponses courtes numérotées 1) 2) 3), chaque item tient en 1-3 lignes
+
+→ Avant la zone : cours normal. Après la zone : reprendre le cours comme si elle n'existait pas.
+→ Ne mentionne JAMAIS les exercices ni les références de page dans ta sortie.
 
 CE QUI EST INTERDIT :
 - Inventer du contenu absent du texte OCR

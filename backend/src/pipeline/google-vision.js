@@ -5,10 +5,10 @@
 //
 // Activé par PIPELINE_MODE=google dans le .env
 
-import { SHS_SYSTEM_PROMPT } from '../../prompts/shs.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage } from './ocr.js';
-import { isOutputValid, applyRulesFormat } from './format-rules.js';
-import { runVisionPipeline } from './vision.js';
+import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
+import { callOllamaRaw } from './ollama.js';
 
 const GOOGLE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -23,10 +23,15 @@ const GEMINI_PRIMARY_MODELS = [
 // Modèle de validation : léger, lancé en parallèle pour cross-vérifier
 const GEMINI_VALIDATION_MODEL = 'gemini-2.0-flash-lite';
 
-const VISION_INSTRUCTION = `${SHS_SYSTEM_PROMPT}
+const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
 
 Tu regardes directement une photo de notes manuscrites françaises.
 Lis EXACTEMENT le texte physiquement écrit dans l'image — n'ajoute rien de tes connaissances.
+
+TITRES ET SOUS-TITRES — RÈGLE ABSOLUE :
+- Copie les titres MOT POUR MOT, exactement comme écrits, y compris les points d'interrogation
+- N'ajoute JAMAIS un niveau de titre qui n'est pas écrit dans les notes (ex: pas de ## C) si aucun C) n'est visible)
+- N'enrichis JAMAIS un titre avec des mots absents du titre original (ex: si le titre écrit est "B) L'empire byzantin, une civilisation sur le déclin?" ne le transforme pas en "B) L'Empire byzantin (Basileus)")
 
 TABLEAUX :
 - Compte d'abord le nombre exact de colonnes en regardant les séparateurs verticaux
@@ -44,19 +49,35 @@ TEXTE MANUSCRIT :
 - Si un mot est illisible → écris [illisible]
 - Ne complète jamais avec tes connaissances (ex: ne liste pas les régions françaises si elles ne sont pas écrites)
 
-ZONES À IGNORER ABSOLUMENT :
-Ces cahiers contiennent deux types de contenu mélangés (tous deux peuvent être écrits au bic bleu) :
-1. LE COURS (à retranscrire) — paragraphes continus, titres, définitions, explications
-2. LES EXERCICES (à ignorer totalement) — zones délimitées par deux lignes horizontales tracées au stylo noir (comme des séparateurs de section), contenant des réponses numérotées 1) 2) 3) 4) etc.
+ZONES D'EXERCICES — IGNORER ABSOLUMENT :
 
-Indices visuels pour identifier une zone d'exercices à ignorer :
-- Deux lignes horizontales encadrent la zone (avant et après)
-- Le texte est organisé en blocs numérotés 1) 2) 3)…
-- Chaque bloc répond à une question courte (plutôt qu'exposer un concept)
-- Il peut aussi y avoir une référence de page (ex: "p.67", "p.75") dans la zone
+Ce cahier contient deux types de contenu. Tu ne dois retranscrire QUE le cours.
 
-→ Toute zone entre deux lignes horizontales = ignorer entièrement.
-→ Ne mentionne PAS ces zones dans ta sortie, fais comme si elles n'existaient pas.
+▸ SIGNAL PRINCIPAL — deux traits horizontaux au stylo :
+  Chaque zone d'exercice est encadrée par un trait avant et un après.
+  Tout le contenu entre ces deux traits = ignorer entièrement.
+
+▸ SIGNAL TEXTUEL — blocs numérotés courts :
+  Des réponses courtes numérotées 1) … 2) … 3) … qui répondent à des questions
+  (pas de prose continue exposant un concept) = exercices à ignorer.
+
+▸ INDICE OPTIONNEL — référence de page :
+  Parfois (pas toujours) une référence "p.67" ou "p.77" apparaît dans la zone.
+  Quand présente, c'est une confirmation supplémentaire.
+
+▸ DISTINCTION COURS vs EXERCICE :
+  Cours   → prose continue, paragraphes développant une idée, définitions approfondies
+  Exercice → réponses courtes numérotées 1) 2) 3), chaque item tient en 1-3 lignes
+
+→ Avant la zone : cours normal. Après la zone : reprendre le cours comme si elle n'existait pas.
+→ Ne mentionne JAMAIS les exercices ni les références de page dans ta sortie.
+
+CONTENU ORPHELIN APRÈS UNE ZONE D'EXERCICES :
+Quand du texte de cours reprend après la fin d'une zone d'exercices (après le second trait horizontal), ce texte appartient à la SECTION EN COURS (grande partie ou sous-partie), pas à la section suivante.
+- Si aucun titre de sous-partie n'est écrit (pas de ## C)), place le texte en corps de la partie courante, sans inventer de titre.
+- La prochaine grande partie (# II, # III…) ne commence que là où son titre est physiquement écrit dans les notes — pas avant.
+Exemple : [fin zone exercice] → paragraphe sur le monde musulman → [# II - ...]
+  → Le paragraphe sur le monde musulman appartient à # I, même sans ## C) écrit.
 
 RAPPEL DU FORMAT ATTENDU (applique-le sur ce que tu lis) :
 # Titre
@@ -109,7 +130,10 @@ N'invente rien : copie exactement ce qui est écrit.`;
     contents: [{ role: 'user', parts }],
     generationConfig: {
       temperature: 0,
-      maxOutputTokens: Math.min(8192 * count, 32768),
+      maxOutputTokens: Math.min(8192 * count, 65536),
+      // Désactive le "thinking" de Gemini 2.5 Flash : il consomme des tokens en interne
+      // et laisse peu de budget pour la sortie sur les grands documents (5+ pages).
+      thinkingConfig: { thinkingBudget: 0 },
     },
   };
 
@@ -210,30 +234,24 @@ N'invente rien : copie exactement ce qui est écrit.`;
  *  - NVIDIA/OR seul (si Gemini complètement indisponible)
  *  - Fallback règles sur la meilleure référence disponible
  */
-export async function runGoogleVisionPipeline(imagePaths, subject, level, googleKey, mistralKey, nvidiaKey, openrouterKey) {
+export async function runGoogleVisionPipeline(imagePaths, subject, level, googleKey, mistralKey, nvidiaKey, openrouterKey, userNote = null) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
 
   process.stderr.write(`[google] ${paths.length} image(s), mode Gemini vision\n`);
 
   const images = await Promise.all(paths.map(prepareImage));
 
-  // ── 1. Gemini lite — validation croisée (retry 429) ─────────────────────────
-  const litePromise = sleep(1500).then(() => {
-    process.stderr.write(`    → Gemini ${GEMINI_VALIDATION_MODEL} (validation)\n`);
-    return callGemini(images, googleKey, GEMINI_VALIDATION_MODEL, VISION_INSTRUCTION, paths.length, { maxRetries: 3 });
-  })
-    .then(r => r ? cleanFences(r) : null)
-    .catch(() => null);
+  // Instruction finale : prompt de base + note utilisateur facultative
+  const instruction = userNote
+    ? `${VISION_INSTRUCTION}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
+    : VISION_INSTRUCTION;
+  if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
 
-  // ── 2. NVIDIA / OpenRouter — fallback et validation de secours ───────────────
-  const visionFallbackPromise = (nvidiaKey || openrouterKey)
-    ? runVisionPipeline(paths, subject, level, nvidiaKey, openrouterKey, mistralKey)
-        .then(r => {
-          process.stderr.write(`    ✓ Fallback vision → ${r.rawMarkdown.length} chars (reliable: ${r.reliable})\n`);
-          return r; // on garde l'objet complet pour accéder à rawVisionOutput et reliable
-        })
-        .catch(err => { process.stderr.write(`    ⚠ Fallback vision échoué: ${err.message}\n`); return null; })
-    : Promise.resolve(null);
+  // ── 1. Ollama (gemma) — validation croisée en parallèle, pas de rate limit ───
+  const litePromise = callOllamaRaw(images).catch(() => null);
+
+  // Pas de fallback NVIDIA/OpenRouter — inutiles (404 / timeout systématique)
+  const visionFallbackPromise = Promise.resolve(null);
 
   // ── 3. Gemini principal ──────────────────────────────────────────────────────
   let geminiOutput = null;
@@ -241,7 +259,7 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
 
   for (const model of GEMINI_PRIMARY_MODELS) {
     process.stderr.write(`    → Gemini ${model}\n`);
-    geminiOutput = await callGemini(images, googleKey, model, VISION_INSTRUCTION, paths.length, { maxRetries: 2 });
+    geminiOutput = await callGemini(images, googleKey, model, instruction, paths.length, { maxRetries: 2 });
     if (geminiOutput !== null) {
       modelUsed = model;
       process.stderr.write(`    ✓ Gemini ${model} → ${geminiOutput.length} chars\n`);
@@ -255,7 +273,7 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
 
   // Gemini principal disponible → tenter validation
   if (geminiOutput) {
-    const geminiCleaned = cleanFences(geminiOutput);
+    const geminiCleaned = removeExerciseBlocks(cleanFences(geminiOutput));
 
     // Choisir la meilleure référence disponible :
     // 1. Gemini lite (même moteur, plus fiable comme cross-check)
@@ -268,15 +286,10 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
 
     if (liteReference) {
       reference = liteReference;
-      refSource = 'Gemini lite';
+      refSource = `Ollama (${process.env.OLLAMA_MODEL ?? 'gemma4:31b-cloud'})`;
       strict = true;
-    } else if (visionResult?.reliable) {
-      // N'utiliser NVIDIA/OR comme référence QUE s'il a passé sa propre validation OCR
-      reference = visionResult.rawVisionOutput;
-      refSource = 'NVIDIA/OR (validé)';
-      strict = false; // inter-modèles → seuil souple
     }
-    // Si NVIDIA/OR n'est pas fiable → on ne l'utilise pas comme veto sur Gemini
+    // visionFallbackPromise est désactivé (toujours null)
 
     if (reference) {
       const valid = strict
@@ -290,9 +303,17 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
         return { rawMarkdown: geminiCleaned, imageRegions: [], modelUsed };
       }
 
-      // Gemini rejeté — fallback sur l'OCR via vision pipeline (rawMarkdown = OCR formaté)
-      const fallbackContent = visionResult?.rawMarkdown ?? reference;
-      process.stderr.write(`    ↩ Gemini rejeté par ${refSource} → fallback OCR formaté\n`);
+      // Gemini rejeté — choisir le meilleur fallback disponible :
+      // Si Gemini a au moins un titre Markdown et > 300 chars, c'est une sortie tronquée mais
+      // structurée → préférer à la référence Ollama brute (non structurée, peut avoir des boucles).
+      const geminiHasStructure = /^#\s+/m.test(geminiCleaned) && geminiCleaned.length > 300;
+      const fallbackContent = geminiHasStructure
+        ? geminiCleaned
+        : (visionResult?.rawMarkdown ?? reference);
+      const fallbackReason = geminiHasStructure
+        ? 'sortie tronquée mais structurée'
+        : 'fallback OCR formaté';
+      process.stderr.write(`    ↩ Gemini rejeté par ${refSource} → ${fallbackReason}\n`);
       return { rawMarkdown: fallbackContent, imageRegions: [], usedFallback: true };
     }
 

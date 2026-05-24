@@ -3,6 +3,14 @@ import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ChevronDown, Check } from 'lucide-react';
 
+function OptionIcon({ icon }) {
+  if (!icon) return null;
+  if (icon.startsWith('data:')) {
+    return <img src={icon} alt="" className="w-4 h-4 rounded-sm object-cover shrink-0" />;
+  }
+  return <span className="shrink-0 leading-none text-[15px]">{icon}</span>;
+}
+
 export default function Dropdown({
   value,
   onChange,
@@ -67,8 +75,9 @@ export default function Dropdown({
           className,
         ].join(' ')}
       >
-        <span className="flex-1 truncate">
-          {selected ? selected.label : <span className="text-text-tertiary">{placeholder}</span>}
+        <span className="flex-1 flex items-center gap-2 truncate min-w-0">
+          {selected?.icon && <OptionIcon icon={selected.icon} />}
+          {selected ? <span className="truncate">{selected.label}</span> : <span className="text-text-tertiary">{placeholder}</span>}
         </span>
         <ChevronDown
           size={13}
@@ -104,7 +113,8 @@ export default function Dropdown({
                   size={12}
                   className={['flex-shrink-0 transition-opacity text-accent', o.value === value ? 'opacity-100' : 'opacity-0'].join(' ')}
                 />
-                {o.label}
+                {o.icon && <OptionIcon icon={o.icon} />}
+                <span className="truncate">{o.label}</span>
               </button>
             ))}
           </div>

@@ -5,9 +5,9 @@
 // Une seule étape LLM principale, mais on fait aussi un OCR léger pour valider
 // que la sortie colle au contenu réel de l'image.
 
-import { SHS_SYSTEM_PROMPT } from '../../prompts/shs.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage, runOCR } from './ocr.js';
-import { isOutputValid, applyRulesFormat } from './format-rules.js';
+import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
 
 const NVIDIA_ENDPOINT     = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
@@ -20,15 +20,13 @@ const NVIDIA_VISION_MODELS = [
 
 // Modèles vision OpenRouter gratuits (multimodaux)
 const OPENROUTER_VISION_MODELS = [
-  'qwen/qwen2.5-vl-72b-instruct:free',  // meilleur pour OCR / texte manuscrit
   'google/gemma-4-26b-a4b-it:free',
   'google/gemma-4-31b-it:free',
-  'meta-llama/llama-4-maverick:free',
   'openrouter/auto',
 ];
 
 // Prompt système : combine lecture + mise en forme en une instruction
-const VISION_SYSTEM_PROMPT = `${SHS_SYSTEM_PROMPT}
+const VISION_SYSTEM_PROMPT = `${DEFAULT_SYSTEM_PROMPT}
 
 Tu regardes directement une photo de notes manuscrites françaises.
 Lis EXACTEMENT le texte physiquement écrit dans l'image — n'ajoute rien de tes connaissances.
@@ -45,19 +43,28 @@ TEXTE MANUSCRIT :
 - Si un mot est illisible → écris [illisible]
 - Ne complète jamais avec tes connaissances
 
-ZONES À IGNORER ABSOLUMENT :
-Ces cahiers contiennent deux types de contenu mélangés (tous deux peuvent être écrits au bic bleu) :
-1. LE COURS (à retranscrire) — paragraphes continus, titres, définitions, explications
-2. LES EXERCICES (à ignorer totalement) — zones délimitées par deux lignes horizontales tracées au stylo noir (comme des séparateurs de section), contenant des réponses numérotées 1) 2) 3) 4) etc.
+ZONES D'EXERCICES — IGNORER ABSOLUMENT :
 
-Indices visuels pour identifier une zone d'exercices à ignorer :
-- Deux lignes horizontales encadrent la zone (avant et après)
-- Le texte est organisé en blocs numérotés 1) 2) 3)…
-- Chaque bloc répond à une question courte (plutôt qu'exposer un concept)
-- Il peut aussi y avoir une référence de page (ex: "p.67", "p.75") dans la zone
+Ce cahier contient deux types de contenu. Tu ne dois retranscrire QUE le cours.
 
-→ Toute zone entre deux lignes horizontales = ignorer entièrement.
-→ Ne mentionne PAS ces zones dans ta sortie, fais comme si elles n'existaient pas.
+▸ SIGNAL PRINCIPAL — deux traits horizontaux au stylo :
+  Chaque zone d'exercice est encadrée par un trait avant et un après.
+  Tout le contenu entre ces deux traits = ignorer entièrement.
+
+▸ SIGNAL TEXTUEL — blocs numérotés courts :
+  Des réponses courtes numérotées 1) … 2) … 3) … qui répondent à des questions
+  (pas de prose continue exposant un concept) = exercices à ignorer.
+
+▸ INDICE OPTIONNEL — référence de page :
+  Parfois (pas toujours) une référence "p.67" ou "p.77" apparaît dans la zone.
+  Quand présente, c'est une confirmation supplémentaire.
+
+▸ DISTINCTION COURS vs EXERCICE :
+  Cours   → prose continue, paragraphes développant une idée, définitions approfondies
+  Exercice → réponses courtes numérotées 1) 2) 3), chaque item tient en 1-3 lignes
+
+→ Avant la zone : cours normal. Après la zone : reprendre le cours comme si elle n'existait pas.
+→ Ne mentionne JAMAIS les exercices ni les références de page dans ta sortie.
 
 RAPPEL DU FORMAT ATTENDU (applique-le sur ce que tu lis) :
 # Titre
@@ -153,7 +160,7 @@ async function callOpenRouterVision(messages, apiKey, model, maxTokens) {
  *  3. Validation de la sortie contre le texte OCR
  *  4. Si invalide → fallback formateur basé sur des règles appliqué à l'OCR
  */
-export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, openrouterKey, mistralKey) {
+export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, openrouterKey, mistralKey, userNote = null) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
 
   process.stderr.write(`[vision] ${paths.length} image(s), mode vision direct\n`);
@@ -162,8 +169,13 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
   const images = await Promise.all(paths.map(prepareImage));
   const maxTokens = Math.min(4096 * paths.length, 16384);
 
+  const systemPrompt = userNote
+    ? `${VISION_SYSTEM_PROMPT}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
+    : VISION_SYSTEM_PROMPT;
+  if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
+
   const visionMessages = [
-    { role: 'system', content: VISION_SYSTEM_PROMPT },
+    { role: 'system', content: systemPrompt },
     { role: 'user',   content: buildUserContent(images, paths.length) },
   ];
 
@@ -206,7 +218,7 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
     throw new Error('Aucun modèle vision disponible. Passe en mode PIPELINE_MODE=ocr et réessaie.');
   }
 
-  const visionCleaned = cleanFences(visionOutput);
+  const visionCleaned = removeExerciseBlocks(cleanFences(visionOutput));
 
   // ── Attendre l'OCR de référence et valider ─────────────────────────────────
   const ocrReference = await ocrPromise;
@@ -218,7 +230,6 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
     }
     process.stderr.write(`    ↩ Vision rejetée, fallback OCR + formateur règles\n`);
     const fallback = applyRulesFormat(ocrReference);
-    // rawVisionOutput = sortie brute du modèle (avant fallback), utile pour cross-validation externe
     return { rawMarkdown: fallback, rawVisionOutput: visionCleaned, imageRegions: [], usedFallback: true, reliable: false };
   }
 

@@ -53,7 +53,7 @@ function nextAvailablePath(filePath) {
 ingestRouter.post('/', upload.array('photos', 10), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: 'au moins une photo requise' });
 
-  const { subjectId, levelId } = req.body;
+  const { subjectId, levelId, userNote, subfolder } = req.body;
   await db.read();
 
   const subject = db.data.subjects.find(s => s.id === subjectId);
@@ -73,7 +73,7 @@ ingestRouter.post('/', upload.array('photos', 10), async (req, res) => {
   res.status(202).json({ jobId });
 
   // Traitement en background — ne bloque pas la réponse HTTP
-  runPipeline({ jobId, files: req.files, subject, level, mistralKey, openrouterKey, nvidiaKey, googleKey })
+  runPipeline({ jobId, files: req.files, subject, level, mistralKey, openrouterKey, nvidiaKey, googleKey, userNote: userNote ?? null, subfolder: subfolder ?? null })
     .catch(err => {
       emitError(jobId, err.message ?? String(err));
       cleanupFiles(req.files);
@@ -123,7 +123,7 @@ ingestRouter.get('/:jobId/events', (req, res) => {
 });
 
 // ── Pipeline ──────────────────────────────────────────────────────────────────
-async function runPipeline({ jobId, files, subject, level, mistralKey, openrouterKey, nvidiaKey, googleKey }) {
+async function runPipeline({ jobId, files, subject, level, mistralKey, openrouterKey, nvidiaKey, googleKey, userNote, subfolder }) {
   const step = (id, label, status, detail) =>
     emitStep(jobId, { id, label, status, ...(detail ? { detail } : {}) });
   const warn = (message, level = 'warn') => emitWarning(jobId, message, level);
@@ -138,7 +138,7 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     step('ocr', 'Analyse Ollama', 'running', pageDetail);
     step('structure', 'Structuration du contenu', 'pending');
 
-    const ollamaResult = await runOllamaPipeline(imagePaths);
+    const ollamaResult = await runOllamaPipeline(imagePaths, userNote);
     rawMarkdown   = ollamaResult.rawMarkdown;
     imageRegions  = ollamaResult.imageRegions;
     rawStructured = rawMarkdown;
@@ -155,7 +155,7 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     step('structure', 'Structuration du contenu', 'pending');
 
     const googleResult = await runGoogleVisionPipeline(
-      imagePaths, subject.prompt, level.name, googleKey, mistralKey, nvidiaKey, openrouterKey
+      imagePaths, subject.prompt, level.name, googleKey, mistralKey, nvidiaKey, openrouterKey, userNote
     );
     rawMarkdown   = googleResult.rawMarkdown;
     imageRegions  = googleResult.imageRegions;
@@ -178,7 +178,7 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     step('structure', 'Structuration du contenu', 'pending');
 
     const visionResult = await runVisionPipeline(
-      imagePaths, subject.prompt, level.name, nvidiaKey, openrouterKey, mistralKey
+      imagePaths, subject.prompt, level.name, nvidiaKey, openrouterKey, mistralKey, userNote
     );
     rawMarkdown   = visionResult.rawMarkdown;
     imageRegions  = visionResult.imageRegions;
@@ -253,7 +253,12 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
 
   await db.read();
   const vaultPath = db.data.settings.vaultPath;
-  const noteDir = path.join(vaultPath, level.name, subject.outputFolder);
+  // Sanitize et construit le chemin imbriqué : chaque segment est nettoyé individuellement
+  const subfolderSegments = (subfolder ?? '')
+    .split(/[/\\]/)
+    .map(s => sanitizeFilename(s).trim())
+    .filter(Boolean);
+  const noteDir = path.join(vaultPath, level.name, subject.outputFolder, ...subfolderSegments);
   fs.mkdirSync(noteDir, { recursive: true });
 
   const notePath = nextAvailablePath(
@@ -314,6 +319,8 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     });
   }
 
+  const subfolderId = subfolderSegments.length > 0 ? subfolderSegments.join('/') : null;
+
   const noteRecord = {
     id: noteId,
     title,
@@ -324,6 +331,7 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     sourcePaths,
     createdAt: now.toISOString(),
     metadata,
+    ...(subfolderId ? { subfolder: subfolderId } : {}),
   };
 
   db.data.notes.push(noteRecord);

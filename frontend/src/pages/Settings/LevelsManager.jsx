@@ -27,7 +27,7 @@ export default function LevelsManager() {
   });
 
   return (
-    <div className="p-6 md:p-8 max-w-lg">
+    <div className="p-6 md:p-8 max-w-lg mx-auto">
       <button onClick={() => navigate('/settings')} className="flex items-center gap-2 text-text-secondary hover:text-text-primary text-sm mb-6 transition-colors">
         <ArrowLeft size={16} /> Paramètres
       </button>

@@ -4,6 +4,101 @@
 // Principe : ne toucher QUE à la mise en forme, jamais au contenu.
 
 /**
+ * Supprime les blocs d'exercices du markdown produit par un modèle vision.
+ *
+ * Les exercices se reconnaissent à :
+ *  - Un titre ## ou ### dont le numéro commence par un chiffre : ## 1), ## 2), ### 4a) …
+ *  - Un contenu COURT (titre + corps ≤ 300 chars) : c'est une réponse, pas un développement
+ *
+ * Ne supprime PAS les sections ## N) dont le titre est long (> 120 chars) car le modèle
+ * y a mis un paragraphe de cours entier (ex: ## 3) L'empire byzantin tire son pouvoir…).
+ *
+ * Stratégie : si 2+ sections numérotées courtes consécutives → retirer tout le bloc.
+ * Si section numérotée longue → corriger le titre en ## (sans numéro) et garder.
+ */
+export function removeExerciseBlocks(markdown) {
+  const lines = markdown.split('\n');
+  const sections = [];
+  let current = null;
+  let preamble = [];
+
+  for (const line of lines) {
+    const m = line.match(/^(#{1,3})\s+(.+)/);
+    if (m) {
+      if (current) sections.push(current);
+      else if (preamble.length) sections.push({ headingLine: null, bodyLines: preamble });
+      const headingText = m[2].trim();
+      current = { headingLine: line, headingText, isNumbered: /^\d+[a-z]?\)\s*/.test(headingText), bodyLines: [] };
+    } else if (current) {
+      current.bodyLines.push(line);
+    } else {
+      preamble.push(line);
+    }
+  }
+  if (current) sections.push(current);
+
+  // Critère exercice : titre numéroté (## N) / ### Na)) ET :
+  //   - corps court (< 100 chars), OU
+  //   - corps qui commence lui-même par un autre numéro N) (exercices consécutifs fusionnés)
+  for (const sec of sections) {
+    if (!sec.isNumbered) { sec.isExercise = false; continue; }
+    const bodyText = sec.bodyLines.join('\n').replace(/\s+/g, ' ').trim();
+    const firstBodyLine = sec.bodyLines.find(l => l.trim())?.trim() ?? '';
+    const bodyStartsWithNumber = /^\d+[a-z]?\)\s*/.test(firstBodyLine);
+    sec.isExercise = bodyText.length < 100 || bodyStartsWithNumber;
+  }
+
+  const result = [];
+  let removed = 0;
+  for (const sec of sections) {
+    if (sec.isExercise) {
+      removed++;
+      process.stderr.write(`    [filter] exercice supprimé: "${sec.headingText.slice(0, 80)}"\n`);
+      continue;
+    }
+    if (sec.headingLine) result.push(sec.headingLine);
+    // Nettoyer les lignes de corps : supprimer le préfixe "N) " sur les paragraphes longs
+    // (le modèle ajoute parfois un numéro d'exercice devant du contenu de cours)
+    for (const line of sec.bodyLines) {
+      const numPrefix = line.match(/^(\d+[a-z]?\)\s+)(.+)/);
+      if (numPrefix && numPrefix[2].length > 80) {
+        // Paragraphe long avec préfixe numérique parasite → retirer le préfixe
+        process.stderr.write(`    [filter] préfixe numérique retiré: "${numPrefix[1].trim()}"\n`);
+        result.push(numPrefix[2]);
+      } else {
+        result.push(line);
+      }
+    }
+  }
+  if (removed) process.stderr.write(`    [filter] ${removed} section(s) exercice supprimée(s)\n`);
+
+  // Supprimer le titre dupliqué : si le 1er H1 est contenu dans le 2e H1, retirer le 1er
+  const joined = result.join('\n');
+  const deduped = removeDuplicateH1(joined);
+
+  return deduped.replace(/\n{3,}/g, '\n\n').trim();
+}
+
+/**
+ * Supprime le premier # Titre si son texte est contenu dans le second # Titre.
+ * Cas typique : "# La Méditerranée" suivi de "# I - La Méditerranée : ..."
+ */
+function removeDuplicateH1(markdown) {
+  const lines = markdown.split('\n');
+  const h1s = lines.map((l, i) => ({ line: l, i })).filter(({ line }) => /^# /.test(line));
+  if (h1s.length < 2) return markdown;
+
+  const t1 = h1s[0].line.replace(/^# /, '').trim().toLowerCase();
+  const t2 = h1s[1].line.replace(/^# /, '').trim().toLowerCase();
+
+  if (t2.includes(t1) || t1.includes(t2)) {
+    process.stderr.write(`    [filter] titre H1 dupliqué supprimé: "${h1s[0].line.slice(0, 60)}"\n`);
+    lines.splice(h1s[0].i, 1);
+  }
+  return lines.join('\n');
+}
+
+/**
  * Applique une mise en forme Markdown minimale au texte OCR brut.
  * Aucun contenu n'est ajouté ou modifié.
  */

@@ -62,12 +62,28 @@ body, aside, nav, .glass-card {
 }
 
 /* ── Scrollbar discrète ──────────────────────────────────── */
-::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar { width: 4px; height: 4px; }
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb {
   background: rgb(var(--text-tertiary) / 0.35);
   border-radius: 2px;
 }
+
+/* Scrollbar horizontale dans les tableaux : fine + respecte les arrondis */
+.table-scroll-wrapper {
+  scrollbar-width: thin;
+  scrollbar-color: rgb(var(--text-tertiary) / 0.25) transparent;
+}
+.table-scroll-wrapper::-webkit-scrollbar { height: 3px; }
+.table-scroll-wrapper::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 0 0 8px 8px;
+}
+.table-scroll-wrapper::-webkit-scrollbar-thumb {
+  background: rgb(var(--text-tertiary) / 0.25);
+  border-radius: 2px;
+}
+.table-scroll-wrapper::-webkit-scrollbar-button { display: none; }
 
 /* ── Glass card — CDC §12 ────────────────────────────────── */
 .glass-card {

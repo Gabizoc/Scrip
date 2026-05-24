@@ -7,14 +7,14 @@
 // Activé par PIPELINE_MODE=ollama dans le .env
 // Configurable via OLLAMA_BASE_URL et OLLAMA_MODEL
 
-import { SHS_SYSTEM_PROMPT } from '../../prompts/shs.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage } from './ocr.js';
-import { isOutputValid, applyRulesFormat } from './format-rules.js';
+import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
 
 const DEFAULT_BASE_URL = 'http://localhost:11434';
 const DEFAULT_MODEL    = 'gemma4:31b-cloud';
 
-const VISION_INSTRUCTION = `${SHS_SYSTEM_PROMPT}
+const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
 
 Tu regardes directement une photo de notes manuscrites françaises.
 Lis EXACTEMENT le texte physiquement écrit dans l'image — n'ajoute rien de tes connaissances.
@@ -30,19 +30,32 @@ TEXTE MANUSCRIT :
 - Si un mot est illisible → écris [illisible]
 - Ne complète jamais avec tes connaissances
 
-ZONES À IGNORER ABSOLUMENT :
-Ces cahiers contiennent deux types de contenu mélangés (tous deux peuvent être écrits au bic bleu) :
-1. LE COURS (à retranscrire) — paragraphes continus, titres, définitions, explications
-2. LES EXERCICES (à ignorer totalement) — zones délimitées par deux lignes horizontales tracées au stylo noir (comme des séparateurs de section), contenant des réponses numérotées 1) 2) 3) 4) etc.
+ZONES D'EXERCICES — IGNORER ABSOLUMENT :
 
-Indices visuels pour identifier une zone d'exercices à ignorer :
-- Deux lignes horizontales encadrent la zone (avant et après)
-- Le texte est organisé en blocs numérotés 1) 2) 3)…
-- Chaque bloc répond à une question courte (plutôt qu'exposer un concept)
-- Il peut aussi y avoir une référence de page (ex: "p.67", "p.75") dans la zone
+Ce cahier contient deux types de contenu. Tu ne dois retranscrire QUE le cours.
 
-→ Toute zone entre deux lignes horizontales = ignorer entièrement.
-→ Ne mentionne PAS ces zones dans ta sortie, fais comme si elles n'existaient pas.
+▸ SIGNAL PRINCIPAL — deux traits horizontaux au stylo :
+  Chaque zone d'exercice est encadrée par un trait horizontal avant et un après.
+  Tout le contenu entre ces deux traits = ignorer entièrement.
+
+▸ SIGNAL TEXTUEL — blocs numérotés courts :
+  À l'intérieur des traits, le texte est organisé en réponses courtes numérotées : 1) … 2) … 3) …
+  Ces réponses répondent à des questions (elles n'exposent pas un concept en prose continue).
+  Ce pattern = toujours des exercices, jamais des sous-parties de cours.
+
+▸ INDICE OPTIONNEL — référence de page :
+  Parfois (pas toujours) une référence "p.67" ou "p.77" apparaît dans la zone.
+  Quand elle est présente, c'est une confirmation supplémentaire que c'est un exercice.
+
+▸ DISTINCTION COURS vs EXERCICE :
+  Cours   → prose continue, paragraphes qui développent une idée, définitions approfondies
+  Exercice → réponses courtes numérotées 1) 2) 3), chaque item tient en 1-3 lignes
+
+COMPORTEMENT ATTENDU :
+- Avant la zone d'exercice → transcrire le cours normalement
+- Zone d'exercice (entre les deux traits, items numérotés courts) → ignorer complètement
+- Après la zone d'exercice → reprendre le cours comme si la zone n'avait pas existé
+- Ne mentionne JAMAIS les exercices dans ta sortie, ni les références de page
 
 RAPPEL DU FORMAT ATTENDU (applique-le sur ce que tu lis) :
 # Titre
@@ -63,7 +76,7 @@ function cleanFences(text) {
     .trim();
 }
 
-function buildMessages(images, count) {
+function buildMessages(images, count, systemInstruction = VISION_INSTRUCTION) {
   const imageBlocks = images.map(({ base64, mimeType }, i) => [
     // Annoter chaque image avec son numéro de page pour que le modèle sache l'ordre
     { type: 'text', text: count > 1 ? `— Page ${i + 1} sur ${count} —` : '' },
@@ -79,7 +92,7 @@ Respecte le format défini dans le système (# pour les grandes parties, ## pour
 N'invente rien : copie exactement ce qui est écrit.`;
 
   return [
-    { role: 'system', content: VISION_INSTRUCTION },
+    { role: 'system', content: systemInstruction },
     { role: 'user',   content: [...imageBlocks, { type: 'text', text: instruction }] },
   ];
 }
@@ -152,12 +165,71 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
 }
 
 /**
+/**
+ * Détecte une boucle de répétition dans un texte (hallucination LLM classique).
+ * Prélève des échantillons de 50 chars toutes les 80 chars et cherche un doublon.
+ */
+function hasRepetitionLoop(text) {
+  if (text.length < 400) return false;
+  const seen = new Set();
+  for (let i = 0; i < text.length - 50; i += 80) {
+    const sample = text.slice(i, i + 50);
+    if (seen.has(sample)) return true;
+    seen.add(sample);
+  }
+  return false;
+}
+
+/**
+ * Appel Ollama léger pour validation croisée : lit le texte brut des images
+ * sans mise en forme ni filtrage. Utilisé comme référence par d'autres pipelines.
+ * Retourne null en cas d'erreur, d'indisponibilité ou de boucle de répétition.
+ */
+export async function callOllamaRaw(images) {
+  const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
+  const model   = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
+
+  const messages = [
+    {
+      role: 'system',
+      content: 'Tu lis le texte manuscrit des images et tu le retranscris tel quel, sans mise en forme. Copie uniquement ce qui est écrit.',
+    },
+    {
+      role: 'user',
+      content: [
+        ...images.map(({ base64, mimeType }, i) => [
+          { type: 'text', text: images.length > 1 ? `Page ${i + 1} :` : '' },
+          { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
+        ]).flat().filter(b => b.text !== ''),
+        { type: 'text', text: 'Transcris le texte manuscrit de ces images, mot pour mot.' },
+      ],
+    },
+  ];
+
+  process.stderr.write(`    → Ollama validation (${model})\n`);
+  try {
+    const raw = await callOllama(messages, model, baseUrl, 4096);
+    if (!raw) return null;
+    const cleaned = cleanFences(raw);
+    if (hasRepetitionLoop(cleaned)) {
+      process.stderr.write(`    ⚠ Ollama validation : boucle de répétition détectée → rejet\n`);
+      return null;
+    }
+    process.stderr.write(`    ✓ Ollama validation → ${cleaned.length} chars\n`);
+    return cleaned;
+  } catch (err) {
+    process.stderr.write(`    ⚠ Ollama validation échoué: ${err.message}\n`);
+    return null;
+  }
+}
+
+/**
  * Pipeline Ollama : image(s) → Markdown structuré.
  *
  * Lit OLLAMA_BASE_URL (défaut: http://localhost:11434)
  * Lit OLLAMA_MODEL    (défaut: gemini3-flash-preview)
  */
-export async function runOllamaPipeline(imagePaths) {
+export async function runOllamaPipeline(imagePaths, userNote = null) {
   const paths   = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
   const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
   const model   = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
@@ -166,7 +238,14 @@ export async function runOllamaPipeline(imagePaths) {
 
   const images    = await Promise.all(paths.map(prepareImage));
   const maxTokens = Math.min(4096 * paths.length, 16384);
-  const messages  = buildMessages(images, paths.length);
+
+  // Instruction finale : prompt de base + note utilisateur facultative
+  const systemInstruction = userNote
+    ? `${VISION_INSTRUCTION}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
+    : VISION_INSTRUCTION;
+  if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
+
+  const messages  = buildMessages(images, paths.length, systemInstruction);
 
   process.stderr.write(`    → ${model}\n`);
   const raw = await callOllama(messages, model, baseUrl, maxTokens);
@@ -178,5 +257,6 @@ export async function runOllamaPipeline(imagePaths) {
   process.stderr.write(`    ✓ Ollama ${model} → ${raw.length} chars\n`);
 
   const cleaned = cleanFences(raw);
-  return { rawMarkdown: cleaned, imageRegions: [], modelUsed: model };
+  const filtered = removeExerciseBlocks(cleaned);
+  return { rawMarkdown: filtered, imageRegions: [], modelUsed: model };
 }

@@ -8,7 +8,6 @@ import remarkGfm from 'remark-gfm';
 import { ArrowLeft, Edit2, Trash2, Check, X, ChevronDown, ImageIcon } from 'lucide-react';
 import { api } from '../lib/api.js';
 import GlassCard from '../components/GlassCard.jsx';
-import Button from '../components/Button.jsx';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -30,10 +29,10 @@ function nodeToText(node) {
   return '';
 }
 
-// Extrait les titres H1/H2/H3 du markdown brut pour la TOC
+// Extrait les titres H1–H6 du markdown brut pour la TOC
 function extractHeadings(markdown = '') {
   return markdown.split('\n').map(line => {
-    const m = line.match(/^(#{1,3})\s+(.+)$/);
+    const m = line.match(/^(#{1,6})\s+(.+)$/);
     if (!m) return null;
     // Supprime les marqueurs inline (**bold**, _italic_, `code`)
     const text = m[2].trim()
@@ -84,6 +83,9 @@ function useActiveHeading(ids) {
 
 // ── Composant TOC ─────────────────────────────────────────────────────────────
 
+// Indentation TOC par niveau : H1=0, H2=12px, H3=24px, H4=36px…
+const TOC_INDENT = [0, 0, 12, 24, 36, 48, 60];
+
 function TableOfContents({ headings, activeId, onHeadingClick }) {
   if (!headings.length) return null;
   return (
@@ -92,25 +94,31 @@ function TableOfContents({ headings, activeId, onHeadingClick }) {
         Chapitres
       </p>
       <ul className="space-y-px">
-        {headings.map(({ level, text, id }) => (
-          <li key={id}>
-            <button
-              onClick={() => onHeadingClick(id)}
-              title={text}
-              className={[
-                'w-full text-left text-[11px] leading-snug py-1.5 px-2 rounded-md',
-                'transition-all duration-150 truncate block',
-                level === 1 ? '' : level === 2 ? '' : 'pl-4',
-                activeId === id
-                  ? 'text-accent font-semibold bg-accent/[0.08]'
-                  : 'text-text-tertiary hover:text-text-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
-              ].join(' ')}
-            >
-              {level === 3 && <span className="mr-1 opacity-40">·</span>}
-              {text}
-            </button>
-          </li>
-        ))}
+        {headings.map(({ level, text, id }) => {
+          const indent = TOC_INDENT[Math.min(level, 6)] ?? 60;
+          return (
+            <li key={id}>
+              <button
+                onClick={() => onHeadingClick(id)}
+                title={text}
+                style={{ paddingLeft: `${indent + 8}px` }}
+                className={[
+                  'w-full text-left leading-snug py-1.5 pr-2 rounded-md',
+                  'transition-all duration-150 truncate block',
+                  level === 1 ? 'text-[11px]' : level === 2 ? 'text-[10.5px]' : 'text-[10px]',
+                  activeId === id
+                    ? 'text-accent font-semibold bg-accent/[0.08]'
+                    : 'text-text-tertiary hover:text-text-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
+                ].join(' ')}
+              >
+                {level >= 3 && (
+                  <span className="mr-1 opacity-30">{'·'.repeat(level - 2)}</span>
+                )}
+                {text}
+              </button>
+            </li>
+          );
+        })}
       </ul>
     </nav>
   );
@@ -127,16 +135,36 @@ const mdComponents = {
   ),
   h2: ({ children, node }) => (
     <h2 id={slugify(nodeToText(node))}
-      className="text-lg font-semibold text-text-primary mt-6 mb-3
+      className="text-lg font-semibold text-text-primary mt-6 mb-3 ml-4
         border-l-[3px] border-accent pl-3 rounded-sm">
       {children}
     </h2>
   ),
   h3: ({ children, node }) => (
     <h3 id={slugify(nodeToText(node))}
-      className="text-base font-semibold text-text-secondary mt-4 mb-2">
+      className="text-base font-semibold text-text-secondary mt-4 mb-2 ml-8
+        border-l-2 border-accent/40 pl-3 rounded-sm">
       {children}
     </h3>
+  ),
+  h4: ({ children, node }) => (
+    <h4 id={slugify(nodeToText(node))}
+      className="text-sm font-semibold text-text-secondary mt-3 mb-1.5 ml-12
+        border-l border-accent/25 pl-3">
+      {children}
+    </h4>
+  ),
+  h5: ({ children, node }) => (
+    <h5 id={slugify(nodeToText(node))}
+      className="text-sm font-medium text-text-tertiary mt-2 mb-1 ml-16 pl-3">
+      {children}
+    </h5>
+  ),
+  h6: ({ children, node }) => (
+    <h6 id={slugify(nodeToText(node))}
+      className="text-xs font-medium text-text-tertiary mt-2 mb-1 ml-20 pl-3">
+      {children}
+    </h6>
   ),
   p: ({ children }) => (
     <p className="text-[15px] text-text-primary leading-relaxed mb-3">{children}</p>
@@ -159,7 +187,8 @@ const mdComponents = {
     </div>
   ),
   table: ({ children }) => (
-    <div className="my-4 overflow-x-auto rounded-lg border border-black/[0.08] dark:border-white/[0.08]">
+    <div className="table-scroll-wrapper my-4 overflow-x-auto rounded-lg border border-black/[0.08] dark:border-white/[0.08]"
+      style={{ scrollbarGutter: 'stable' }}>
       <table className="w-full text-sm border-collapse">{children}</table>
     </div>
   ),
@@ -497,7 +526,7 @@ export default function Preview() {
       const lines = draft.split('\n');
       let charPos = 0;
       for (const line of lines) {
-        const m = line.match(/^(#{1,3})\s+(.+)$/);
+        const m = line.match(/^(#{1,6})\s+(.+)$/);
         if (m) {
           const text = m[2].trim()
             .replace(/\*\*(.+?)\*\*/g, '$1')
@@ -556,13 +585,15 @@ export default function Preview() {
                   >
                     <X size={14} /> Annuler
                   </button>
-                  <Button
+                  <button
                     onClick={() => patchNote.mutate()}
                     disabled={patchNote.isPending}
-                    className="h-9 text-sm px-4"
+                    className="flex items-center gap-1.5 text-sm text-white
+                      bg-accent hover:bg-accent/90 px-3 py-1.5 rounded-md
+                      transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <Check size={14} className="inline mr-1.5" /> Sauvegarder
-                  </Button>
+                    <Check size={14} /> Sauvegarder
+                  </button>
                 </>
               ) : (
                 <>

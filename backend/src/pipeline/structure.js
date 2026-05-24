@@ -1,5 +1,5 @@
 // backend/src/pipeline/structure.js
-import { SHS_SYSTEM_PROMPT, SHS_USER_TEMPLATE } from '../../prompts/shs.js';
+import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_TEMPLATE } from '../../prompts/default.js';
 
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const NVIDIA_ENDPOINT     = 'https://integrate.api.nvidia.com/v1/chat/completions';
@@ -26,10 +26,10 @@ const OPENROUTER_MODELS = [
 ];
 
 const PROMPTS = {
-  shs:        { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
-  histoire:   { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
-  géographie: { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
-  emc:        { system: SHS_SYSTEM_PROMPT, userTemplate: SHS_USER_TEMPLATE },
+  default:    { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
+  histoire:   { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
+  géographie: { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
+  emc:        { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
 };
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -96,7 +96,7 @@ async function callOpenRouter(messages, apiKey, model, maxTokens) {
  * la sur-génération (le modèle ne peut pas inventer plus de contenu que l'original).
  */
 export async function structureContent(rawMarkdown, subject, level, openrouterKey, mistralKey, nvidiaKey) {
-  const prompt = PROMPTS[subject] ?? PROMPTS['histoire'];
+  const prompt = PROMPTS[subject] ?? PROMPTS['default'];
   const maxTokens = calcMaxTokens(rawMarkdown);
 
   process.stderr.write(`    OCR: ${rawMarkdown.length} chars → max_tokens: ${maxTokens}\n`);
