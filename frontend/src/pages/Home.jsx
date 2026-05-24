@@ -369,10 +369,54 @@ export default function Home() {
 
           {/* Skeleton loading */}
           {isLoading && (
-            <div className="space-y-2">
-              {[...Array(7)].map((_, i) => (
-                <div key={i} className="h-10 rounded-lg bg-black/[0.04] dark:bg-white/[0.04] animate-pulse" />
-              ))}
+            <div className="animate-pulse">
+              {/* Fake toolbar */}
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-4 w-28 rounded-full bg-black/[0.06] dark:bg-white/[0.06]" />
+                <div className="flex-1 h-7 rounded-full bg-black/[0.05] dark:bg-white/[0.05]" />
+                <div className="h-7 w-24 rounded-full bg-black/[0.05] dark:bg-white/[0.05]" />
+                <div className="h-7 w-14 rounded-full bg-black/[0.05] dark:bg-white/[0.05]" />
+              </div>
+
+              {/* Fake list */}
+              <div className="rounded-xl border border-black/[0.06] dark:border-white/[0.07] overflow-hidden">
+                {/* Fake column header */}
+                <div className="hidden md:flex items-center gap-3 px-4 py-2.5 border-b border-black/[0.05] dark:border-white/[0.06] bg-black/[0.02] dark:bg-white/[0.02]">
+                  <div className="w-[7px] ml-1" />
+                  <div className="flex-1 h-2 w-8 rounded bg-black/[0.08] dark:bg-white/[0.08]" />
+                  <div className="w-[90px] h-2 rounded bg-black/[0.08] dark:bg-white/[0.08]" />
+                  <div className="w-[80px] h-2 rounded bg-black/[0.08] dark:bg-white/[0.08]" />
+                  <div className="w-[44px] h-2 rounded bg-black/[0.08] dark:bg-white/[0.08]" />
+                  <div className="w-[28px]" />
+                </div>
+
+                {/* Fake rows — opacité décroissante pour effet "fade out" */}
+                {[1, 0.85, 0.7, 0.55, 0.4, 0.25, 0.12].map((opacity, i) => (
+                  <div
+                    key={i}
+                    style={{ opacity }}
+                    className={`flex items-center gap-3 px-4 py-2.5 bg-white dark:bg-neutral-950 ${i > 0 ? 'border-t border-black/[0.04] dark:border-white/[0.04]' : ''}`}
+                  >
+                    <div className="w-[7px] h-[7px] rounded-full ml-1 bg-black/[0.10] dark:bg-white/[0.12] shrink-0" />
+                    <div className="flex-1">
+                      <div
+                        className="h-3 rounded-full bg-black/[0.07] dark:bg-white/[0.09]"
+                        style={{ width: `${48 + ((i * 43) % 38)}%` }}
+                      />
+                    </div>
+                    <div className="hidden md:block w-[90px]">
+                      <div className="h-4 rounded-md bg-black/[0.06] dark:bg-white/[0.07] mx-auto w-14" />
+                    </div>
+                    <div className="hidden md:block w-[80px]">
+                      <div className="h-2.5 rounded-full bg-black/[0.05] dark:bg-white/[0.06] ml-auto w-16" />
+                    </div>
+                    <div className="w-[44px] flex justify-end">
+                      <div className="h-3 w-6 rounded-full bg-black/[0.07] dark:bg-white/[0.09]" />
+                    </div>
+                    <div className="w-[28px] h-6 rounded-md bg-black/[0.04] dark:bg-white/[0.05]" />
+                  </div>
+                ))}
+              </div>
             </div>
           )}
 
