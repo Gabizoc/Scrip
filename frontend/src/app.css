@@ -107,16 +107,14 @@ body, aside, nav, .glass-card {
   background: rgba(250, 249, 252, 0.88);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-right: 1px solid rgba(10, 10, 12, 0.07);
-  box-shadow: 2px 0 16px rgba(10, 10, 12, 0.05);
+  box-shadow: 4px 0 24px rgba(10, 10, 12, 0.08);
 }
 
 .dark .sidebar-glass {
   background: rgba(12, 12, 14, 0.88);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border-right: 1px solid rgba(255, 255, 255, 0.06);
-  box-shadow: 2px 0 24px rgba(0, 0, 0, 0.5);
+  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.55);
 }
 
 /* ── Bottom nav ──────────────────────────────────────────── */

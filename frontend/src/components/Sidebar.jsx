@@ -21,7 +21,7 @@ export default function Sidebar() {
   const isPreview = pathname.startsWith('/preview');
 
   return (
-    <aside className="sidebar-glass hidden md:flex flex-col fixed left-0 top-0 h-screen w-56 z-20">
+    <aside className="sidebar-glass hidden md:flex flex-col fixed left-0 top-0 h-screen w-56 z-20 rounded-r-2xl overflow-hidden">
 
       {/* Logo */}
       <div className="px-6 h-16 flex items-center shrink-0
