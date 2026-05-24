@@ -28,16 +28,22 @@ export default function NoteListRow({ note, snippet = null }) {
   const [swipeX, setSwipeX]         = useState(0);
   const [isSwiping, setIsSwiping]   = useState(false);
 
+  // Swipe uniquement sur mobile (pointer coarse = écran tactile)
+  const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
+
   function onTouchStart(e) {
+    if (!isTouchDevice()) return;
     touchStartX.current = e.touches[0].clientX;
     setIsSwiping(true);
   }
   function onTouchMove(e) {
+    if (!isSwiping) return;
     const dx = e.touches[0].clientX - touchStartX.current;
     if (dx > 0) return;
     setSwipeX(Math.max(dx, -SWIPE_REVEAL));
   }
   function onTouchEnd() {
+    if (!isSwiping) return;
     setIsSwiping(false);
     if (swipeX <= -SWIPE_TRIGGER) {
       setSwipeX(-SWIPE_REVEAL);
@@ -56,9 +62,9 @@ export default function NoteListRow({ note, snippet = null }) {
 
   return (
     <div className="relative overflow-hidden">
-      {/* Fond rouge pour swipe delete */}
+      {/* Fond rouge pour swipe delete — mobile uniquement */}
       <div
-        className="absolute inset-y-0 right-0 flex items-center justify-center bg-status-danger"
+        className="md:hidden absolute inset-y-0 right-0 flex items-center justify-center bg-status-danger"
         style={{ width: SWIPE_REVEAL }}
       >
         <button
