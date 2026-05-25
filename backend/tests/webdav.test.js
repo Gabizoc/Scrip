@@ -1,5 +1,5 @@
 // backend/tests/webdav.test.js
-import { test, before, after } from 'node:test';
+import { test, before, after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
@@ -53,4 +53,50 @@ test('PUT /api/settings publicUrl est accepté', async () => {
   });
   assert.equal(res.status, 200);
   assert.equal(res.body.publicUrl, 'https://scrip.example.com');
+});
+
+// Tests WebDAV auth — scoped in describe so before/after don't affect prior tests
+describe('WebDAV auth middleware', () => {
+  // S'assure que le vault tmp existe pour le serveur WebDAV
+  const tmpVault = path.join(os.tmpdir(), `scrip-vault-${Date.now()}`);
+
+  // Configure les settings : webdav activé, password connu
+  before(async () => {
+    fs.mkdirSync(tmpVault, { recursive: true });
+    await request.put('/api/settings').send({
+      webdav: { enabled: true, username: 'testuser', password: 'testpass' },
+      vaultPath: tmpVault,
+    });
+  });
+
+  after(() => { fs.rmSync(tmpVault, { recursive: true, force: true }); });
+
+  test('GET /webdav sans auth → 401', async () => {
+    const res = await request.get('/webdav/');
+    assert.equal(res.status, 401);
+    assert.ok(res.headers['www-authenticate']?.includes('Basic'));
+  });
+
+  test('GET /webdav avec mauvais password → 401', async () => {
+    const creds = Buffer.from('testuser:mauvaispass').toString('base64');
+    const res = await request.get('/webdav/').set('Authorization', `Basic ${creds}`);
+    assert.equal(res.status, 401);
+  });
+
+  test('GET /webdav avec bons credentials → pas 401/503', async () => {
+    const creds = Buffer.from('testuser:testpass').toString('base64');
+    const res = await request.get('/webdav/').set('Authorization', `Basic ${creds}`);
+    // Le serveur WebDAV répond 207 (PROPFIND) ou 200/301 selon le verbe
+    assert.notEqual(res.status, 401);
+    assert.notEqual(res.status, 503);
+  });
+
+  test('GET /webdav quand désactivé → 503', async () => {
+    await request.put('/api/settings').send({ webdav: { enabled: false } });
+    const creds = Buffer.from('testuser:testpass').toString('base64');
+    const res = await request.get('/webdav/').set('Authorization', `Basic ${creds}`);
+    assert.equal(res.status, 503);
+    // Réactiver pour les tests suivants
+    await request.put('/api/settings').send({ webdav: { enabled: true } });
+  });
 });

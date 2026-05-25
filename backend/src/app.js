@@ -7,6 +7,7 @@ import { levelsRouter } from './routes/levels.js';
 import { subjectsRouter } from './routes/subjects.js';
 import { notesRouter } from './routes/notes.js';
 import { ingestRouter } from './routes/ingest.js';
+import { createWebdavMiddleware } from './webdav.js';
 
 export function createApp() {
   const app = express();
@@ -23,6 +24,7 @@ export function createApp() {
   app.use('/api/subjects', subjectsRouter);
   app.use('/api/notes',    notesRouter);
   app.use('/api/ingest',   ingestRouter);
+  app.use('/webdav',       createWebdavMiddleware());
 
   app.use(errorHandler);
   return app;
