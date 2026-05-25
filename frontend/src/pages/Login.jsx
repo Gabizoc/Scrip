@@ -53,7 +53,7 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
+    <div className="min-h-screen bg-bg-base text-text-primary flex items-center justify-center p-4">
       <div className="w-full max-w-sm space-y-4">
         <div className="text-center mb-6">
           <h1 className="text-3xl font-bold text-text-primary">Scrip</h1>
