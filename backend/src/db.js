@@ -12,6 +12,12 @@ const DEFAULT_DATA = {
     theme: 'auto',
     vaultPath: path.join(__dirname, '../../vault'),
     currentLevelId: null,
+    publicUrl: '',
+    webdav: {
+      enabled: false,
+      username: 'scrip',
+      passwordHash: null,
+    },
   },
   levels: [],
   subjects: [],
@@ -34,7 +40,15 @@ export const db = new Low(adapter, DEFAULT_DATA);
 export async function initDb() {
   await db.read();
   db.data = {
-    settings: { ...DEFAULT_DATA.settings, ...db.data.settings },
+    settings: {
+      ...DEFAULT_DATA.settings,
+      ...db.data.settings,
+      // Deep merge webdav pour ne pas perdre les champs existants
+      webdav: {
+        ...DEFAULT_DATA.settings.webdav,
+        ...(db.data.settings?.webdav ?? {}),
+      },
+    },
     levels:   db.data.levels   ?? [],
     subjects: db.data.subjects ?? [],
     notes:    db.data.notes    ?? [],
