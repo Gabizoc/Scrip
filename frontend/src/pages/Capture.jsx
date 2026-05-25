@@ -242,9 +242,9 @@ export default function Capture() {
 
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings });
   const { data: subjects = [] } = useQuery({
-    queryKey: ['subjects', settings?.currentLevelId],
-    queryFn: () => api.getSubjects(settings?.currentLevelId),
-    enabled: !!settings?.currentLevelId,
+    queryKey: ['subjects', settings?.currentLevelId ?? null],
+    queryFn: () => api.getSubjects(settings?.currentLevelId ?? null),
+    enabled: !!settings,
   });
 
   const { data: existingFolders = [] } = useQuery({
@@ -460,7 +460,7 @@ export default function Capture() {
               />
               {subjects.length === 0 && settings?.currentLevelId && (
                 <p className="text-xs text-text-tertiary">
-                  Aucune matière —{' '}
+                  Aucune matière ·{' '}
                   <button className="text-accent underline" onClick={() => navigate('/settings/subjects')}>
                     en ajouter
                   </button>
