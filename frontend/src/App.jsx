@@ -101,9 +101,7 @@ function AppGuard() {
 export default function App() {
   return (
     <Routes>
-      {/* /setup est toujours accessible (avant le check — évite une boucle) */}
-      <Route path="/setup" element={<Setup />} />
-      <Route path="*"      element={<AppGuard />} />
+      <Route path="*" element={<AppGuard />} />
     </Routes>
   );
 }
