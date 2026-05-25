@@ -1,7 +1,8 @@
 // frontend/src/pages/Settings/index.jsx
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Copy, Check, Eye, EyeOff } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import GlassCard from '../../components/GlassCard.jsx';
 import ThemeToggle from '../../components/ThemeToggle.jsx';
@@ -11,6 +12,32 @@ const NAV_ITEMS = [
   { label: 'Gérer les niveaux',  path: '/settings/levels' },
   { label: 'Gérer les matières', path: '/settings/subjects' },
 ];
+
+/** Copie du texte dans le presse-papiers avec feedback visuel */
+function CopyButton({ text }) {
+  const [copied, setCopied] = useState(false);
+  function doCopy() {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+  return (
+    <button
+      onClick={doCopy}
+      className="flex items-center gap-1 text-[11px] text-accent hover:text-accent/70 transition-colors"
+    >
+      {copied ? <Check size={11} /> : <Copy size={11} />}
+      {copied ? 'Copié !' : 'Copier'}
+    </button>
+  );
+}
+
+/** Génère un mot de passe aléatoire de 16 caractères */
+function generatePassword() {
+  const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$';
+  return Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+}
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -24,6 +51,50 @@ export default function Settings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   });
 
+  // ── WebDAV local state ──────────────────────────────────────────────────────
+  const [publicUrl,    setPublicUrl]    = useState('');
+  const [webdavUser,   setWebdavUser]   = useState('scrip');
+  const [webdavPass,   setWebdavPass]   = useState('');
+  const [showPass,     setShowPass]     = useState(false);
+  const [webdavSaved,  setWebdavSaved]  = useState(false);
+
+  // Sync depuis les settings chargés
+  useEffect(() => {
+    if (!settings) return;
+    if (settings.publicUrl)          setPublicUrl(settings.publicUrl);
+    if (settings.webdav?.username)   setWebdavUser(settings.webdav.username);
+  }, [settings]);
+
+  const webdavEnabled = settings?.webdav?.enabled ?? false;
+  const webdavUrl     = publicUrl ? `${publicUrl.replace(/\/$/, '')}/webdav` : null;
+
+  const nginxSnippet = `location /webdav/ {
+    proxy_pass http://localhost:5001/webdav/;
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    client_max_body_size 10M;
+}`;
+
+  function toggleWebdav() {
+    updateSettings.mutate({ webdav: { enabled: !webdavEnabled } });
+  }
+
+  function saveWebdav() {
+    updateSettings.mutate({
+      publicUrl,
+      webdav: {
+        username: webdavUser,
+        ...(webdavPass ? { password: webdavPass } : {}),
+      },
+    }, {
+      onSuccess: () => {
+        setWebdavPass('');
+        setWebdavSaved(true);
+        setTimeout(() => setWebdavSaved(false), 2000);
+      },
+    });
+  }
+
   return (
     <div className="p-6 md:p-8 max-w-lg mx-auto">
       <div className="mb-6">
@@ -31,7 +102,7 @@ export default function Settings() {
       </div>
 
       <div className="space-y-4">
-        {/* Thème — mobile only (desktop has sidebar toggle) */}
+        {/* Thème — mobile only */}
         <div className="md:hidden">
           <GlassCard className="p-4 space-y-3">
             <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Thème</h3>
@@ -78,6 +149,160 @@ export default function Settings() {
               text-text-primary focus:outline-none focus:border-accent/50"
             placeholder="/home/scrip/vault"
           />
+        </GlassCard>
+
+        {/* ── Obsidian WebDAV ────────────────────────────────────────────────── */}
+        <GlassCard className="p-4 space-y-4">
+          {/* Header + toggle */}
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Obsidian WebDAV</h3>
+            <button
+              onClick={toggleWebdav}
+              className={[
+                'relative w-10 h-5 rounded-full transition-colors duration-200',
+                webdavEnabled ? 'bg-accent' : 'bg-black/[0.12] dark:bg-white/[0.15]',
+              ].join(' ')}
+              aria-label={webdavEnabled ? 'Désactiver WebDAV' : 'Activer WebDAV'}
+            >
+              <span className={[
+                'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200',
+                webdavEnabled ? 'translate-x-5' : 'translate-x-0.5',
+              ].join(' ')} />
+            </button>
+          </div>
+
+          {/* URL publique */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+              URL publique du serveur
+            </label>
+            <input
+              type="text"
+              value={publicUrl}
+              onChange={e => setPublicUrl(e.target.value)}
+              placeholder="https://scrip.mondomaine.com"
+              className="w-full h-10 px-3 rounded-lg text-[13px] font-mono
+                bg-black/[0.04] dark:bg-white/[0.05]
+                border border-black/[0.08] dark:border-white/[0.07]
+                text-text-primary placeholder:text-text-tertiary
+                focus:outline-none focus:border-accent/40 transition-colors"
+            />
+          </div>
+
+          {/* Username */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+              Identifiant
+            </label>
+            <input
+              type="text"
+              value={webdavUser}
+              onChange={e => setWebdavUser(e.target.value)}
+              className="w-full h-10 px-3 rounded-lg text-[13px]
+                bg-black/[0.04] dark:bg-white/[0.05]
+                border border-black/[0.08] dark:border-white/[0.07]
+                text-text-primary
+                focus:outline-none focus:border-accent/40 transition-colors"
+            />
+          </div>
+
+          {/* Password */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+              Mot de passe {settings?.webdav?.passwordHash === null ? '' : '(laisser vide pour ne pas changer)'}
+            </label>
+            <div className="flex gap-2">
+              <div className="relative flex-1">
+                <input
+                  type={showPass ? 'text' : 'password'}
+                  value={webdavPass}
+                  onChange={e => setWebdavPass(e.target.value)}
+                  placeholder={settings?.webdav?.passwordHash ? '••••••••••••••••' : 'Définir un mot de passe'}
+                  className="w-full h-10 px-3 pr-9 rounded-lg text-[13px]
+                    bg-black/[0.04] dark:bg-white/[0.05]
+                    border border-black/[0.08] dark:border-white/[0.07]
+                    text-text-primary placeholder:text-text-tertiary
+                    focus:outline-none focus:border-accent/40 transition-colors"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPass(v => !v)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-tertiary hover:text-text-primary"
+                >
+                  {showPass ? <EyeOff size={14} /> : <Eye size={14} />}
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setWebdavPass(generatePassword()); setShowPass(true); }}
+                className="h-10 px-3 rounded-lg text-[12px] font-medium
+                  bg-black/[0.05] dark:bg-white/[0.07]
+                  text-text-secondary hover:text-text-primary
+                  hover:bg-black/[0.09] dark:hover:bg-white/[0.11]
+                  transition-colors whitespace-nowrap"
+              >
+                Générer
+              </button>
+            </div>
+          </div>
+
+          {/* Bouton enregistrer */}
+          <button
+            onClick={saveWebdav}
+            disabled={updateSettings.isPending}
+            className="w-full h-10 rounded-lg text-[13px] font-medium
+              bg-accent text-white hover:bg-accent/90
+              disabled:opacity-40 transition-colors"
+          >
+            {webdavSaved ? '✓ Enregistré' : updateSettings.isPending ? 'Enregistrement…' : 'Enregistrer'}
+          </button>
+
+          {/* URL WebDAV à copier dans Obsidian */}
+          {webdavEnabled && webdavUrl && (
+            <div className="space-y-1.5">
+              <p className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+                URL à coller dans Remotely Save
+              </p>
+              <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg
+                bg-black/[0.03] dark:bg-white/[0.04]
+                border border-black/[0.06] dark:border-white/[0.05]">
+                <code className="text-[12px] text-accent truncate">{webdavUrl}</code>
+                <CopyButton text={webdavUrl} />
+              </div>
+            </div>
+          )}
+
+          {/* Snippet Nginx */}
+          <details className="group">
+            <summary className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium cursor-pointer select-none hover:text-text-secondary transition-colors">
+              Config Nginx ▸
+            </summary>
+            <div className="mt-2 space-y-1.5">
+              <div className="flex items-center justify-between">
+                <p className="text-[11px] text-text-tertiary">Ajouter dans ton bloc <code className="text-accent">server {'{}'}</code> :</p>
+                <CopyButton text={nginxSnippet} />
+              </div>
+              <pre className="text-[11px] leading-relaxed p-3 rounded-lg overflow-x-auto
+                bg-black/[0.04] dark:bg-white/[0.05]
+                border border-black/[0.06] dark:border-white/[0.05]
+                text-text-secondary font-mono">
+                {nginxSnippet}
+              </pre>
+            </div>
+          </details>
+
+          {/* Guide Remotely Save */}
+          <details className="group">
+            <summary className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium cursor-pointer select-none hover:text-text-secondary transition-colors">
+              Guide Obsidian Remotely Save ▸
+            </summary>
+            <ol className="mt-2 space-y-1.5 text-[12px] text-text-secondary list-decimal list-inside">
+              <li>Installe le plugin <strong>Remotely Save</strong> dans Obsidian (Paramètres → Plugins tiers)</li>
+              <li>Dans le plugin : choisir <strong>WebDAV</strong>, coller l'URL ci-dessus</li>
+              <li>Entrer l'identifiant et le mot de passe configurés ici, puis cliquer <strong>Test</strong></li>
+              <li>Lancer une première synchronisation manuelle</li>
+            </ol>
+          </details>
         </GlassCard>
       </div>
     </div>
