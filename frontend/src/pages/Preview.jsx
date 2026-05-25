@@ -9,6 +9,7 @@ import { ArrowLeft, Edit2, Trash2, Check, X, ChevronDown, ImageIcon } from 'luci
 import { api } from '../lib/api.js';
 import GlassCard from '../components/GlassCard.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
+import ErrorState from '../components/ErrorState.jsx';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -685,7 +686,7 @@ export default function Preview() {
       </div>
     </div>
   );
-  if (error)     return <div className="p-8 text-status-danger text-sm">{error.message}</div>;
+  if (error)     return <ErrorState message="Impossible de charger ce cours." />;
 
   return (
     <div className="px-4 py-6 md:py-8">

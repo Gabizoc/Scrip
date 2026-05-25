@@ -9,6 +9,7 @@ import NoteCard from '../components/NoteCard.jsx';
 import NoteListRow from '../components/NoteListRow.jsx';
 import RecentStrip from '../components/RecentStrip.jsx';
 import SubjectSidebar from '../components/SubjectSidebar.jsx';
+import ErrorState from '../components/ErrorState.jsx';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -231,7 +232,7 @@ function FileManagerView({ notes, ftResults }) {
 // ── Page principale ───────────────────────────────────────────────────────────
 
 export default function Home() {
-  const { data: notes = [], isLoading } = useQuery({
+  const { data: notes = [], isLoading, error: notesError } = useQuery({
     queryKey: ['notes'],
     queryFn: api.getNotes,
   });
@@ -366,6 +367,11 @@ export default function Home() {
 
         {/* Zone principale */}
         <div className="flex-1 min-w-0 overflow-y-auto overflow-x-visible pt-2 px-3 pb-6 -mx-3">
+
+          {/* Erreur chargement */}
+          {notesError && !isLoading && (
+            <ErrorState message="Impossible de charger les cours." />
+          )}
 
           {/* Skeleton loading */}
           {isLoading && (
