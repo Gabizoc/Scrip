@@ -21,3 +21,36 @@ test('db.data.settings a webdav et publicUrl par défaut', async () => {
   });
   assert.equal(db.data.settings.publicUrl, '');
 });
+
+const { default: supertest } = await import('supertest');
+const { createApp } = await import('../src/app.js');
+
+const request = supertest(createApp());
+
+test('GET /api/settings ne renvoie pas passwordHash', async () => {
+  const res = await request.get('/api/settings');
+  assert.equal(res.status, 200);
+  assert.ok('webdav' in res.body, 'webdav doit être présent');
+  assert.ok(!('passwordHash' in res.body.webdav), 'passwordHash ne doit pas être exposé');
+  assert.equal(res.body.webdav.enabled, false);
+  assert.equal(res.body.webdav.username, 'scrip');
+});
+
+test('PUT /api/settings webdav.password est haché et non renvoyé', async () => {
+  const res = await request.put('/api/settings').send({
+    webdav: { enabled: true, username: 'gabi', password: 'monmotdepasse' },
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.webdav.enabled, true);
+  assert.equal(res.body.webdav.username, 'gabi');
+  assert.ok(!('passwordHash' in res.body.webdav));
+  assert.ok(!('password' in res.body.webdav));
+});
+
+test('PUT /api/settings publicUrl est accepté', async () => {
+  const res = await request.put('/api/settings').send({
+    publicUrl: 'https://scrip.example.com',
+  });
+  assert.equal(res.status, 200);
+  assert.equal(res.body.publicUrl, 'https://scrip.example.com');
+});
