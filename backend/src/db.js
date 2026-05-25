@@ -13,21 +13,26 @@ const DEFAULT_DATA = {
     vaultPath: path.join(__dirname, '../../vault'),
     currentLevelId: null,
     publicUrl: '',
+    auth: {
+      passwordHash:      null,
+      pendingSetupToken: null,
+      pendingResetToken: null,
+      pendingMagicToken: null,
+    },
     webdav: {
-      enabled: false,
-      username: 'scrip',
+      enabled:      false,
+      username:     'scrip',
       passwordHash: null,
     },
   },
-  levels: [],
+  levels:   [],
   subjects: [],
-  notes: [],
+  notes:    [],
 };
 
 const DB_PATH = process.env.DB_PATH
   ?? path.join(__dirname, '../data/db.json');
 
-// Créer le dossier data/ si nécessaire
 fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
 
 const adapter = new JSONFile(DB_PATH);
@@ -39,19 +44,32 @@ export const db = new Low(adapter, DEFAULT_DATA);
  */
 export async function initDb() {
   await db.read();
+
+  const existing = db.data.settings ?? {};
+
   db.data = {
     settings: {
       ...DEFAULT_DATA.settings,
-      ...db.data.settings,
-      // Deep merge webdav pour ne pas perdre les champs existants
+      ...existing,
+      auth: {
+        ...DEFAULT_DATA.settings.auth,
+        ...(existing.auth ?? {}),
+      },
       webdav: {
         ...DEFAULT_DATA.settings.webdav,
-        ...(db.data.settings?.webdav ?? {}),
+        ...(existing.webdav ?? {}),
       },
     },
     levels:   db.data.levels   ?? [],
     subjects: db.data.subjects ?? [],
     notes:    db.data.notes    ?? [],
   };
+
+  // Migration : si auth.passwordHash est vide mais webdav.passwordHash existe,
+  // copier pour que l'ancien mot de passe WebDAV devienne le mot de passe de l'app.
+  if (!db.data.settings.auth.passwordHash && db.data.settings.webdav.passwordHash) {
+    db.data.settings.auth.passwordHash = db.data.settings.webdav.passwordHash;
+  }
+
   await db.write();
 }
