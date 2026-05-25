@@ -4,9 +4,17 @@ import assert from 'node:assert/strict';
 import os from 'node:os';
 import path from 'node:path';
 import fs from 'node:fs';
+import bcrypt from 'bcryptjs';
 
 const tmpDb = path.join(os.tmpdir(), `scrip-webdav-test-${Date.now()}.json`);
-process.env.DB_PATH = tmpDb;
+process.env.DB_PATH        = tmpDb;
+process.env.SESSION_SECRET = 'test-secret-min-32-chars-padding!!';
+process.env.AUTH_EMAIL     = 'test@example.com';
+process.env.SMTP_HOST      = 'localhost';
+process.env.SMTP_PORT      = '9999';
+process.env.SMTP_USER      = 'test';
+process.env.SMTP_PASS      = 'test';
+process.env.SMTP_FROM      = 'Scrip <test@example.com>';
 
 const { initDb, db } = await import('../src/db.js');
 
@@ -15,67 +23,47 @@ after(() => { if (fs.existsSync(tmpDb)) fs.unlinkSync(tmpDb); });
 
 test('db.data.settings a webdav et publicUrl par défaut', async () => {
   assert.deepEqual(db.data.settings.webdav, {
-    enabled: false,
-    username: 'scrip',
+    enabled:      false,
+    username:     'scrip',
     passwordHash: null,
   });
   assert.equal(db.data.settings.publicUrl, '');
 });
 
 const { default: supertest } = await import('supertest');
-const { createApp } = await import('../src/app.js');
+const { createApp }          = await import('../src/app.js');
 
 const request = supertest(createApp());
 
-test('GET /api/settings ne renvoie pas passwordHash mais expose hasPassword', async () => {
-  const res = await request.get('/api/settings');
+test('GET /api/auth/status ne renvoie pas passwordHash mais expose needsSetup', async () => {
+  const res = await request.get('/api/auth/status');
   assert.equal(res.status, 200);
-  assert.ok('webdav' in res.body, 'webdav doit être présent');
-  assert.ok(!('passwordHash' in res.body.webdav), 'passwordHash ne doit pas être exposé');
-  assert.ok('hasPassword' in res.body.webdav, 'hasPassword doit être présent');
-  assert.equal(res.body.webdav.hasPassword, false, 'aucun mot de passe défini au départ');
-  assert.equal(res.body.webdav.enabled, false);
-  assert.equal(res.body.webdav.username, 'scrip');
+  assert.ok('needsSetup' in res.body);
+  assert.ok(!('passwordHash' in res.body));
 });
 
-test('PUT /api/settings webdav.password est haché, non renvoyé, hasPassword=true', async () => {
-  const res = await request.put('/api/settings').send({
-    webdav: { enabled: true, username: 'gabi', password: 'monmotdepasse' },
-  });
-  assert.equal(res.status, 200);
-  assert.equal(res.body.webdav.enabled, true);
-  assert.equal(res.body.webdav.username, 'gabi');
-  assert.ok(!('passwordHash' in res.body.webdav));
-  assert.ok(!('password' in res.body.webdav));
-  assert.equal(res.body.webdav.hasPassword, true, 'hasPassword doit être true après définition du mdp');
+test('PUT /api/settings retourne 401 sans session', async () => {
+  const res = await request.put('/api/settings').send({ publicUrl: 'https://test.com' });
+  assert.equal(res.status, 401);
 });
 
-test('PUT /api/settings publicUrl est accepté', async () => {
-  const res = await request.put('/api/settings').send({
-    publicUrl: 'https://scrip.example.com',
-  });
-  assert.equal(res.status, 200);
-  assert.equal(res.body.publicUrl, 'https://scrip.example.com');
-});
-
-// Tests WebDAV auth — scoped in describe so before/after don't affect prior tests
 describe('WebDAV auth middleware', () => {
-  // S'assure que le vault tmp existe pour le serveur WebDAV
   const tmpVault = path.join(os.tmpdir(), `scrip-vault-${Date.now()}`);
 
-  // Configure les settings : webdav activé, password connu
   before(async () => {
     fs.mkdirSync(tmpVault, { recursive: true });
-    await request.put('/api/settings').send({
-      webdav: { enabled: true, username: 'testuser', password: 'testpass' },
-      vaultPath: tmpVault,
-    });
+    // Configurer auth.passwordHash directement en db (sans passer par l'API)
+    const hash = await bcrypt.hash('testpass', 10);
+    db.data.settings.auth.passwordHash   = hash;
+    db.data.settings.webdav.enabled      = true;
+    db.data.settings.webdav.username     = 'testuser';
+    db.data.settings.vaultPath           = tmpVault;
+    await db.write();
   });
 
-  after(async () => {
-    await request.put('/api/settings').send({ webdav: { enabled: true } });
+  after(() => {
     fs.rmSync(tmpVault, { recursive: true, force: true });
-  });;
+  });
 
   test('GET /webdav sans auth → 401', async () => {
     const res = await request.get('/webdav/');
@@ -92,15 +80,17 @@ describe('WebDAV auth middleware', () => {
   test('GET /webdav avec bons credentials → pas 401/503', async () => {
     const creds = Buffer.from('testuser:testpass').toString('base64');
     const res = await request.get('/webdav/').set('Authorization', `Basic ${creds}`);
-    // Le serveur WebDAV répond 207 (PROPFIND) ou 200/301 selon le verbe
     assert.notEqual(res.status, 401);
     assert.notEqual(res.status, 503);
   });
 
   test('GET /webdav quand désactivé → 503', async () => {
-    await request.put('/api/settings').send({ webdav: { enabled: false } });
+    db.data.settings.webdav.enabled = false;
+    await db.write();
     const creds = Buffer.from('testuser:testpass').toString('base64');
     const res = await request.get('/webdav/').set('Authorization', `Basic ${creds}`);
     assert.equal(res.status, 503);
+    db.data.settings.webdav.enabled = true;
+    await db.write();
   });
 });

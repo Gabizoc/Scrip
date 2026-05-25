@@ -52,7 +52,7 @@ export function createWebdavMiddleware() {
   return async (req, res, next) => {
     try {
       await db.read();
-      const { webdav: cfg, vaultPath } = db.data.settings;
+      const { webdav: cfg, auth, vaultPath } = db.data.settings;
 
       // 1. Vérification activation
       if (!vaultPath) {
@@ -79,8 +79,9 @@ export function createWebdavMiddleware() {
       const password = decoded.slice(colonIdx + 1);
 
       const usernameOk = cfg.username === username;
-      const passwordOk = cfg.passwordHash
-        ? await bcrypt.compare(password, cfg.passwordHash)
+      // Utilise auth.passwordHash (source unique) — synchronisé avec webdav.passwordHash
+      const passwordOk = auth.passwordHash
+        ? await bcrypt.compare(password, auth.passwordHash)
         : false;
 
       if (!usernameOk || !passwordOk) {
