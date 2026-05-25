@@ -4,6 +4,7 @@ import cors from 'cors';
 import session from 'express-session';
 import { errorHandler }           from './middleware/errorHandler.js';
 import { requireAuth }            from './middleware/requireAuth.js';
+import { authRouter }             from './routes/auth.js';
 import { settingsRouter }         from './routes/settings.js';
 import { levelsRouter }           from './routes/levels.js';
 import { subjectsRouter }         from './routes/subjects.js';
@@ -34,9 +35,10 @@ export function createApp() {
     },
   }));
 
-  // Routes auth PUBLIC — will be added in Task 7 (authRouter)
+  // Routes auth — PUBLIQUES (avant requireAuth)
+  app.use('/api/auth', authRouter);
 
-  // All /api/* routes require session
+  // Toutes les autres routes /api/* nécessitent une session
   app.use('/api', requireAuth);
 
   app.use('/api/settings', settingsRouter);
