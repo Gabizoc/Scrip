@@ -1,12 +1,14 @@
 // backend/src/app.js
 import express from 'express';
 import cors from 'cors';
-import { errorHandler } from './middleware/errorHandler.js';
-import { settingsRouter } from './routes/settings.js';
-import { levelsRouter } from './routes/levels.js';
-import { subjectsRouter } from './routes/subjects.js';
-import { notesRouter } from './routes/notes.js';
-import { ingestRouter } from './routes/ingest.js';
+import session from 'express-session';
+import { errorHandler }           from './middleware/errorHandler.js';
+import { requireAuth }            from './middleware/requireAuth.js';
+import { settingsRouter }         from './routes/settings.js';
+import { levelsRouter }           from './routes/levels.js';
+import { subjectsRouter }         from './routes/subjects.js';
+import { notesRouter }            from './routes/notes.js';
+import { ingestRouter }           from './routes/ingest.js';
 import { createWebdavMiddleware } from './webdav.js';
 
 export function createApp() {
@@ -14,17 +16,36 @@ export function createApp() {
 
   app.use(cors({
     origin: process.env.NODE_ENV === 'production'
-      ? false       // Nginx handles CORS in prod (same-origin)
+      ? false
       : 'http://localhost:5000',
+    credentials: true,
   }));
+
   app.use(express.json());
+
+  app.use(session({
+    secret:            process.env.SESSION_SECRET ?? 'dev-secret-change-me',
+    resave:            false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure:   process.env.NODE_ENV === 'production',
+      maxAge:   30 * 24 * 60 * 60 * 1000,
+    },
+  }));
+
+  // Routes auth PUBLIC — will be added in Task 7 (authRouter)
+
+  // All /api/* routes require session
+  app.use('/api', requireAuth);
 
   app.use('/api/settings', settingsRouter);
   app.use('/api/levels',   levelsRouter);
   app.use('/api/subjects', subjectsRouter);
   app.use('/api/notes',    notesRouter);
   app.use('/api/ingest',   ingestRouter);
-  app.use('/webdav',       createWebdavMiddleware());
+
+  app.use('/webdav', createWebdavMiddleware());
 
   app.use(errorHandler);
   return app;

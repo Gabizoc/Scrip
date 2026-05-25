@@ -37,3 +37,22 @@ test('migration : webdav.passwordHash copié vers auth.passwordHash si auth est 
   await initDb();
   assert.equal(db.data.settings.auth.passwordHash, '$2b$10$fakehash');
 });
+
+// Reset auth state for subsequent tests
+db.data.settings.auth.passwordHash      = null;
+db.data.settings.auth.pendingSetupToken = null;
+db.data.settings.auth.pendingResetToken = null;
+db.data.settings.auth.pendingMagicToken = null;
+db.data.settings.webdav.passwordHash    = null;
+await db.write();
+
+const { default: supertest } = await import('supertest');
+const { createApp }          = await import('../src/app.js');
+
+const request = supertest(createApp());
+
+test('requireAuth : 401 sans session', async () => {
+  const res = await request.get('/api/settings');
+  assert.equal(res.status, 401);
+  assert.equal(res.body.error, 'Non authentifié');
+});
