@@ -5,10 +5,12 @@ import { db } from '../db.js';
 
 export const settingsRouter = Router();
 
-/** Retire passwordHash de l'objet settings avant de l'envoyer au client */
+/** Retire passwordHash de l'objet settings avant de l'envoyer au client.
+ *  Expose `hasPassword` (boolean) à la place pour que le frontend
+ *  puisse adapter son libellé sans jamais recevoir le hash. */
 function sanitize(settings) {
   const { webdav: { passwordHash, ...webdavPublic } = {}, ...rest } = settings;
-  return { ...rest, webdav: webdavPublic };
+  return { ...rest, webdav: { ...webdavPublic, hasPassword: passwordHash !== null } };
 }
 
 settingsRouter.get('/', async (req, res) => {

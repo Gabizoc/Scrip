@@ -27,16 +27,18 @@ const { createApp } = await import('../src/app.js');
 
 const request = supertest(createApp());
 
-test('GET /api/settings ne renvoie pas passwordHash', async () => {
+test('GET /api/settings ne renvoie pas passwordHash mais expose hasPassword', async () => {
   const res = await request.get('/api/settings');
   assert.equal(res.status, 200);
   assert.ok('webdav' in res.body, 'webdav doit être présent');
   assert.ok(!('passwordHash' in res.body.webdav), 'passwordHash ne doit pas être exposé');
+  assert.ok('hasPassword' in res.body.webdav, 'hasPassword doit être présent');
+  assert.equal(res.body.webdav.hasPassword, false, 'aucun mot de passe défini au départ');
   assert.equal(res.body.webdav.enabled, false);
   assert.equal(res.body.webdav.username, 'scrip');
 });
 
-test('PUT /api/settings webdav.password est haché et non renvoyé', async () => {
+test('PUT /api/settings webdav.password est haché, non renvoyé, hasPassword=true', async () => {
   const res = await request.put('/api/settings').send({
     webdav: { enabled: true, username: 'gabi', password: 'monmotdepasse' },
   });
@@ -45,6 +47,7 @@ test('PUT /api/settings webdav.password est haché et non renvoyé', async () =>
   assert.equal(res.body.webdav.username, 'gabi');
   assert.ok(!('passwordHash' in res.body.webdav));
   assert.ok(!('password' in res.body.webdav));
+  assert.equal(res.body.webdav.hasPassword, true, 'hasPassword doit être true après définition du mdp');
 });
 
 test('PUT /api/settings publicUrl est accepté', async () => {

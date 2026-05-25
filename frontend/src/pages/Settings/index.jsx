@@ -1,5 +1,5 @@
 // frontend/src/pages/Settings/index.jsx
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Copy, Check, Eye, EyeOff } from 'lucide-react';
@@ -20,7 +20,7 @@ function CopyButton({ text }) {
     navigator.clipboard.writeText(text).then(() => {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    }).catch(() => {});
   }
   return (
     <button
@@ -33,10 +33,12 @@ function CopyButton({ text }) {
   );
 }
 
-/** Génère un mot de passe aléatoire de 16 caractères */
+/** Génère un mot de passe aléatoire de 16 caractères via crypto.getRandomValues
+ *  (CSPRNG du navigateur — pas Math.random). */
 function generatePassword() {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$';
-  return Array.from({ length: 16 }, () => chars[Math.floor(Math.random() * chars.length)]).join('');
+  const bytes = crypto.getRandomValues(new Uint8Array(16));
+  return Array.from(bytes, b => chars[b % chars.length]).join('');
 }
 
 export default function Settings() {
@@ -57,12 +59,15 @@ export default function Settings() {
   const [webdavPass,   setWebdavPass]   = useState('');
   const [showPass,     setShowPass]     = useState(false);
   const [webdavSaved,  setWebdavSaved]  = useState(false);
+  // Guard : n'initialise les champs qu'une seule fois au premier chargement,
+  // pour éviter d'écraser les modifications en cours lors des refetch React Query.
+  const initializedRef = useRef(false);
 
-  // Sync depuis les settings chargés
   useEffect(() => {
-    if (!settings) return;
-    if (settings.publicUrl)          setPublicUrl(settings.publicUrl);
-    if (settings.webdav?.username)   setWebdavUser(settings.webdav.username);
+    if (!settings || initializedRef.current) return;
+    initializedRef.current = true;
+    if (settings.publicUrl)        setPublicUrl(settings.publicUrl);
+    if (settings.webdav?.username) setWebdavUser(settings.webdav.username);
   }, [settings]);
 
   const webdavEnabled = settings?.webdav?.enabled ?? false;
@@ -209,7 +214,7 @@ export default function Settings() {
           {/* Password */}
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
-              Mot de passe {settings?.webdav?.passwordHash === null ? '' : '(laisser vide pour ne pas changer)'}
+              Mot de passe {settings?.webdav?.hasPassword ? '(laisser vide pour ne pas changer)' : ''}
             </label>
             <div className="flex gap-2">
               <div className="relative flex-1">
@@ -217,7 +222,7 @@ export default function Settings() {
                   type={showPass ? 'text' : 'password'}
                   value={webdavPass}
                   onChange={e => setWebdavPass(e.target.value)}
-                  placeholder={settings?.webdav?.passwordHash ? '••••••••••••••••' : 'Définir un mot de passe'}
+                  placeholder={settings?.webdav?.hasPassword ? '••••••••••••••••' : 'Définir un mot de passe'}
                   className="w-full h-10 px-3 pr-9 rounded-lg text-[13px]
                     bg-black/[0.04] dark:bg-white/[0.05]
                     border border-black/[0.08] dark:border-white/[0.07]
