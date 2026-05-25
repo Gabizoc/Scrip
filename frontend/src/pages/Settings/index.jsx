@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, Copy, Check, Eye, EyeOff } from 'lucide-react';
 import { api } from '../../lib/api.js';
+import { authApi } from '../../lib/auth.js';
 import GlassCard from '../../components/GlassCard.jsx';
 import ThemeToggle from '../../components/ThemeToggle.jsx';
 import Dropdown from '../../components/Dropdown.jsx';
@@ -52,6 +53,37 @@ export default function Settings() {
     mutationFn: api.putSettings,
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   });
+
+  // ── Password change local state ─────────────────────────────────────────────
+  const [currentPass,  setCurrentPass]  = useState('');
+  const [newPass,      setNewPass]      = useState('');
+  const [confirmPass,  setConfirmPass]  = useState('');
+  const [passError,    setPassError]    = useState('');
+  const [passSaved,    setPassSaved]    = useState(false);
+  const [passLoading,  setPassLoading]  = useState(false);
+
+  async function handleChangePassword(e) {
+    e.preventDefault();
+    setPassError('');
+    if (newPass !== confirmPass) { setPassError('Les mots de passe ne correspondent pas'); return; }
+    if (newPass.length < 8)      { setPassError('8 caractères minimum'); return; }
+    setPassLoading(true);
+    try {
+      await authApi.changePassword(currentPass, newPass);
+      setCurrentPass(''); setNewPass(''); setConfirmPass('');
+      setPassSaved(true);
+      setTimeout(() => setPassSaved(false), 2000);
+    } catch (err) {
+      setPassError(err.message ?? 'Erreur lors du changement de mot de passe');
+    } finally {
+      setPassLoading(false);
+    }
+  }
+
+  async function handleLogout() {
+    await authApi.logout();
+    navigate('/login', { replace: true });
+  }
 
   // ── WebDAV local state ──────────────────────────────────────────────────────
   const [publicUrl,    setPublicUrl]    = useState('');
@@ -164,14 +196,14 @@ export default function Settings() {
             <button
               onClick={toggleWebdav}
               className={[
-                'relative w-10 h-5 rounded-full transition-colors duration-200',
+                'flex items-center w-10 h-5 rounded-full p-0.5 transition-colors duration-200 flex-shrink-0',
                 webdavEnabled ? 'bg-accent' : 'bg-black/[0.12] dark:bg-white/[0.15]',
               ].join(' ')}
               aria-label={webdavEnabled ? 'Désactiver WebDAV' : 'Activer WebDAV'}
             >
               <span className={[
-                'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform duration-200',
-                webdavEnabled ? 'translate-x-5' : 'translate-x-0.5',
+                'block w-4 h-4 rounded-full bg-white shadow-sm transition-transform duration-200',
+                webdavEnabled ? 'translate-x-5' : 'translate-x-0',
               ].join(' ')} />
             </button>
           </div>
@@ -309,6 +341,58 @@ export default function Settings() {
             </ol>
           </details>
         </GlassCard>
+
+        {/* ── Mot de passe ──────────────────────────────────────────────────── */}
+        <GlassCard className="p-4 space-y-4">
+          <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Mot de passe</h3>
+          <form onSubmit={handleChangePassword} className="space-y-3">
+            {[
+              { label: 'Mot de passe actuel',    value: currentPass, set: setCurrentPass, auto: 'current-password' },
+              { label: 'Nouveau mot de passe',   value: newPass,     set: setNewPass,     auto: 'new-password'     },
+              { label: 'Confirmer',              value: confirmPass, set: setConfirmPass, auto: 'new-password'     },
+            ].map(({ label, value, set, auto }) => (
+              <div key={label} className="space-y-1">
+                <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">{label}</label>
+                <input
+                  type="password"
+                  value={value}
+                  onChange={e => set(e.target.value)}
+                  autoComplete={auto}
+                  required
+                  className="w-full h-10 px-3 rounded-lg text-[13px]
+                    bg-black/[0.04] dark:bg-white/[0.05]
+                    border border-black/[0.08] dark:border-white/[0.07]
+                    text-text-primary placeholder:text-text-tertiary
+                    focus:outline-none focus:border-accent/40 transition-colors"
+                  placeholder="••••••••"
+                />
+              </div>
+            ))}
+            {passError && <p className="text-red-500 text-[12px]">{passError}</p>}
+            <button
+              type="submit"
+              disabled={passLoading}
+              className="w-full h-10 rounded-lg text-[13px] font-medium
+                bg-accent text-white hover:bg-accent/90
+                disabled:opacity-40 transition-colors"
+            >
+              {passSaved ? '✓ Mot de passe mis à jour' : passLoading ? 'Enregistrement…' : 'Changer le mot de passe'}
+            </button>
+          </form>
+        </GlassCard>
+
+        {/* ── Déconnexion ───────────────────────────────────────────────────── */}
+        <GlassCard className="p-4">
+          <button
+            onClick={handleLogout}
+            className="w-full h-10 rounded-lg text-[13px] font-medium
+              text-red-500 hover:bg-red-500/10
+              transition-colors"
+          >
+            Se déconnecter
+          </button>
+        </GlassCard>
+
       </div>
     </div>
   );

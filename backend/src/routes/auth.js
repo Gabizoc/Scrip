@@ -227,6 +227,40 @@ authRouter.post('/reset', async (req, res) => {
   res.json({ ok: true });
 });
 
+// ── POST /api/auth/change-password ───────────────────────────────────────────
+// Route protégée — nécessite une session active
+authRouter.post('/change-password', async (req, res) => {
+  if (req.session?.loggedIn !== true) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+
+  await db.read();
+  const { currentPassword, newPassword } = req.body ?? {};
+
+  if (!currentPassword || !newPassword) {
+    return res.status(400).json({ error: 'currentPassword et newPassword requis' });
+  }
+  if (typeof newPassword !== 'string' || newPassword.length < 8) {
+    return res.status(400).json({ error: 'Nouveau mot de passe trop court (8 caractères minimum)' });
+  }
+
+  const hash = db.data.settings.auth.passwordHash;
+  if (!hash) {
+    return res.status(403).json({ error: 'Aucun mot de passe défini' });
+  }
+  const ok = await bcrypt.compare(String(currentPassword), hash);
+  if (!ok) {
+    return res.status(401).json({ error: 'Mot de passe actuel incorrect' });
+  }
+
+  const newHash = await bcrypt.hash(newPassword, 10);
+  db.data.settings.auth.passwordHash   = newHash;
+  db.data.settings.webdav.passwordHash = newHash;
+  await db.write();
+
+  res.json({ ok: true });
+});
+
 // ── POST /api/auth/logout ─────────────────────────────────────────────────────
 authRouter.post('/logout', (req, res) => {
   req.session.destroy(() => {

@@ -22,6 +22,7 @@ export const authApi = {
   magic:          ()                       => authRequest('POST', '/magic'),
   forgot:         ()                       => authRequest('POST', '/forgot'),
   reset:          (token, password)        => authRequest('POST', '/reset',          { token, password }),
-  setupRequest:   ()                       => authRequest('POST', '/setup-request'),
-  setupComplete:  (token, password)        => authRequest('POST', '/setup-complete', { token, password }),
+  setupRequest:    ()                              => authRequest('POST', '/setup-request'),
+  setupComplete:   (token, password)               => authRequest('POST', '/setup-complete',    { token, password }),
+  changePassword:  (currentPassword, newPassword)  => authRequest('POST', '/change-password',   { currentPassword, newPassword }),
 };
