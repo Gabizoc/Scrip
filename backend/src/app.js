@@ -2,6 +2,8 @@
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { errorHandler }           from './middleware/errorHandler.js';
 import { requireAuth }            from './middleware/requireAuth.js';
 import { authRouter }             from './routes/auth.js';
@@ -11,6 +13,9 @@ import { subjectsRouter }         from './routes/subjects.js';
 import { notesRouter }            from './routes/notes.js';
 import { ingestRouter }           from './routes/ingest.js';
 import { createWebdavMiddleware } from './webdav.js';
+
+const __dirname  = path.dirname(fileURLToPath(import.meta.url));
+const DIST_PATH  = path.resolve(__dirname, '../../frontend/dist');
 
 export function createApp() {
   const app = express();
@@ -48,6 +53,14 @@ export function createApp() {
   app.use('/api/ingest',   ingestRouter);
 
   app.use('/webdav', createWebdavMiddleware());
+
+  // Servir le frontend React (build statique)
+  app.use(express.static(DIST_PATH));
+
+  // Catch-all : toute route non-API renvoie index.html (client-side routing)
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(DIST_PATH, 'index.html'));
+  });
 
   app.use(errorHandler);
   return app;
