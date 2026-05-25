@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../lib/auth.js';
 import GlassCard from '../components/GlassCard.jsx';
 
 export default function Login() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
   const [error,    setError]    = useState('');
@@ -18,6 +20,7 @@ export default function Login() {
     setLoading(true);
     try {
       await authApi.login(email, password);
+      await qc.invalidateQueries({ queryKey: ['auth-status'] });
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.message ?? 'Email ou mot de passe incorrect');
