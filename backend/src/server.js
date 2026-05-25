@@ -13,7 +13,7 @@ const REQUIRED_ENV = ['SESSION_SECRET', 'AUTH_EMAIL'];
 const missing = REQUIRED_ENV.filter(k => !process.env[k]);
 if (missing.length > 0) {
   console.error(`[scrip] Variables d'environnement manquantes : ${missing.join(', ')}`);
-  console.error('[scrip] Copiez backend/.env.example vers .env et remplissez les valeurs.');
+  console.error('[scrip] Remplissez ces variables dans le fichier .env à la racine du projet.');
   process.exit(1);
 }
 
