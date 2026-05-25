@@ -1,11 +1,13 @@
 // frontend/src/pages/SetupPassword.jsx
 import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../lib/auth.js';
 import GlassCard from '../components/GlassCard.jsx';
 
 export default function SetupPassword() {
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') ?? '';
 
@@ -32,6 +34,7 @@ export default function SetupPassword() {
     setLoading(true);
     try {
       await authApi.setupComplete(token, password);
+      await qc.invalidateQueries({ queryKey: ['auth-status'] });
       navigate('/', { replace: true });
     } catch (err) {
       setError(err.message ?? 'Erreur lors de la configuration');
