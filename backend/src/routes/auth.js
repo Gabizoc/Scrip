@@ -32,8 +32,9 @@ function isValidToken(stored, incoming) {
   }
 }
 
-/** URL publique du serveur (depuis db ou env fallback) */
+/** URL publique du serveur (env > db > localhost fallback) */
 async function getBaseUrl() {
+  if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/$/, '');
   await db.read();
   return (db.data.settings.publicUrl ?? '').replace(/\/$/, '') || `http://localhost:${process.env.PORT ?? 5001}`;
 }
