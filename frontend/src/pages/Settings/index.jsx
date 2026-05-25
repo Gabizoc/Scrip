@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { ChevronRight, Copy, Check, Eye, EyeOff } from 'lucide-react';
+import { ChevronRight, Copy, Check, Eye, EyeOff, LogOut } from 'lucide-react';
 import { api } from '../../lib/api.js';
 import { authApi } from '../../lib/auth.js';
 import GlassCard from '../../components/GlassCard.jsx';
@@ -382,16 +382,15 @@ export default function Settings() {
         </GlassCard>
 
         {/* ── Déconnexion ───────────────────────────────────────────────────── */}
-        <GlassCard className="p-4">
-          <button
-            onClick={handleLogout}
-            className="w-full h-10 rounded-lg text-[13px] font-medium
-              text-red-500 hover:bg-red-500/10
-              transition-colors"
-          >
-            Se déconnecter
-          </button>
-        </GlassCard>
+        <button
+          onClick={handleLogout}
+          className="w-full flex items-center justify-center gap-2 h-10 rounded-lg text-[13px] font-medium
+            text-red-500 hover:bg-red-500/10
+            transition-colors"
+        >
+          <LogOut size={14} />
+          Se déconnecter
+        </button>
 
       </div>
     </div>
