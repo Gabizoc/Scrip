@@ -385,7 +385,7 @@ export default function Settings() {
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 h-10 rounded-lg text-[13px] font-medium
-            text-red-500 hover:bg-red-500/10
+            text-red-500 bg-red-500/8 hover:bg-red-500/14
             transition-colors"
         >
           <LogOut size={14} />
