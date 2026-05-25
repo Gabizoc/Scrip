@@ -5,12 +5,16 @@ import { db } from '../db.js';
 
 export const settingsRouter = Router();
 
-/** Retire passwordHash de l'objet settings avant de l'envoyer au client.
- *  Expose `hasPassword` (boolean) à la place pour que le frontend
- *  puisse adapter son libellé sans jamais recevoir le hash. */
+/** Retire passwordHash de settings avant d'envoyer au client.
+ *  Expose hasPassword (bool) et hasSetup (bool) à la place. */
 function sanitize(settings) {
-  const { webdav: { passwordHash, ...webdavPublic } = {}, ...rest } = settings;
-  return { ...rest, webdav: { ...webdavPublic, hasPassword: passwordHash !== null } };
+  const { auth: { passwordHash, pendingSetupToken, pendingResetToken, pendingMagicToken, ...authPublic } = {}, ...rest } = settings;
+  const { webdav: { passwordHash: wHash, ...webdavPublic } = {} } = rest;
+  return {
+    ...rest,
+    auth:  { ...authPublic, hasPassword: passwordHash !== null },
+    webdav: { ...webdavPublic, hasPassword: wHash !== null },
+  };
 }
 
 settingsRouter.get('/', async (req, res) => {
@@ -26,12 +30,16 @@ settingsRouter.put('/', async (req, res) => {
     if (req.body[key] !== undefined) db.data.settings[key] = req.body[key];
   }
 
+  // Champs WebDAV (hors password)
   if (req.body.webdav) {
     const { enabled, username, password } = req.body.webdav;
     if (enabled !== undefined) db.data.settings.webdav.enabled = Boolean(enabled);
     if (username !== undefined) db.data.settings.webdav.username = String(username).trim();
+    // Le password WebDAV est désormais géré via auth — si fourni, met à jour les deux
     if (password) {
-      db.data.settings.webdav.passwordHash = await bcrypt.hash(String(password), 10);
+      const hash = await bcrypt.hash(String(password), 10);
+      db.data.settings.auth.passwordHash   = hash;
+      db.data.settings.webdav.passwordHash = hash;
     }
   }
 
