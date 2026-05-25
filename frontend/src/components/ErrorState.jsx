@@ -10,8 +10,12 @@ export default function ErrorState({
       <img
         src="/error-500.png"
         alt="Erreur"
-        className="w-56 sm:w-72 opacity-90 dark:opacity-75 pointer-events-none"
+        className="w-56 sm:w-72 pointer-events-none"
         draggable={false}
+        style={{
+          maskImage: 'radial-gradient(ellipse 80% 75% at 50% 45%, black 45%, transparent 80%)',
+          WebkitMaskImage: 'radial-gradient(ellipse 80% 75% at 50% 45%, black 45%, transparent 80%)',
+        }}
       />
       <div className="flex flex-col items-center gap-2 text-center">
         <p className="text-sm font-medium text-text-secondary">{message}</p>
