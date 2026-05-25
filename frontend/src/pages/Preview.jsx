@@ -615,7 +615,7 @@ export default function Preview() {
   if (isLoading) return (
     <div className="flex flex-col items-center justify-center min-h-[70vh] gap-3 select-none">
       <img
-        src="/loading-light.png"
+        src="/illus-loading-light.png"
         alt="Chargement"
         draggable={false}
         className="w-64 sm:w-80 pointer-events-none dark:hidden"
@@ -625,7 +625,7 @@ export default function Preview() {
         }}
       />
       <img
-        src="/loading-dark.png"
+        src="/illus-loading-dark.png"
         alt="Chargement"
         draggable={false}
         className="w-64 sm:w-80 pointer-events-none hidden dark:block"

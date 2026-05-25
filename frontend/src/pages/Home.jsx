@@ -10,6 +10,7 @@ import NoteListRow from '../components/NoteListRow.jsx';
 import RecentStrip from '../components/RecentStrip.jsx';
 import SubjectSidebar from '../components/SubjectSidebar.jsx';
 import ErrorState from '../components/ErrorState.jsx';
+import EmptyState from '../components/EmptyState.jsx';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -427,14 +428,11 @@ export default function Home() {
           )}
 
           {/* Empty state — aucun cours du tout */}
-          {!isLoading && notes.length === 0 && (
-            <div className="flex flex-col items-center justify-center py-24 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
-                <Camera size={28} className="text-accent" strokeWidth={1.5} />
-              </div>
-              <p className="text-text-primary font-medium mb-1">Aucun cours</p>
-              <p className="text-text-secondary text-sm">Capture ta première photo pour commencer</p>
-            </div>
+          {!isLoading && !notesError && notes.length === 0 && (
+            <EmptyState
+              title="Aucun cours pour l'instant"
+              subtitle="Capture ta première photo pour commencer"
+            />
           )}
 
           {/* Contenu */}
