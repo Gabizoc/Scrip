@@ -17,11 +17,19 @@ function makeToken() {
   return { token: generateToken(), expiresAt: Date.now() + 15 * 60 * 1000 };
 }
 
-/** Vérifie qu'un objet token est valide (non nul, non expiré, token correct) */
+/** Vérifie qu'un objet token est valide (non nul, non expiré, token correct).
+ *  Utilise timingSafeEqual pour éviter les timing attacks. */
 function isValidToken(stored, incoming) {
   if (!stored) return false;
   if (Date.now() > stored.expiresAt) return false;
-  return stored.token === incoming;
+  try {
+    return crypto.timingSafeEqual(
+      Buffer.from(stored.token),
+      Buffer.from(String(incoming ?? '')),
+    );
+  } catch {
+    return false;
+  }
 }
 
 /** URL publique du serveur (depuis db ou env fallback) */
@@ -44,6 +52,12 @@ authRouter.post('/setup-request', async (req, res) => {
   await db.read();
   if (db.data.settings.auth.passwordHash !== null) {
     return res.status(403).json({ error: 'Setup déjà effectué' });
+  }
+
+  // Éviter d'écraser un token valide non expiré
+  const existing = db.data.settings.auth.pendingSetupToken;
+  if (existing && Date.now() <= existing.expiresAt) {
+    return res.status(429).json({ error: 'Lien déjà envoyé. Vérifiez votre boîte mail (expire dans 15 min).' });
   }
 
   const pending = makeToken();
@@ -208,6 +222,8 @@ authRouter.post('/reset', async (req, res) => {
   db.data.settings.webdav.passwordHash    = db.data.settings.auth.passwordHash;
   await db.write();
 
+  // Auto-login après reset — l'utilisateur vient de prouver l'accès à sa boîte mail
+  req.session.loggedIn = true;
   res.json({ ok: true });
 });
 
