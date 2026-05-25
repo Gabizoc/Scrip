@@ -69,7 +69,10 @@ describe('WebDAV auth middleware', () => {
     });
   });
 
-  after(() => { fs.rmSync(tmpVault, { recursive: true, force: true }); });
+  after(async () => {
+    await request.put('/api/settings').send({ webdav: { enabled: true } });
+    fs.rmSync(tmpVault, { recursive: true, force: true });
+  });;
 
   test('GET /webdav sans auth → 401', async () => {
     const res = await request.get('/webdav/');
@@ -96,7 +99,5 @@ describe('WebDAV auth middleware', () => {
     const creds = Buffer.from('testuser:testpass').toString('base64');
     const res = await request.get('/webdav/').set('Authorization', `Basic ${creds}`);
     assert.equal(res.status, 503);
-    // Réactiver pour les tests suivants
-    await request.put('/api/settings').send({ webdav: { enabled: true } });
   });
 });

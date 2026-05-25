@@ -55,6 +55,9 @@ export function createWebdavMiddleware() {
       const { webdav: cfg, vaultPath } = db.data.settings;
 
       // 1. Vérification activation
+      if (!vaultPath) {
+        return res.status(503).json({ error: 'Vault path non configuré dans les paramètres Scrip' });
+      }
       if (!cfg?.enabled) {
         return res.status(503).json({ error: 'WebDAV désactivé dans les paramètres Scrip' });
       }
@@ -68,6 +71,10 @@ export function createWebdavMiddleware() {
 
       const decoded  = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
       const colonIdx = decoded.indexOf(':');
+      if (colonIdx === -1) {
+        res.setHeader('WWW-Authenticate', 'Basic realm="Scrip"');
+        return res.status(401).end('Authentification requise');
+      }
       const username = decoded.slice(0, colonIdx);
       const password = decoded.slice(colonIdx + 1);
 
