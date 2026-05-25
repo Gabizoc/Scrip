@@ -61,17 +61,19 @@ export default function Login() {
         </div>
 
         <GlassCard className="p-6 space-y-4">
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleLogin} className="space-y-4" method="post" action="#">
             <div className="space-y-1.5">
-              <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+              <label htmlFor="email" className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
                 Email
               </label>
               <input
+                id="email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                autoComplete="email"
+                autoComplete="username email"
                 className="w-full h-10 px-3 rounded-lg text-[13px]
                   bg-black/[0.04] dark:bg-white/[0.05]
                   border border-black/[0.08] dark:border-white/[0.07]
@@ -82,10 +84,12 @@ export default function Login() {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+              <label htmlFor="password" className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
                 Mot de passe
               </label>
               <input
+                id="password"
+                name="password"
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
