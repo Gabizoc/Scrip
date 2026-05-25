@@ -26,7 +26,8 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   // ── Swipe delete ────────────────────────────────────────────────────────────
-  const touchStartX = useRef(0);
+  const touchStartX    = useRef(0);
+  const swipeXAtStart  = useRef(0);   // position au moment du touchstart
   const [swipeX, setSwipeX]         = useState(0);
   const [isSwiping, setIsSwiping]   = useState(false);
 
@@ -35,18 +36,20 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
 
   function onTouchStart(e) {
     if (!isTouchDevice()) return;
-    touchStartX.current = e.touches[0].clientX;
+    touchStartX.current   = e.touches[0].clientX;
+    swipeXAtStart.current = swipeX;   // mémorise la position actuelle
     setIsSwiping(true);
   }
   function onTouchMove(e) {
     if (!isSwiping) return;
-    const dx = e.touches[0].clientX - touchStartX.current;
-    if (dx > 0) return;
-    setSwipeX(Math.max(dx, -SWIPE_REVEAL));
+    const dx   = e.touches[0].clientX - touchStartX.current;
+    const next = swipeXAtStart.current + dx;
+    setSwipeX(Math.min(0, Math.max(next, -SWIPE_REVEAL)));
   }
   function onTouchEnd() {
     if (!isSwiping) return;
     setIsSwiping(false);
+    // Snap : si on a glissé au-delà du trigger → ouvrir, sinon fermer
     if (swipeX <= -SWIPE_TRIGGER) {
       setSwipeX(-SWIPE_REVEAL);
     } else {
