@@ -95,8 +95,15 @@ export function createWebdavMiddleware() {
       req.headers['authorization'] =
         `Basic ${Buffer.from(`${BYPASS_USER}:${BYPASS_PASS}`).toString('base64')}`;
 
+      // Express a strippé le préfixe /webdav de req.url avant d'appeler ce middleware.
+      // webdav.extensions.express(root, server) utilise root comme base URL dans les
+      // réponses PROPFIND (<D:href>). Si on passe '/', les hrefs générés sont /fichier.md
+      // au lieu de /webdav/fichier.md — Obsidian ne peut pas suivre les URLs.
+      // On restaure le préfixe /webdav pour que les hrefs soient corrects.
+      req.url = '/webdav' + (req.url || '/');
+
       const server = await getWebdavServer(vaultPath);
-      webdav.extensions.express('/', server)(req, res, next);
+      webdav.extensions.express('/webdav', server)(req, res, next);
     } catch (err) {
       next(err);
     }
