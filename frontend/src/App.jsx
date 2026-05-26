@@ -70,6 +70,7 @@ function AppGuard() {
   if (data?.needsSetup) {
     return (
       <Routes>
+        <Route path="/setup"          element={<Setup />} />
         <Route path="/setup/password" element={<SetupPassword />} />
         <Route path="*"               element={<Navigate to="/setup" replace />} />
       </Routes>
