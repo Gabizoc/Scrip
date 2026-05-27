@@ -20,6 +20,16 @@ export async function prepareImage(imagePath) {
   return { base64: buffer.toString('base64'), mimeType: 'image/jpeg' };
 }
 
+/** Version réduite pour la validation croisée (Ollama) : 800px, q55.
+ *  Réduit la taille du body d'un facteur ~4 → évite les timeouts sur cloud models. */
+export async function prepareImageSmall(imagePath) {
+  const buffer = await sharp(imagePath)
+    .resize({ width: 800, height: 800, fit: 'inside', withoutEnlargement: true })
+    .jpeg({ quality: 55 })
+    .toBuffer();
+  return { base64: buffer.toString('base64'), mimeType: 'image/jpeg' };
+}
+
 // Retry avec backoff exponentiel sur 429
 async function fetchWithRetry(url, options, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {

@@ -8,7 +8,7 @@
 // Configurable via OLLAMA_BASE_URL et OLLAMA_MODEL
 
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
-import { prepareImage } from './ocr.js';
+import { prepareImage, prepareImageSmall } from './ocr.js';
 import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
 
 const DEFAULT_BASE_URL = 'http://localhost:11434';
@@ -129,12 +129,19 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
 
   process.stderr.write(`    [debug] POST ${endpoint} — model=${model} body=${body.length}B\n`);
 
+  // Timeout explicite 90s (undici/Node.js fetch a un headers_timeout de 10s par défaut,
+  // insuffisant pour les cloud models qui traitent des images).
+  const controller = new AbortController();
+  const timeoutId  = setTimeout(() => controller.abort(), 90_000);
+
   let res;
   try {
-    res = await fetch(endpoint, { method: 'POST', headers, body });
+    res = await fetch(endpoint, { method: 'POST', headers, body, signal: controller.signal });
   } catch (err) {
     process.stderr.write(`    [debug] fetch ERREUR réseau: ${err.message}\n`);
     throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   process.stderr.write(`    [debug] HTTP ${res.status} ${res.statusText}\n`);
@@ -201,9 +208,12 @@ function hasRepetitionLoop(text) {
  * sans mise en forme ni filtrage. Utilisé comme référence par d'autres pipelines.
  * Retourne null en cas d'erreur, d'indisponibilité ou de boucle de répétition.
  */
-export async function callOllamaRaw(images) {
+export async function callOllamaRaw(imagePaths) {
   const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
   const model   = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
+
+  // Utilise des images réduites (800px q55) pour éviter les timeouts sur cloud models
+  const images = await Promise.all(imagePaths.map(prepareImageSmall));
 
   const messages = [
     {
