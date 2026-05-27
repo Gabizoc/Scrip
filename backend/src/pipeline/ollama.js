@@ -97,22 +97,37 @@ N'invente rien : copie exactement ce qui est écrit.`;
   ];
 }
 
+// Utilise l'API native Ollama /api/chat (plus fiable que /v1/chat/completions
+// pour les cloud models qui retournent Internal Server Error sur l'endpoint OpenAI).
 async function callOllama(messages, model, baseUrl, maxTokens) {
-  const endpoint = `${baseUrl.replace(/\/$/, '')}/v1/chat/completions`;
+  const endpoint = `${baseUrl.replace(/\/$/, '')}/api/chat`;
 
   const headers = { 'Content-Type': 'application/json' };
   const apiKey = process.env.OLLAMA_API_KEY;
   if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
+  // Convertit le format OpenAI (image_url) → format natif Ollama (images: [base64])
+  const ollamaMessages = messages.map(msg => {
+    if (typeof msg.content === 'string') return { role: msg.role, content: msg.content };
+    const texts  = msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+    const images = msg.content
+      .filter(b => b.type === 'image_url')
+      .map(b => {
+        // "data:image/jpeg;base64,<data>" → extraire juste la partie base64
+        const url = b.image_url?.url ?? '';
+        return url.includes(',') ? url.split(',')[1] : url;
+      });
+    return { role: msg.role, content: texts, ...(images.length ? { images } : {}) };
+  });
+
   const body = JSON.stringify({
     model,
-    temperature: 0,
-    max_tokens:  maxTokens,
-    messages,
+    options: { temperature: 0, num_predict: maxTokens },
+    messages: ollamaMessages,
     stream: false,
   });
 
-  process.stderr.write(`    [debug] POST ${endpoint} — model=${model} max_tokens=${maxTokens} body=${body.length}B\n`);
+  process.stderr.write(`    [debug] POST ${endpoint} — model=${model} body=${body.length}B\n`);
 
   let res;
   try {
@@ -156,7 +171,8 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     throw new Error(`Ollama: réponse JSON invalide: ${err.message}`);
   }
 
-  const content = data.choices?.[0]?.message?.content ?? null;
+  // Format natif Ollama /api/chat : { message: { content: "..." } }
+  const content = data.message?.content ?? null;
   if (!content) {
     process.stderr.write(`    [debug] content null — data keys: ${Object.keys(data).join(', ')}\n`);
     if (data.error) process.stderr.write(`    [debug] data.error: ${JSON.stringify(data.error)}\n`);
