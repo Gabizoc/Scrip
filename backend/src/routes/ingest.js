@@ -261,13 +261,15 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     : path.basename(files[0].originalname, path.extname(files[0].originalname));
 
   await db.read();
-  const vaultPath = db.data.settings.vaultPath;
+  const vaultPath   = db.data.settings.vaultPath;
+  const syncFolder  = (db.data.settings.syncFolder ?? '').trim();
   // Sanitize et construit le chemin imbriqué : chaque segment est nettoyé individuellement
   const subfolderSegments = (subfolder ?? '')
     .split(/[/\\]/)
     .map(s => sanitizeFilename(s).trim())
     .filter(Boolean);
-  const noteDir = path.join(vaultPath, level.name, subject.outputFolder, ...subfolderSegments);
+  // Si syncFolder est défini (ex: "test"), les notes vont dans vault/test/niveau/matiere/
+  const noteDir = path.join(vaultPath, ...(syncFolder ? [syncFolder] : []), level.name, subject.outputFolder, ...subfolderSegments);
   fs.mkdirSync(noteDir, { recursive: true });
 
   const notePath = nextAvailablePath(

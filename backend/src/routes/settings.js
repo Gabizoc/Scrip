@@ -25,7 +25,7 @@ settingsRouter.get('/', async (req, res) => {
 settingsRouter.put('/', async (req, res) => {
   await db.read();
 
-  const scalarFields = ['theme', 'vaultPath', 'currentLevelId', 'publicUrl'];
+  const scalarFields = ['theme', 'vaultPath', 'syncFolder', 'currentLevelId', 'publicUrl'];
   for (const key of scalarFields) {
     if (req.body[key] !== undefined) db.data.settings[key] = req.body[key];
   }

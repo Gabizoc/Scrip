@@ -87,6 +87,7 @@ export default function Settings() {
 
   // ── WebDAV local state ──────────────────────────────────────────────────────
   const [publicUrl,    setPublicUrl]    = useState('');
+  const [syncFolder,   setSyncFolder]   = useState('');
   const [webdavUser,   setWebdavUser]   = useState('scrip');
   const [webdavPass,   setWebdavPass]   = useState('');
   const [showPass,     setShowPass]     = useState(false);
@@ -99,6 +100,7 @@ export default function Settings() {
     if (!settings || initializedRef.current) return;
     initializedRef.current = true;
     if (settings.publicUrl)        setPublicUrl(settings.publicUrl);
+    if (settings.syncFolder != null) setSyncFolder(settings.syncFolder);
     if (settings.webdav?.username) setWebdavUser(settings.webdav.username);
   }, [settings]);
 
@@ -119,6 +121,7 @@ export default function Settings() {
   function saveWebdav() {
     updateSettings.mutate({
       publicUrl,
+      syncFolder: syncFolder.trim(),
       webdav: {
         username: webdavUser,
         ...(webdavPass ? { password: webdavPass } : {}),
@@ -224,6 +227,28 @@ export default function Settings() {
                 text-text-primary placeholder:text-text-tertiary
                 focus:outline-none focus:border-accent/40 transition-colors"
             />
+          </div>
+
+          {/* Sync folder */}
+          <div className="space-y-1.5">
+            <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+              Dossier de synchronisation
+            </label>
+            <input
+              type="text"
+              value={syncFolder}
+              onChange={e => setSyncFolder(e.target.value)}
+              placeholder="ex : test  (nom de ton vault Obsidian)"
+              className="w-full h-10 px-3 rounded-lg text-[13px]
+                bg-black/[0.04] dark:bg-white/[0.05]
+                border border-black/[0.08] dark:border-white/[0.07]
+                text-text-primary placeholder:text-text-tertiary
+                focus:outline-none focus:border-accent/40 transition-colors"
+            />
+            <p className="text-[11px] text-text-tertiary leading-relaxed">
+              Doit correspondre au champ <strong className="text-text-secondary">Remote base dir</strong> dans Remotely Save.
+              Les notes seront stockées dans <code className="text-accent">vault/{syncFolder || '<dossier>'}/…</code>
+            </p>
           </div>
 
           {/* Username */}
@@ -336,8 +361,13 @@ export default function Settings() {
             <ol className="mt-2 space-y-1.5 text-[12px] text-text-secondary list-decimal list-inside">
               <li>Installe le plugin <strong>Remotely Save</strong> dans Obsidian (Paramètres → Plugins tiers)</li>
               <li>Dans le plugin : choisir <strong>WebDAV</strong>, coller l'URL ci-dessus</li>
-              <li>Entrer l'identifiant et le mot de passe configurés ici, puis cliquer <strong>Test</strong></li>
-              <li>Lancer une première synchronisation manuelle</li>
+              <li>Entrer l'identifiant et le mot de passe configurés ici</li>
+              <li>
+                Champ <strong>Remote base dir</strong> : mettre{' '}
+                <code className="text-accent">{syncFolder || '<dossier de synchronisation>'}</code>
+                {' '}(même valeur que ci-dessus)
+              </li>
+              <li>Cliquer <strong>Test</strong> puis lancer une synchronisation</li>
             </ol>
           </details>
         </GlassCard>
