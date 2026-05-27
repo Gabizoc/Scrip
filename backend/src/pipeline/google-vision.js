@@ -248,7 +248,11 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
   if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
 
   // ── 1. Ollama (gemma) — validation croisée en parallèle, pas de rate limit ───
-  const litePromise = callOllamaRaw(images).catch(() => null);
+  // Désactivé si OLLAMA_VALIDATION=false dans le .env (ex: serveur sans Ollama installé)
+  const ollamaEnabled = (process.env.OLLAMA_VALIDATION ?? 'true') !== 'false';
+  const litePromise = ollamaEnabled
+    ? callOllamaRaw(images).catch(() => null)
+    : Promise.resolve(null);
 
   // Pas de fallback NVIDIA/OpenRouter — inutiles (404 / timeout systématique)
   const visionFallbackPromise = Promise.resolve(null);
