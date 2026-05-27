@@ -45,7 +45,7 @@ export default function LevelsManager() {
         ))}
 
         {levels.length === 0 && (
-          <p className="text-text-tertiary text-sm text-center py-6">Aucun niveau — ajoutez-en un ci-dessous.</p>
+          <p className="text-text-tertiary text-sm text-center py-6">Aucun niveau · ajoutez-en un ci-dessous.</p>
         )}
 
         <GlassCard className="p-4 space-y-3">

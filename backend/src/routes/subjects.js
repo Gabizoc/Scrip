@@ -17,7 +17,7 @@ subjectsRouter.get('/', async (req, res) => {
 });
 
 subjectsRouter.post('/', async (req, res) => {
-  const { name, levelId, prompt, outputFolder, emoji } = req.body;
+  const { name, levelId, prompt, outputFolder, emoji, color } = req.body;
   if (!name?.trim() || !levelId || !prompt || !outputFolder) {
     return res.status(400).json({ error: 'name, levelId, prompt et outputFolder requis' });
   }
@@ -25,7 +25,7 @@ subjectsRouter.post('/', async (req, res) => {
   if (!db.data.levels.some(l => l.id === levelId)) {
     return res.status(400).json({ error: 'niveau introuvable' });
   }
-  const subject = { id: randomUUID(), name: name.trim(), levelId, prompt, outputFolder, ...(emoji ? { emoji } : {}) };
+  const subject = { id: randomUUID(), name: name.trim(), levelId, prompt, outputFolder, ...(emoji ? { emoji } : {}), ...(color ? { color } : {}) };
   db.data.subjects.push(subject);
   await db.write();
   res.status(201).json(subject);
@@ -35,7 +35,7 @@ subjectsRouter.patch('/:id', async (req, res) => {
   await db.read();
   const subject = db.data.subjects.find(s => s.id === req.params.id);
   if (!subject) return res.status(404).json({ error: 'matière introuvable' });
-  for (const key of ['name', 'prompt', 'outputFolder', 'emoji']) {
+  for (const key of ['name', 'prompt', 'outputFolder', 'emoji', 'color']) {
     if (req.body[key] !== undefined) subject[key] = req.body[key];
   }
   await db.write();

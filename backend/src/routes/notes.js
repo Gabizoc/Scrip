@@ -91,6 +91,69 @@ notesRouter.get('/:id', async (req, res) => {
   });
 });
 
+// POST /notes — crée un cours manuellement (sans photo)
+notesRouter.post('/', async (req, res) => {
+  const { title, subjectId, levelId, subfolder, markdown } = req.body;
+
+  if (!title?.trim()) return res.status(400).json({ error: 'titre requis' });
+
+  await db.read();
+
+  // Résolution de la matière
+  let resolvedSubjectId = null;
+  if (subjectId) {
+    const sub = db.data.subjects.find(s => s.id === subjectId);
+    if (!sub) return res.status(400).json({ error: 'matière introuvable' });
+    resolvedSubjectId = sub.id;
+  }
+
+  // Résolution du niveau
+  let resolvedLevelId = levelId ?? db.data.settings.currentLevelId ?? null;
+
+  // Génère un slug pour le nom de fichier
+  const slug = title.trim()
+    .normalize('NFD').replace(/\p{Mn}/gu, '')  // supprime marques diacritiques
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '')
+    .slice(0, 60);
+  const id       = randomUUID();
+  const filename = `${slug}-${id.slice(0, 8)}.md`;
+
+  // Chemin dans le vault
+  const vaultPath = db.data.settings.vaultPath;
+  fs.mkdirSync(vaultPath, { recursive: true });
+  const filePath = path.join(vaultPath, filename);
+
+  // Contenu markdown par défaut si non fourni
+  const now     = new Date();
+  const content = markdown?.trim() || `# ${title.trim()}\n\n`;
+  fs.writeFileSync(filePath, content, 'utf8');
+
+  const note = {
+    id,
+    title: title.trim(),
+    path: filePath,
+    subjectId: resolvedSubjectId,
+    levelId:   resolvedLevelId,
+    subfolder: subfolder?.trim() || undefined,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString(),
+    sourcePaths: [],
+    metadata:    {},
+  };
+  if (!note.subfolder) delete note.subfolder;
+
+  db.data.notes.push(note);
+  await db.write();
+
+  res.status(201).json({
+    ...note,
+    subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? null,
+    level:   db.data.levels.find(l => l.id === note.levelId)?.name   ?? null,
+  });
+});
+
 notesRouter.patch('/:id', async (req, res) => {
   const { markdown, subject, title, subjectId, subfolder } = req.body;
   if (

@@ -106,7 +106,7 @@ export default function SubjectEditor({ note, triggerRect, onClose }) {
             >
               <span
                 className="w-[5px] h-[5px] rounded-full flex-shrink-0"
-                style={{ background: subjectDotColor(s.name) }}
+                style={{ background: subjectDotColor(s.name, s.color ?? null) }}
               />
               {subjectIcon(s.name)} {s.name}
             </button>

@@ -342,7 +342,7 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
               className="text-[11px] text-white/60 bg-white/10 hover:bg-white/20
                 px-2 py-1 rounded font-mono transition-colors"
             >
-              {Math.round(zoom * 100)}% — reset
+              {Math.round(zoom * 100)}% · reset
             </button>
           )}
           <button

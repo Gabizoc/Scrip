@@ -11,7 +11,7 @@ import { subjectIcon } from '../lib/noteUtils.js';
  * Dropdown custom (sans <select> natif).
  * options: [{ value, name, icon }]  — icon = emoji string ou data URL
  */
-function CustomSelect({ value, onChange, options, placeholder = '— Choisir —' }) {
+function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 

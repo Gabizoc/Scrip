@@ -1,7 +1,7 @@
 // frontend/src/pages/Home.jsx
 import { useState, useMemo, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Camera, Search, X, List, LayoutGrid, Folder, FolderOpen, ChevronRight, ArrowLeft } from 'lucide-react';
+import { Camera, Search, X, List, LayoutGrid, Folder, FolderOpen, ChevronRight, ArrowLeft, Plus } from 'lucide-react';
 import Dropdown from '../components/Dropdown.jsx';
 import { api } from '../lib/api.js';
 import { parseScore } from '../lib/noteUtils.js';
@@ -10,6 +10,7 @@ import NoteListRow from '../components/NoteListRow.jsx';
 import RecentStrip from '../components/RecentStrip.jsx';
 import SubjectSidebar from '../components/SubjectSidebar.jsx';
 import ErrorState from '../components/ErrorState.jsx';
+import CreateNoteSheet from '../components/CreateNoteSheet.jsx';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -206,15 +207,9 @@ function FileManagerView({ notes, ftResults }) {
         />
       ))}
 
-      {/* Séparateur si on a des dossiers ET des notes non-classées */}
+      {/* Séparateur simple si on a des dossiers ET des notes non-classées */}
       {hasFolders && unfiled.length > 0 && (
-        <div className="flex items-center gap-2 px-4 py-1
-          border-t border-black/[0.05] dark:border-white/[0.06]
-          bg-black/[0.02] dark:bg-white/[0.02]">
-          <span className="text-[9px] uppercase tracking-widest text-text-tertiary/60 font-semibold select-none">
-            Sans dossier
-          </span>
-        </div>
+        <div className="border-t border-black/[0.05] dark:border-white/[0.06]" />
       )}
 
       {unfiled.map((note, i) => (
@@ -243,6 +238,7 @@ export default function Home() {
   });
 
   const [activeSubject, setActiveSubject] = useState(null);
+  const [showCreate, setShowCreate]       = useState(false);
   const [search, setSearch]               = useState('');
   const [sort, setSort]                   = useState('date-desc');
   const [view, setView]                   = useState(
@@ -327,6 +323,7 @@ export default function Home() {
   const hasNotes    = !isLoading && notes.length > 0;
 
   return (
+    <>
     <div className="flex flex-col h-screen px-3 pt-3 pb-0 sm:px-5 sm:pt-5 lg:px-8 lg:pt-6 max-w-screen-2xl mx-auto" style={{ overflow: 'clip' }}>
 
       {/* ── Bande récents ── */}
@@ -433,7 +430,15 @@ export default function Home() {
                 <Camera size={28} className="text-accent" strokeWidth={1.5} />
               </div>
               <p className="text-text-primary font-medium mb-1">Aucun cours</p>
-              <p className="text-text-secondary text-sm">Capture ta première photo pour commencer</p>
+              <p className="text-text-secondary text-sm mb-4">Capture ta première photo pour commencer</p>
+              <button
+                onClick={() => setShowCreate(true)}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium
+                  bg-accent text-white hover:bg-accent/90 transition-colors"
+              >
+                <Plus size={14} />
+                Créer manuellement
+              </button>
             </div>
           )}
 
@@ -442,8 +447,8 @@ export default function Home() {
             <>
               {/* Header : titre + recherche + tri + toggle */}
               <div className="flex items-center gap-2 mb-3">
-                {/* Titre */}
-                <h2 className="flex items-center gap-1.5 text-sm font-semibold text-text-primary flex-shrink-0">
+                {/* Titre — masqué sur mobile */}
+                <h2 className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-text-primary flex-shrink-0">
                   {ftResults !== null ? 'Résultats' : folderTitle}
                   <span className="ml-0.5 text-text-tertiary font-normal text-xs">{filtered.length}</span>
                   {ftResults !== null && (
@@ -480,6 +485,18 @@ export default function Home() {
 
                 <SortDropdown value={sort} onChange={setSort} />
                 <ViewToggle view={view} onChange={setView} />
+
+                {/* Bouton nouveau cours */}
+                <button
+                  onClick={() => setShowCreate(true)}
+                  title="Créer un cours"
+                  aria-label="Créer un cours"
+                  className="flex-shrink-0 flex items-center gap-1 pl-2 pr-2.5 h-7 rounded-full text-[12px] font-medium
+                    bg-accent text-white hover:bg-accent/90 transition-colors"
+                >
+                  <Plus size={13} />
+                  <span className="hidden sm:inline">Nouveau</span>
+                </button>
               </div>
 
               {/* Empty state — aucun résultat après filtre */}
@@ -515,5 +532,9 @@ export default function Home() {
         </div>
       </div>
     </div>
+
+      {/* Modal création manuelle */}
+      {showCreate && <CreateNoteSheet onClose={() => setShowCreate(false)} />}
+    </>
   );
 }

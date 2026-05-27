@@ -1,8 +1,9 @@
 // frontend/src/components/NoteListRow.jsx
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { FolderOpen, MoreHorizontal, Trash2 } from 'lucide-react';
+import { FolderOpen, MoreHorizontal, Trash2, FolderInput } from 'lucide-react';
 import { parseScore, scoreColor, subjectColor, subjectColorStyle, subjectDotColor, relativeDate } from '../lib/noteUtils.js';
 import SubjectEditor from './SubjectEditor.jsx';
 import MoveNoteSheet from './MoveNoteSheet.jsx';
@@ -21,9 +22,37 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
   const dot         = subjectDotColor(note.subject ?? '', subjectData?.color ?? null);
   const customStyle = subjectColorStyle(subjectData?.color ?? null);
 
-  const [editorRect, setEditorRect]   = useState(null);
-  const [showMove, setShowMove]       = useState(false);
+  const [editorRect, setEditorRect]       = useState(null);
+  const [showMove, setShowMove]           = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [showMenu, setShowMenu]           = useState(false);
+  const [menuPos, setMenuPos]             = useState({ top: 0, right: 0 });
+  const menuBtnRef                        = useRef(null);
+  const menuRef                           = useRef(null);
+
+  // Fermer le menu sur clic extérieur
+  useEffect(() => {
+    if (!showMenu) return;
+    function onDown(e) {
+      if (menuRef.current && !menuRef.current.contains(e.target)) setShowMenu(false);
+    }
+    document.addEventListener('mousedown', onDown);
+    document.addEventListener('touchstart', onDown);
+    return () => {
+      document.removeEventListener('mousedown', onDown);
+      document.removeEventListener('touchstart', onDown);
+    };
+  }, [showMenu]);
+
+  function openMenu(e) {
+    e.stopPropagation();
+    const rect = menuBtnRef.current.getBoundingClientRect();
+    setMenuPos({
+      top:   rect.bottom + 4,
+      right: window.innerWidth - rect.right,
+    });
+    setShowMenu(o => !o);
+  }
 
   // ── Swipe delete ────────────────────────────────────────────────────────────
   const touchStartX    = useRef(0);
@@ -97,6 +126,7 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
         style={{
           transform: `translateX(${swipeX}px)`,
           transition: isSwiping ? 'none' : 'transform 0.2s ease',
+          touchAction: 'pan-y',
         }}
         className="group relative flex items-center gap-3 px-4 py-2.5 cursor-pointer
           transition-colors duration-300 ease-out
@@ -171,11 +201,11 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
           )}
         </span>
 
-        {/* ⋯ Bouton déplacer */}
+        {/* ⋯ Menu contextuel */}
         <button
-          onClick={e => { e.stopPropagation(); setShowMove(true); }}
-          title="Déplacer"
-          aria-label="Déplacer la note"
+          ref={menuBtnRef}
+          onClick={openMenu}
+          aria-label="Actions"
           className="shrink-0 p-1.5 rounded-md text-text-tertiary
             opacity-100 md:opacity-0 md:group-hover:opacity-100
             hover:text-accent hover:bg-accent/10 transition-all duration-150"
@@ -183,6 +213,41 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
           <MoreHorizontal size={14} />
         </button>
       </div>
+
+      {/* Menu contextuel ⋯ — rendu via portal pour échapper à overflow-hidden */}
+      {showMenu && createPortal(
+        <div
+          ref={menuRef}
+          onClick={e => e.stopPropagation()}
+          style={{ position: 'fixed', top: menuPos.top, right: menuPos.right, zIndex: 9999 }}
+          className="w-36
+            bg-white dark:bg-neutral-800
+            border border-black/[0.08] dark:border-white/[0.08]
+            rounded-lg shadow-lg shadow-black/10 dark:shadow-black/40
+            overflow-hidden py-1"
+        >
+          <button
+            onClick={() => { setShowMenu(false); setShowMove(true); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[13px]
+              text-text-primary hover:bg-accent/10 hover:text-accent
+              transition-colors text-left"
+          >
+            <FolderInput size={13} className="shrink-0" />
+            Déplacer
+          </button>
+          <div className="mx-2 border-t border-black/[0.06] dark:border-white/[0.06]" />
+          <button
+            onClick={() => { setShowMenu(false); setConfirmDelete(true); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-[13px]
+              text-status-danger hover:bg-status-danger/10
+              transition-colors text-left"
+          >
+            <Trash2 size={13} className="shrink-0" />
+            Supprimer
+          </button>
+        </div>,
+        document.body,
+      )}
 
       {/* Sheet de déplacement */}
       {showMove && (

@@ -12,7 +12,14 @@ import SubjectIcon from '../../components/SubjectIcon.jsx';
 import { subjectIcon } from '../../lib/noteUtils.js';
 
 const PROMPT_OPTIONS = ['default'];
-const EMPTY_FORM = { name: '', levelId: '', prompt: 'default', outputFolder: '', emoji: '' };
+const EMPTY_FORM = { name: '', levelId: '', prompt: 'default', outputFolder: '', emoji: '', color: '' };
+
+// Palette de couleurs prédéfinies
+const COLOR_PALETTE = [
+  '#6e6ce8', '#60a5fa', '#34d399', '#f59e0b',
+  '#f472b6', '#22d3ee', '#f87171', '#a78bfa',
+  '#4ade80', '#fb923c', '#e879f9', '#94a3b8',
+];
 
 // ── Base d'emojis (sans doublons) ────────────────────────────────────────────
 const EMOJI_DATA = [
@@ -384,13 +391,73 @@ function InlineField({ label, value, onChange, placeholder }) {
   );
 }
 
+// ── Sélecteur de couleur ──────────────────────────────────────────────────────
+function ColorPickerField({ value, onChange }) {
+  const colorInputRef = useRef(null);
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[10px] uppercase tracking-wide text-text-tertiary font-medium">Couleur</label>
+      <div className="flex items-center gap-1.5 flex-wrap">
+        {COLOR_PALETTE.map(c => (
+          <button
+            key={c}
+            type="button"
+            onClick={() => onChange(value === c ? '' : c)}
+            title={c}
+            className={[
+              'w-5 h-5 rounded-full transition-transform shrink-0',
+              'hover:scale-110 focus:outline-none',
+              value === c ? 'ring-2 ring-offset-1 ring-offset-white dark:ring-offset-neutral-900 scale-110' : '',
+            ].join(' ')}
+            style={{ background: c, '--tw-ring-color': c }}
+          />
+        ))}
+        {/* Bouton custom color */}
+        <button
+          type="button"
+          title="Couleur personnalisée"
+          onClick={() => colorInputRef.current?.click()}
+          className={[
+            'w-5 h-5 rounded-full border-2 border-dashed border-black/20 dark:border-white/20',
+            'flex items-center justify-center text-[9px] text-text-tertiary hover:border-accent/60 transition-colors shrink-0',
+            value && !COLOR_PALETTE.includes(value) ? 'ring-2 ring-offset-1 ring-offset-white dark:ring-offset-neutral-900' : '',
+          ].join(' ')}
+          style={value && !COLOR_PALETTE.includes(value) ? { background: value + '44', ringColor: value } : {}}
+        >
+          +
+        </button>
+        <input
+          ref={colorInputRef}
+          type="color"
+          value={value || '#6e6ce8'}
+          onChange={e => onChange(e.target.value)}
+          className="sr-only"
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange('')}
+            title="Retirer la couleur"
+            className="text-[10px] text-text-tertiary hover:text-status-danger transition-colors ml-1"
+          >
+            <X size={11} />
+          </button>
+        )}
+        {value && (
+          <span className="text-[10px] text-text-tertiary font-mono">{value}</span>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── Carte matière (lecture + édition inline) ──────────────────────────────────
 function SubjectCard({ subject, levels, onPatch, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState({});
 
   function startEdit() {
-    setDraft({ name: subject.name, outputFolder: subject.outputFolder, prompt: subject.prompt, emoji: subject.emoji ?? '' });
+    setDraft({ name: subject.name, outputFolder: subject.outputFolder, prompt: subject.prompt, emoji: subject.emoji ?? '', color: subject.color ?? '' });
     setEditing(true);
   }
   function cancelEdit() { setEditing(false); }
@@ -413,9 +480,17 @@ function SubjectCard({ subject, levels, onPatch, onDelete }) {
           onChange={v => editing ? df('emoji')(v) : onPatch(subject.id, { emoji: v })}
         />
         <div className="flex-1 min-w-0">
-          <p className="text-[15px] font-medium text-text-primary truncate">{subject.name}</p>
+          <div className="flex items-center gap-1.5">
+            {subject.color && (
+              <span
+                className="w-2.5 h-2.5 rounded-full shrink-0"
+                style={{ background: subject.color }}
+              />
+            )}
+            <p className="text-[15px] font-medium text-text-primary truncate">{subject.name}</p>
+          </div>
           <p className="text-xs text-text-tertiary mt-0.5">
-            {level?.name ?? '—'} · {subject.prompt} · {subject.outputFolder}
+            {level?.name ?? '·'} · {subject.prompt} · {subject.outputFolder}
           </p>
         </div>
         {!editing && (
@@ -451,6 +526,7 @@ function SubjectCard({ subject, levels, onPatch, onDelete }) {
               className={dropdownClass}
             />
           </div>
+          <ColorPickerField value={draft.color ?? ''} onChange={df('color')} />
           <div className="flex gap-2 pt-1">
             <button
               onClick={save}
@@ -608,6 +684,11 @@ export default function SubjectsManager() {
                 text-text-primary placeholder:text-text-tertiary
                 focus:outline-none focus:border-accent/40 transition-colors"
             />
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm text-text-secondary">Couleur</label>
+            <ColorPickerField value={form.color} onChange={v => setForm(f => ({ ...f, color: v }))} />
           </div>
 
           <Button

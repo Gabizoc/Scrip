@@ -33,10 +33,24 @@ export function subjectColor(name = '') {
 
 /** Couleur CSS hex du dot matière (pour les pills) */
 const DOT_COLORS = ['#7c7aff','#60a5fa','#34d399','#f59e0b','#f472b6','#22d3ee'];
-export function subjectDotColor(name = '') {
+export function subjectDotColor(name = '', hex = null) {
+  if (hex) return hex;
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
   return DOT_COLORS[h % DOT_COLORS.length];
+}
+
+/**
+ * Props inline pour le badge matière quand une couleur custom est définie.
+ * Retourne null si pas de couleur → utiliser subjectColor() (Tailwind classes).
+ */
+export function subjectColorStyle(hex = null) {
+  if (!hex) return null;
+  return {
+    background: hex + '22',
+    color: hex,
+    border: `1px solid ${hex}44`,
+  };
 }
 
 /** Emoji déterministe pour une matière */

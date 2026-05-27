@@ -36,7 +36,7 @@ function RecentPill({ note }) {
           style={{ background: dot }}
         />
         <span className="text-[9px] text-text-tertiary truncate flex-1">
-          {note.subject ?? '—'}
+          {note.subject ?? '·'}
         </span>
         {score != null && (
           <span className={`text-[9px] font-bold font-mono flex-shrink-0 ${scoreColor(score)}`}>
