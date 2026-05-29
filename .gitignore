@@ -7,5 +7,19 @@ node_modules/
 logs/
 frontend/dist/
 backend/data/db.json
+backend/data/sessions.json
+backend/data/*.json
 pnpm-lock.yaml
 .claude/
+
+# Vault Obsidian — données locales, ne pas versionner
+vault/
+
+# Artefacts de debug pipeline
+*/_debug/
+
+# Fichiers de travail temporaires
+backend/_repro.mjs
+
+# Brainstorming superpowers
+.superpowers/
