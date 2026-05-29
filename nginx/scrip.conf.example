@@ -31,15 +31,12 @@ server {
     # ── Backend API ───────────────────────────────────────────────────────────
     # ^~ empêche les regex (ex: *.jpg) d'intercepter les URLs /api/
     location ^~ /api/ {
-        proxy_pass         http://127.0.0.1:5001;  # PORT = valeur de PORT dans .env
+        proxy_pass         http://localhost:7001/api/;  # PORT = valeur de PORT dans ecosystem.config.js
         proxy_http_version 1.1;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
         proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
         proxy_set_header   X-Forwarded-Proto $scheme;
-
-        # Nécessaire pour les cookies de session (httpOnly secure)
-        proxy_set_header   Cookie            $http_cookie;
 
         # Timeout long pour le pipeline IA
         proxy_read_timeout 120s;
@@ -49,7 +46,7 @@ server {
 
     # ── WebDAV (sync Obsidian) ────────────────────────────────────────────────
     location ^~ /webdav/ {
-        proxy_pass         http://127.0.0.1:5001;
+        proxy_pass         http://localhost:7001/webdav/;
         proxy_http_version 1.1;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
@@ -61,11 +58,21 @@ server {
 
         client_max_body_size 50m;
     }
+
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
 
 # ── Redirection HTTP → HTTPS ──────────────────────────────────────────────────
 server {
+    if ($host = YOUR_DOMAIN) {
+        return 301 https://$host$request_uri;
+    } # managed by Certbot
+
     listen 80;
     server_name YOUR_DOMAIN;
-    return 301 https://$host$request_uri;
+    return 404; # managed by Certbot
 }
