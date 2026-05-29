@@ -63,12 +63,14 @@ ingestRouter.post('/', upload.array('photos', 10), async (req, res) => {
   const level = db.data.levels.find(l => l.id === (levelId ?? subject.levelId));
   if (!level) { cleanupFiles(req.files); return res.status(400).json({ error: 'niveau introuvable' }); }
 
-  const mistralKey = process.env.MISTRAL_API_KEY;
+  const mistralKey    = process.env.MISTRAL_API_KEY;
   const openrouterKey = process.env.OPENROUTER_API_KEY;
-  const nvidiaKey = process.env.NVIDIA_API_KEY;
-  const googleKey = process.env.GOOGLE_API_KEY;
-  if (!mistralKey) { cleanupFiles(req.files); return res.status(500).json({ error: 'MISTRAL_API_KEY manquante dans le .env' }); }
-  if (PIPELINE_MODE === 'google' && !googleKey) { cleanupFiles(req.files); return res.status(500).json({ error: 'GOOGLE_API_KEY manquante dans le .env (requis pour PIPELINE_MODE=google)' }); }
+  const nvidiaKey     = process.env.NVIDIA_API_KEY;
+  const googleKey     = process.env.GOOGLE_API_KEY;
+
+  if (PIPELINE_MODE === 'google'  && !googleKey)    { cleanupFiles(req.files); return res.status(500).json({ error: 'GOOGLE_API_KEY manquante dans le .env' }); }
+  if (PIPELINE_MODE === 'ocr'     && !mistralKey)   { cleanupFiles(req.files); return res.status(500).json({ error: 'MISTRAL_API_KEY manquante dans le .env (requis pour PIPELINE_MODE=ocr)' }); }
+  if (PIPELINE_MODE === 'vision'  && !openrouterKey){ cleanupFiles(req.files); return res.status(500).json({ error: 'OPENROUTER_API_KEY manquante dans le .env (requis pour PIPELINE_MODE=vision)' }); }
 
   const jobId = createJob();
   res.status(202).json({ jobId });
