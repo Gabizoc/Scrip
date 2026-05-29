@@ -11,6 +11,7 @@ backend/data/sessions.json
 backend/data/*.json
 pnpm-lock.yaml
 .claude/
+docs/
 
 # Vault Obsidian — données locales, ne pas versionner
 vault/

@@ -1,21 +1,22 @@
-# nginx/scrip.conf
-# Copier vers /etc/nginx/sites-available/scrip
-# Puis : ln -s /etc/nginx/sites-available/scrip /etc/nginx/sites-enabled/scrip
-# Recharger : nginx -t && systemctl reload nginx
+# nginx/scrip.conf.example
+# 1. Copier : cp nginx/scrip.conf.example /etc/nginx/sites-available/scrip
+# 2. Adapter les valeurs YOUR_* ci-dessous
+# 3. Activer : ln -s /etc/nginx/sites-available/scrip /etc/nginx/sites-enabled/scrip
+# 4. Recharger : nginx -t && systemctl reload nginx
 
 server {
     listen 443 ssl http2;
-    server_name scrip.gabizoc.fr;
+    server_name YOUR_DOMAIN;  # ex: scrip.example.com
 
-    ssl_certificate     /etc/letsencrypt/live/scrip.gabizoc.fr/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/scrip.gabizoc.fr/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/YOUR_DOMAIN/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/YOUR_DOMAIN/privkey.pem;
 
     ssl_protocols       TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
     ssl_session_cache   shared:SSL:10m;
 
     # ── Frontend React (Vite build) ───────────────────────────────────────────
-    root /home/scrip/app/frontend/dist;
+    root YOUR_APP_PATH/frontend/dist;  # ex: /var/www/scrip/frontend/dist
 
     location / {
         try_files $uri $uri/ /index.html;
@@ -30,7 +31,7 @@ server {
     # ── Backend API ───────────────────────────────────────────────────────────
     # ^~ empêche les regex (ex: *.jpg) d'intercepter les URLs /api/
     location ^~ /api/ {
-        proxy_pass         http://127.0.0.1:5001;
+        proxy_pass         http://127.0.0.1:5001;  # PORT = valeur de PORT dans .env
         proxy_http_version 1.1;
         proxy_set_header   Host              $host;
         proxy_set_header   X-Real-IP         $remote_addr;
@@ -65,6 +66,6 @@ server {
 # ── Redirection HTTP → HTTPS ──────────────────────────────────────────────────
 server {
     listen 80;
-    server_name scrip.gabizoc.fr;
+    server_name YOUR_DOMAIN;
     return 301 https://$host$request_uri;
 }
