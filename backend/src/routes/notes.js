@@ -52,12 +52,42 @@ function vaultSearchRoot(settings) {
   return sub ? path.join(base, sub) : base;
 }
 
+const SKIP_DIRS = new Set(['.obsidian', '_sources', '_audit', '_debug', '.git']);
+
+/** Retourne tous les chemins .md dans le vault (hors dossiers système). */
+function walkVault(dir, results = []) {
+  let entries;
+  try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return results; }
+  for (const e of entries) {
+    const full = path.join(dir, e.name);
+    if (e.isDirectory() && !e.name.startsWith('.') && !SKIP_DIRS.has(e.name)) {
+      walkVault(full, results);
+    } else if (e.isFile() && e.name.endsWith('.md')) {
+      results.push(full);
+    }
+  }
+  return results;
+}
+
+/** Essaie de deviner subjectId/levelId depuis le chemin relatif vault/[niveau]/[matière]/note.md */
+function inferFromPath(filePath, searchRoot, levels, subjects) {
+  const rel   = path.relative(searchRoot, filePath);
+  const parts = rel.split(path.sep);
+  const levelName   = parts.length > 1 ? parts[0]   : null;
+  const subjectName = parts.length > 2 ? parts[1]   : null;
+  const levelId   = levelName   ? (levels.find(l   => l.name === levelName)?.id   ?? null) : null;
+  const subjectId = subjectName ? (subjects.find(s => s.name === subjectName)?.id ?? null) : null;
+  return { levelId, subjectId };
+}
+
 notesRouter.get('/', async (req, res) => {
   await db.read();
 
   let dirty = false;
+  const { levels, subjects } = db.data;
   const searchRoot = vaultSearchRoot(db.data.settings);
 
+  // ── 1. Mettre à jour les notes existantes ──────────────────────────────────
   const synced = db.data.notes.map(note => {
     if (!note.path) return note;
 
@@ -68,7 +98,7 @@ notesRouter.get('/', async (req, res) => {
         note = { ...note, path: found };
         dirty = true;
       } else {
-        return null; // supprimé dans Obsidian — on le retire de la liste
+        return null; // supprimé dans Obsidian — retiré de la liste
       }
     }
 
@@ -81,10 +111,40 @@ notesRouter.get('/', async (req, res) => {
         note = { ...note, fileMtime: mtime, ...(newTitle ? { title: newTitle } : {}) };
         dirty = true;
       }
-    } catch { /* fichier illisible, on garde l'entrée telle quelle */ }
+    } catch { /* fichier illisible */ }
 
     return note;
   }).filter(Boolean);
+
+  // ── 2. Découvrir les nouveaux fichiers ajoutés depuis Obsidian ─────────────
+  if (fs.existsSync(searchRoot)) {
+    const knownPaths = new Set(synced.map(n => n.path));
+    const allFiles   = walkVault(searchRoot);
+
+    for (const filePath of allFiles) {
+      if (knownPaths.has(filePath)) continue;
+
+      try {
+        const content = fs.readFileSync(filePath, 'utf8');
+        const title   = extractTitle(content) || path.basename(filePath, '.md');
+        const stat    = fs.statSync(filePath);
+        const { levelId, subjectId } = inferFromPath(filePath, searchRoot, levels, subjects);
+
+        const newNote = {
+          id:        randomUUID(),
+          title,
+          path:      filePath,
+          subjectId,
+          levelId,
+          createdAt: stat.mtime.toISOString(),
+          fileMtime: stat.mtimeMs,
+          source:    'vault-import',
+        };
+        synced.push(newNote);
+        dirty = true;
+      } catch { /* skip */ }
+    }
+  }
 
   if (dirty) {
     db.data.notes = synced;
