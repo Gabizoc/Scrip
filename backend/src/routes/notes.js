@@ -3,20 +3,103 @@ import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { db } from '../db.js';
+import { db, resolveVaultPath } from '../db.js';
+import { buildTrashEntry } from '../trash.js';
 
 export const notesRouter = Router();
 
+// ── Utilitaires vault-sync ──────────────────────────────────────────────────
+
+/** Extrait le titre d'un fichier markdown : frontmatter title > premier H1 > null */
+function extractTitle(markdown) {
+  const fm = markdown.match(/^---\n([\s\S]*?)\n---/);
+  if (fm) {
+    const t = fm[1].match(/^title:\s*(.+)$/m);
+    if (t) return t[1].trim().replace(/^["']|["']$/g, '');
+  }
+  const h1 = markdown.match(/^#\s+(.+)$/m);
+  return h1 ? h1[1].trim() : null;
+}
+
+/** Cherche dans le vault un .md dont le titre H1/frontmatter correspond à note.title.
+ *  Utilisé quand le fichier a été renommé dans Obsidian. */
+function findByTitle(searchRoot, title) {
+  if (!title || !fs.existsSync(searchRoot)) return null;
+  const walk = (dir) => {
+    let entries;
+    try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return null; }
+    for (const e of entries) {
+      const full = path.join(dir, e.name);
+      if (e.isDirectory() && !e.name.startsWith('.') && !e.name.startsWith('_')) {
+        const found = walk(full);
+        if (found) return found;
+      } else if (e.isFile() && e.name.endsWith('.md')) {
+        try {
+          const t = extractTitle(fs.readFileSync(full, 'utf8'));
+          if (t === title) return full;
+        } catch { /* skip */ }
+      }
+    }
+    return null;
+  };
+  return walk(searchRoot);
+}
+
+/** Résout la racine de recherche vault (vaultPath + syncFolder optionnel). */
+function vaultSearchRoot(settings) {
+  const base = resolveVaultPath(settings.vaultPath);
+  const sub  = (settings.syncFolder ?? '').trim();
+  return sub ? path.join(base, sub) : base;
+}
+
 notesRouter.get('/', async (req, res) => {
   await db.read();
-  const notes = [...db.data.notes]
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .map(note => ({
-      ...note,
-      subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? note.subjectId,
-      level:   db.data.levels.find(l => l.id === note.levelId)?.name   ?? note.levelId,
-    }));
-  res.json(notes);
+
+  let dirty = false;
+  const searchRoot = vaultSearchRoot(db.data.settings);
+
+  const synced = db.data.notes.map(note => {
+    if (!note.path) return note;
+
+    // Fichier introuvable → chercher par titre dans le vault (renommage Obsidian)
+    if (!fs.existsSync(note.path)) {
+      const found = findByTitle(searchRoot, note.title);
+      if (found) {
+        note = { ...note, path: found };
+        dirty = true;
+      } else {
+        return null; // supprimé dans Obsidian — on le retire de la liste
+      }
+    }
+
+    // Mtime : si le fichier a changé depuis le dernier check, mettre à jour le titre
+    try {
+      const mtime = fs.statSync(note.path).mtimeMs;
+      if (!note.fileMtime || mtime > note.fileMtime) {
+        const content  = fs.readFileSync(note.path, 'utf8');
+        const newTitle = extractTitle(content);
+        note = { ...note, fileMtime: mtime, ...(newTitle ? { title: newTitle } : {}) };
+        dirty = true;
+      }
+    } catch { /* fichier illisible, on garde l'entrée telle quelle */ }
+
+    return note;
+  }).filter(Boolean);
+
+  if (dirty) {
+    db.data.notes = synced;
+    await db.write();
+  }
+
+  res.json(
+    synced
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+      .map(note => ({
+        ...note,
+        subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? note.subjectId,
+        level:   db.data.levels.find(l => l.id === note.levelId)?.name   ?? note.levelId,
+      }))
+  );
 });
 
 // GET /notes/search?q=xxx — recherche full-text dans les titres et le contenu markdown
@@ -77,6 +160,14 @@ notesRouter.get('/:id', async (req, res) => {
   } else {
     return res.status(404).json({ error: 'fichier introuvable sur disque', note });
   }
+
+  // Sync titre depuis le fichier (au cas où il a changé dans Obsidian)
+  const freshTitle = extractTitle(markdown);
+  if (freshTitle && freshTitle !== note.title) {
+    note.title = freshTitle;
+    await db.write();
+  }
+
   // Enrichir avec les noms lisibles (matière + niveau)
   const subject = db.data.subjects.find(s => s.id === note.subjectId);
   const level   = db.data.levels.find(l => l.id === note.levelId);
@@ -121,7 +212,7 @@ notesRouter.post('/', async (req, res) => {
   const filename = `${slug}-${id.slice(0, 8)}.md`;
 
   // Chemin dans le vault
-  const vaultPath = db.data.settings.vaultPath;
+  const vaultPath = resolveVaultPath(db.data.settings.vaultPath);
   fs.mkdirSync(vaultPath, { recursive: true });
   const filePath = path.join(vaultPath, filename);
 
@@ -235,19 +326,16 @@ notesRouter.get('/:id/sources/:filename', async (req, res) => {
   res.sendFile(filePath);
 });
 
+// DELETE /notes/:id — suppression douce : déplace la note vers la corbeille
+// (<vault>/.trash/) au lieu de l'effacer. Purge auto après trashRetentionDays.
 notesRouter.delete('/:id', async (req, res) => {
   await db.read();
   const note = db.data.notes.find(n => n.id === req.params.id);
   if (!note) return res.status(404).json({ error: 'note introuvable' });
-  if (fs.existsSync(note.path)) fs.unlinkSync(note.path);
-  if (note.auditPath && fs.existsSync(note.auditPath)) {
-    fs.unlinkSync(note.auditPath);
-  }
-  // Supprime le dossier photos sources s'il existe
-  if (note.sourcePaths?.length) {
-    const sourcesDir = path.dirname(note.sourcePaths[0]);
-    if (fs.existsSync(sourcesDir)) fs.rmSync(sourcesDir, { recursive: true, force: true });
-  }
+
+  const entry = buildTrashEntry(note);
+  db.data.trash = db.data.trash ?? [];
+  db.data.trash.push(entry);
   db.data.notes = db.data.notes.filter(n => n.id !== req.params.id);
   await db.write();
   res.status(204).end();
