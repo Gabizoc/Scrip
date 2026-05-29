@@ -1,4 +1,3 @@
-// frontend/src/components/ThemeToggle.jsx
 import { Moon, Sun, Monitor } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme.js';
 

@@ -1,4 +1,3 @@
-// frontend/src/pages/Setup.jsx
 import { useState } from 'react';
 import { authApi } from '../lib/auth.js';
 import GlassCard from '../components/GlassCard.jsx';

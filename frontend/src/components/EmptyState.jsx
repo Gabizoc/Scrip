@@ -1,4 +1,3 @@
-// frontend/src/components/EmptyState.jsx
 const maskStyle = {
   maskImage: 'radial-gradient(ellipse 82% 78% at 50% 48%, black 42%, transparent 78%)',
   WebkitMaskImage: 'radial-gradient(ellipse 82% 78% at 50% 48%, black 42%, transparent 78%)',

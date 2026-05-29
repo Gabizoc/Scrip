@@ -1,4 +1,3 @@
-// frontend/src/lib/auth.js
 
 async function authRequest(method, path, body) {
   const opts = {

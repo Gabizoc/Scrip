@@ -1,4 +1,3 @@
-// backend/src/pipeline/score.js
 //
 // Score le niveau de français d'une transcription OCR/IA sur 100.
 // Souple par conception : noms propres, termes techniques et abréviations

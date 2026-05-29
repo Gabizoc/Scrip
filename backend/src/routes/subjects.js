@@ -1,4 +1,3 @@
-// backend/src/routes/subjects.js
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';

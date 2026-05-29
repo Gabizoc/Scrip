@@ -1,4 +1,3 @@
-// backend/src/session-store.js
 //
 // Store de sessions persistant sur disque (JSON), pour que la connexion survive
 // aux redémarrages du backend — le MemoryStore par défaut d'express-session perd

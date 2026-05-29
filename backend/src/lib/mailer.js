@@ -1,4 +1,3 @@
-// backend/src/lib/mailer.js
 import nodemailer from 'nodemailer';
 
 /**

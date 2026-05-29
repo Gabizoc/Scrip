@@ -1,4 +1,3 @@
-// frontend/src/components/CreateNoteSheet.jsx
 import { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';

@@ -1,4 +1,3 @@
-// frontend/src/components/FAB.jsx
 import { Camera } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useNavigate } from 'react-router-dom';

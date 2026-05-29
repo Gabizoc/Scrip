@@ -1,4 +1,3 @@
-// frontend/src/components/BottomSheet.jsx
 import { motion, AnimatePresence } from 'motion/react';
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 32, mass: 1 };

@@ -1,4 +1,3 @@
-// backend/src/trash.js
 //
 // Corbeille : la suppression d'une note ne l'efface pas définitivement.
 // Les fichiers (markdown, audit, photos sources) sont déplacés dans

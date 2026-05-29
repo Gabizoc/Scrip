@@ -1,4 +1,3 @@
-// frontend/src/lib/noteUtils.js
 
 /** Parse "98/100" ou 98 → entier, ou null */
 export function parseScore(raw) {

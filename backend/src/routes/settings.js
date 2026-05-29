@@ -1,4 +1,3 @@
-// backend/src/routes/settings.js
 import { Router } from 'express';
 import bcrypt from 'bcryptjs';
 import { db } from '../db.js';

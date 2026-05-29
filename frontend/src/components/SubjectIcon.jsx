@@ -1,4 +1,3 @@
-// frontend/src/components/SubjectIcon.jsx
 // Affiche soit un emoji, soit une image (data URL) selon la valeur stockée
 
 export default function SubjectIcon({ value, fallback, size = 16, className = '' }) {

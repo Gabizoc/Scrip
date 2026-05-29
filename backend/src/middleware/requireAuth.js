@@ -1,4 +1,3 @@
-// backend/src/middleware/requireAuth.js
 
 /**
  * Middleware Express : vérifie que la session contient loggedIn === true.

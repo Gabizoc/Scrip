@@ -1,4 +1,3 @@
-// backend/src/routes/notes.js
 import { Router } from 'express';
 import fs from 'node:fs';
 import path from 'node:path';

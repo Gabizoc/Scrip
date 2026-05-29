@@ -1,4 +1,3 @@
-// backend/src/routes/ingest.js
 import { Router } from 'express';
 import multer from 'multer';
 import path from 'node:path';
@@ -19,9 +18,11 @@ import { saveDebugLog } from '../pipeline/debug-log.js';
 import { createJob, getJob, emitStep, emitDone, emitError, emitWarning } from '../jobs.js';
 import { summarizeNote } from '../pipeline/summarize.js';
 
-// PIPELINE_MODE=vision → LLM multimodal direct (1 étape)
-// PIPELINE_MODE=ocr    → pixtral OCR + LLM texte (2 étapes, défaut)
-const PIPELINE_MODE = process.env.PIPELINE_MODE ?? 'vision';
+// PIPELINE_MODE=google → Gemini lit les images directement (defaut, recommande)
+// PIPELINE_MODE=ollama → modele vision via Ollama local
+// PIPELINE_MODE=vision → LLM multimodal via OpenRouter/NVIDIA
+// PIPELINE_MODE=ocr    → Mistral OCR + LLM texte (2 etapes)
+const PIPELINE_MODE = process.env.PIPELINE_MODE ?? 'google';
 const DEBUG_PIPELINE = process.env.DEBUG_PIPELINE === 'true';
 
 const upload = multer({ dest: path.join(os.tmpdir(), 'scrip-uploads') });

@@ -1,4 +1,3 @@
-// backend/src/routes/trash.js
 import { Router } from 'express';
 import { db } from '../db.js';
 import { restoreTrashFiles, deleteTrashFiles } from '../trash.js';

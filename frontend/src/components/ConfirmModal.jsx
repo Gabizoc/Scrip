@@ -1,4 +1,3 @@
-// frontend/src/components/ConfirmModal.jsx
 import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';

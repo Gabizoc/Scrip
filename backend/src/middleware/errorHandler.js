@@ -1,4 +1,3 @@
-// backend/src/middleware/errorHandler.js
 
 // eslint-disable-next-line no-unused-vars
 export function errorHandler(err, req, res, next) {

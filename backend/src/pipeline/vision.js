@@ -1,4 +1,3 @@
-// backend/src/pipeline/vision.js
 //
 // Pipeline VISION — mode alternatif à OCR + structuration.
 // Envoie les images directement à un LLM multimodal avec le prompt de structuration.

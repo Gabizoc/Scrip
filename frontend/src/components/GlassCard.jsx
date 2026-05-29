@@ -1,4 +1,3 @@
-// frontend/src/components/GlassCard.jsx
 
 export default function GlassCard({ children, className = '', ...props }) {
   return (

@@ -1,4 +1,3 @@
-// backend/src/pipeline/google-vision.js
 //
 // Pipeline Google Gemini — lit les images directement via l'API Google AI Studio.
 // Gemini est particulièrement bon sur les tableaux manuscrits et le français.

@@ -1,4 +1,3 @@
-// frontend/src/components/BottomNav.jsx
 import { NavLink, useLocation } from 'react-router-dom';
 import { BookOpen, Camera, Settings } from 'lucide-react';
 

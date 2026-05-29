@@ -1,4 +1,3 @@
-// frontend/src/App.jsx
 import { useQuery }      from '@tanstack/react-query';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SubjectsProvider } from './lib/SubjectsContext.jsx';

@@ -1,4 +1,3 @@
-// frontend/src/components/NoteListRow.jsx
 import { useState, useRef, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';

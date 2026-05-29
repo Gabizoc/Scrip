@@ -1,4 +1,3 @@
-// backend/src/pipeline/format-rules.js
 //
 // Formateur Markdown basé sur des règles — fallback quand le LLM hallucine.
 // Principe : ne toucher QUE à la mise en forme, jamais au contenu.

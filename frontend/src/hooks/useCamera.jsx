@@ -1,4 +1,3 @@
-// frontend/src/hooks/useCamera.jsx
 import { useRef, useCallback } from 'react';
 
 /**

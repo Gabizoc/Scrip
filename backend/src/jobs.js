@@ -1,4 +1,3 @@
-// backend/src/jobs.js
 import { EventEmitter } from 'node:events';
 import { randomUUID } from 'node:crypto';
 

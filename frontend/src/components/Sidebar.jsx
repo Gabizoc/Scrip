@@ -1,4 +1,3 @@
-// frontend/src/components/Sidebar.jsx
 import { NavLink, useLocation } from 'react-router-dom';
 import { BookOpen, Camera, Settings, Moon, Sun, Monitor } from 'lucide-react';
 import { useTheme } from '../hooks/useTheme.js';

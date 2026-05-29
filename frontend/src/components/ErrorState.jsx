@@ -1,4 +1,3 @@
-// frontend/src/components/ErrorState.jsx
 import { WifiOff } from 'lucide-react';
 
 export default function ErrorState({ message = 'Une erreur est survenue.', onRetry }) {

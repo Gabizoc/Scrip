@@ -1,4 +1,3 @@
-// backend/src/routes/levels.js
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import { db } from '../db.js';

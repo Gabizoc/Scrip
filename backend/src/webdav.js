@@ -1,4 +1,3 @@
-// backend/src/webdav.js
 import webdavPkg from 'webdav-server';
 import bcrypt from 'bcryptjs';
 import { db, resolveVaultPath } from './db.js';

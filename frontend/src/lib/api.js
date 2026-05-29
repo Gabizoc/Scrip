@@ -1,4 +1,3 @@
-// frontend/src/lib/api.js
 
 /**
  * Client HTTP vers l'API backend.

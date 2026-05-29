@@ -1,4 +1,3 @@
-// backend/src/db.js
 import { Low } from 'lowdb';
 import { JSONFile } from 'lowdb/node';
 import path from 'node:path';

@@ -1,4 +1,3 @@
-// frontend/src/components/Button.jsx
 
 const VARIANTS = {
   primary:   'bg-accent text-white font-semibold shadow-[0_4px_16px_rgba(110,108,232,0.35)] hover:shadow-[0_6px_24px_rgba(110,108,232,0.5)] hover:bg-accent/90',

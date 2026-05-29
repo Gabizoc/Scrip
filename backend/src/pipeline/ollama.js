@@ -1,4 +1,3 @@
-// backend/src/pipeline/ollama.js
 //
 // Pipeline Ollama — envoie les images directement à un modèle multimodal Ollama.
 // Compatible avec tout modèle vision disponible sur Ollama (ex: gemini3-flash-preview).

@@ -1,4 +1,3 @@
-// backend/prompts/default.js
 
 export const DEFAULT_SYSTEM_PROMPT = `Tu es un outil de mise en forme Markdown pour notes de cours lycée.
 Tu reçois du texte OCR brut entre balises <ocr>.
