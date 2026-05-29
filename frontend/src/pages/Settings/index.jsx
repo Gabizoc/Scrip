@@ -12,6 +12,7 @@ import Dropdown from '../../components/Dropdown.jsx';
 const NAV_ITEMS = [
   { label: 'Gérer les niveaux',  path: '/settings/levels' },
   { label: 'Gérer les matières', path: '/settings/subjects' },
+  { label: 'Corbeille',          path: '/settings/trash' },
 ];
 
 /** Copie du texte dans le presse-papiers avec feedback visuel */
@@ -187,7 +188,7 @@ export default function Settings() {
               bg-black/[0.03] dark:bg-white/[0.04]
               border border-black/[0.08] dark:border-white/[0.06]
               text-text-primary focus:outline-none focus:border-accent/50"
-            placeholder="/home/scrip/vault"
+            placeholder="vault  (relatif à la racine du projet)"
           />
         </GlassCard>
 

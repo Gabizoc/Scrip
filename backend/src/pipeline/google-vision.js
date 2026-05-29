@@ -250,8 +250,6 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
   // ── 1. Ollama (gemma) — validation croisée en parallèle, pas de rate limit ───
   // Désactivé si OLLAMA_VALIDATION=false dans le .env (ex: serveur sans Ollama installé)
   const ollamaEnabled = (process.env.OLLAMA_VALIDATION ?? 'true') !== 'false';
-  // Passe les chemins de fichiers (pas les images déjà encodées) — callOllamaRaw
-  // crée ses propres versions réduites (800px) pour éviter les timeouts.
   const litePromise = ollamaEnabled
     ? callOllamaRaw(paths).catch(() => null)
     : Promise.resolve(null);

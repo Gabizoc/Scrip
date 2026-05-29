@@ -797,7 +797,7 @@ export default function Preview() {
       {confirmDelete && (
         <ConfirmModal
           title="Supprimer ce cours ?"
-          message={`« ${data?.note?.title} » sera définitivement supprimé.`}
+          message={`« ${data?.note?.title} » sera déplacé vers la corbeille. Vous pourrez le restaurer depuis Paramètres › Corbeille.`}
           confirmLabel="Supprimer"
           onConfirm={() => { setConfirmDelete(false); deleteNote.mutate(); }}
           onCancel={() => setConfirmDelete(false)}

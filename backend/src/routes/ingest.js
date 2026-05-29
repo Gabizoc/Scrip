@@ -5,7 +5,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import os from 'node:os';
 import { randomUUID } from 'node:crypto';
-import { db } from '../db.js';
+import { db, resolveVaultPath } from '../db.js';
 import { runOCR } from '../pipeline/ocr.js';
 import { structureContent } from '../pipeline/structure.js';
 import { runVisionPipeline } from '../pipeline/vision.js';
@@ -261,7 +261,7 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     : path.basename(files[0].originalname, path.extname(files[0].originalname));
 
   await db.read();
-  const vaultPath   = db.data.settings.vaultPath;
+  const vaultPath   = resolveVaultPath(db.data.settings.vaultPath);
   const syncFolder  = (db.data.settings.syncFolder ?? '').trim();
   // Sanitize et construit le chemin imbriqué : chaque segment est nettoyé individuellement
   const subfolderSegments = (subfolder ?? '')

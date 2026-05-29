@@ -1,7 +1,7 @@
 // backend/src/webdav.js
 import webdavPkg from 'webdav-server';
 import bcrypt from 'bcryptjs';
-import { db } from './db.js';
+import { db, resolveVaultPath } from './db.js';
 
 const { v2: webdav } = webdavPkg;
 
@@ -102,7 +102,7 @@ export function createWebdavMiddleware() {
       // On restaure le préfixe /webdav pour que les hrefs soient corrects.
       req.url = '/webdav' + (req.url || '/');
 
-      const server = await getWebdavServer(vaultPath);
+      const server = await getWebdavServer(resolveVaultPath(vaultPath));
       webdav.extensions.express('/webdav', server)(req, res, next);
     } catch (err) {
       next(err);

@@ -1,5 +1,6 @@
 // frontend/src/pages/Home.jsx
 import { useState, useMemo, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Camera, Search, X, List, LayoutGrid, Folder, FolderOpen, ChevronRight, ArrowLeft, Plus } from 'lucide-react';
 import Dropdown from '../components/Dropdown.jsx';
@@ -237,6 +238,7 @@ export default function Home() {
     queryFn: () => api.getSubjects(),
   });
 
+  const navigate = useNavigate();
   const [activeSubject, setActiveSubject] = useState(null);
   const [showCreate, setShowCreate]       = useState(false);
   const [search, setSearch]               = useState('');
@@ -431,14 +433,25 @@ export default function Home() {
               </div>
               <p className="text-text-primary font-medium mb-1">Aucun cours</p>
               <p className="text-text-secondary text-sm mb-4">Capture ta première photo pour commencer</p>
-              <button
-                onClick={() => setShowCreate(true)}
-                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[13px] font-medium
-                  bg-accent text-white hover:bg-accent/90 transition-colors"
-              >
-                <Plus size={14} />
-                Créer manuellement
-              </button>
+              <div className="flex flex-col items-center gap-2.5">
+                <button
+                  onClick={() => navigate('/capture')}
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-full text-[13px] font-medium
+                    bg-accent text-white hover:bg-accent/90 transition-colors"
+                >
+                  <Camera size={14} />
+                  Scanner
+                </button>
+                <button
+                  onClick={() => setShowCreate(true)}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-medium
+                    text-text-secondary hover:text-text-primary
+                    hover:bg-black/[0.04] dark:hover:bg-white/[0.05] transition-colors"
+                >
+                  <Plus size={14} />
+                  Créer manuellement
+                </button>
+              </div>
             </div>
           )}
 

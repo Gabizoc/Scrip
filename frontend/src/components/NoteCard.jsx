@@ -140,7 +140,7 @@ export default function NoteCard({ note, index = 0 }) {
       {showDeleteModal && (
         <ConfirmModal
           title="Supprimer ce cours ?"
-          message={`« ${note.title} » sera définitivement supprimé.`}
+          message={`« ${note.title} » sera déplacé vers la corbeille. Vous pourrez le restaurer depuis Paramètres › Corbeille.`}
           confirmLabel="Supprimer"
           onConfirm={() => { setShowDeleteModal(false); deleteMutation.mutate(); }}
           onCancel={() => setShowDeleteModal(false)}

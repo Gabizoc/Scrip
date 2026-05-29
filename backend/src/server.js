@@ -20,10 +20,24 @@ if (missing.length > 0) {
 // Imports dynamiques — garantit que .env est chargé avant que les modules lisent process.env
 const { createApp } = await import('./app.js');
 const { initDb } = await import('./db.js');
+const { purgeExpiredTrash } = await import('./trash.js');
 
 const PORT = process.env.PORT ?? 5001;
 
 await initDb();
+
+// Purge de la corbeille : au démarrage puis toutes les 12h
+async function runPurge() {
+  try {
+    const n = await purgeExpiredTrash();
+    if (n > 0) console.log(`[scrip] corbeille : ${n} note(s) purgée(s) définitivement`);
+  } catch (err) {
+    console.error(`[scrip] erreur purge corbeille (ignorée) : ${err.message}`);
+  }
+}
+await runPurge();
+setInterval(runPurge, 12 * 60 * 60 * 1000).unref();
+
 const app = createApp();
 app.listen(PORT, () => {
   console.log(`[scrip-backend] http://localhost:${PORT}`);

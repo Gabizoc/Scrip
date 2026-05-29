@@ -11,7 +11,7 @@ import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage, prepareImageSmall } from './ocr.js';
 import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
 
-const DEFAULT_BASE_URL = 'http://localhost:11434';
+const DEFAULT_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_MODEL    = 'gemma4:31b-cloud';
 
 const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
@@ -120,38 +120,49 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     return { role: msg.role, content: texts, ...(images.length ? { images } : {}) };
   });
 
+  // Streaming : on lit la réponse token par token. Le timeout est une limite
+  // d'INACTIVITÉ réarmée à chaque chunk reçu (pas un plafond total) — un cours
+  // multi-pages peut donc générer plusieurs minutes sans être coupé tant que le
+  // modèle émet des tokens. Évite aussi le headersTimeout d'undici (les en-têtes
+  // arrivent immédiatement en streaming, contrairement à stream:false).
+  const imageCount   = ollamaMessages.reduce((n, m) => n + (m.images?.length ?? 0), 0);
+  const idleTimeoutMs = Math.min(180_000 + imageCount * 30_000, 600_000);
+
   const body = JSON.stringify({
     model,
     options: { temperature: 0, num_predict: maxTokens },
     messages: ollamaMessages,
-    stream: false,
+    stream: true,
   });
 
-  process.stderr.write(`    [debug] POST ${endpoint} — model=${model} body=${body.length}B\n`);
+  process.stderr.write(`    [debug] POST ${endpoint} — model=${model} body=${body.length}B stream (timeout inactivité ${Math.round(idleTimeoutMs / 1000)}s)\n`);
 
-  // Timeout explicite 90s (undici/Node.js fetch a un headers_timeout de 10s par défaut,
-  // insuffisant pour les cloud models qui traitent des images).
   const controller = new AbortController();
-  const timeoutId  = setTimeout(() => controller.abort(), 90_000);
+  let timer = setTimeout(() => controller.abort(), idleTimeoutMs);
+  const bumpTimeout = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => controller.abort(), idleTimeoutMs);
+  };
 
   let res;
   try {
     res = await fetch(endpoint, { method: 'POST', headers, body, signal: controller.signal });
   } catch (err) {
+    clearTimeout(timer);
     process.stderr.write(`    [debug] fetch ERREUR réseau: ${err.message}\n`);
     throw err;
-  } finally {
-    clearTimeout(timeoutId);
   }
 
   process.stderr.write(`    [debug] HTTP ${res.status} ${res.statusText}\n`);
 
   if (res.status === 429) {
+    clearTimeout(timer);
     process.stderr.write(`    [debug] 429 rate-limit\n`);
     return null;
   }
 
   if (!res.ok) {
+    clearTimeout(timer);
     const txt = await res.text();
     process.stderr.write(`    [debug] réponse erreur: ${txt.slice(0, 500)}\n`);
     if (res.status === 404) {
@@ -161,30 +172,42 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     throw new Error(`Ollama erreur ${res.status}: ${txt}`);
   }
 
-  let txt;
+  // Réponse NDJSON : une ligne JSON par token, { message: { content }, done }
+  const reader  = res.body.getReader();
+  const decoder = new TextDecoder();
+  let buffer  = '';
+  let content = '';
   try {
-    txt = await res.text();
-    process.stderr.write(`    [debug] réponse reçue: ${txt.length}B\n`);
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      bumpTimeout();
+      buffer += decoder.decode(value, { stream: true });
+      let nl;
+      while ((nl = buffer.indexOf('\n')) !== -1) {
+        const line = buffer.slice(0, nl).trim();
+        buffer = buffer.slice(nl + 1);
+        if (!line) continue;
+        let obj;
+        try { obj = JSON.parse(line); } catch { continue; }
+        if (obj.error) throw new Error(`Ollama: ${typeof obj.error === 'string' ? obj.error : JSON.stringify(obj.error)}`);
+        if (obj.message?.content) content += obj.message.content;
+      }
+    }
+    const last = buffer.trim();
+    if (last) {
+      try { const obj = JSON.parse(last); if (obj.message?.content) content += obj.message.content; }
+      catch { /* ligne partielle finale ignorée */ }
+    }
   } catch (err) {
-    process.stderr.write(`    [debug] erreur lecture body: ${err.message}\n`);
+    process.stderr.write(`    [debug] erreur lecture stream: ${err.message}\n`);
     throw err;
+  } finally {
+    clearTimeout(timer);
   }
 
-  let data;
-  try {
-    data = JSON.parse(txt);
-  } catch (err) {
-    process.stderr.write(`    [debug] JSON invalide: ${txt.slice(0, 300)}\n`);
-    throw new Error(`Ollama: réponse JSON invalide: ${err.message}`);
-  }
-
-  // Format natif Ollama /api/chat : { message: { content: "..." } }
-  const content = data.message?.content ?? null;
-  if (!content) {
-    process.stderr.write(`    [debug] content null — data keys: ${Object.keys(data).join(', ')}\n`);
-    if (data.error) process.stderr.write(`    [debug] data.error: ${JSON.stringify(data.error)}\n`);
-  }
-  return content;
+  process.stderr.write(`    [debug] réponse reçue (stream): ${content.length} chars\n`);
+  return content || null;
 }
 
 /**
@@ -209,11 +232,9 @@ function hasRepetitionLoop(text) {
  * Retourne null en cas d'erreur, d'indisponibilité ou de boucle de répétition.
  */
 export async function callOllamaRaw(imagePaths) {
+  const images = await Promise.all(imagePaths.map(prepareImageSmall));
   const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
   const model   = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
-
-  // Utilise des images réduites (800px q55) pour éviter les timeouts sur cloud models
-  const images = await Promise.all(imagePaths.map(prepareImageSmall));
 
   const messages = [
     {

@@ -71,7 +71,7 @@ authRouter.post('/setup-request', async (req, res) => {
   try {
     await sendMail({
       to:      process.env.AUTH_EMAIL,
-      subject: 'Scrip — Configuration initiale',
+      subject: 'Scrip - Configuration initiale',
       html:    `<p>Cliquez sur le lien pour définir votre mot de passe :</p>
                 <p><a href="${link}">${link}</a></p>
                 <p>Ce lien expire dans 15 minutes.</p>`,
@@ -146,7 +146,7 @@ authRouter.post('/magic', async (req, res) => {
   try {
     await sendMail({
       to:      process.env.AUTH_EMAIL,
-      subject: 'Scrip — Connexion par lien',
+      subject: 'Scrip - Connexion par lien',
       html:    `<p>Cliquez sur le lien pour vous connecter :</p>
                 <p><a href="${link}">${link}</a></p>
                 <p>Ce lien expire dans 15 minutes.</p>`,
@@ -191,7 +191,7 @@ authRouter.post('/forgot', async (req, res) => {
   try {
     await sendMail({
       to:      process.env.AUTH_EMAIL,
-      subject: 'Scrip — Réinitialisation du mot de passe',
+      subject: 'Scrip - Réinitialisation du mot de passe',
       html:    `<p>Cliquez sur le lien pour réinitialiser votre mot de passe :</p>
                 <p><a href="${link}">${link}</a></p>
                 <p>Ce lien expire dans 15 minutes.</p>`,

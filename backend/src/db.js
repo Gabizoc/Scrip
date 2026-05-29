@@ -7,12 +7,28 @@ import fs from 'node:fs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Racine du projet (un cran au-dessus de backend/). Sert d'ancre pour résoudre
+// un vaultPath relatif, indépendamment du dossier de travail du process.
+export const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+
+/**
+ * Résout le vaultPath stocké en chemin absolu.
+ * - chemin absolu  → utilisé tel quel
+ * - chemin relatif → résolu depuis la racine du projet (PROJECT_ROOT)
+ * Un vaultPath relatif (ex: "vault") reste ainsi portable entre machines.
+ */
+export function resolveVaultPath(stored) {
+  const v = (stored && String(stored).trim()) || 'vault';
+  return path.isAbsolute(v) ? v : path.resolve(PROJECT_ROOT, v);
+}
+
 const DEFAULT_DATA = {
   settings: {
     theme: 'auto',
-    vaultPath: path.join(__dirname, '../../vault'),
+    vaultPath: 'vault',
     currentLevelId: null,
     publicUrl: '',
+    trashRetentionDays: 30,
     auth: {
       passwordHash:      null,
       pendingSetupToken: null,
@@ -28,6 +44,7 @@ const DEFAULT_DATA = {
   levels:   [],
   subjects: [],
   notes:    [],
+  trash:    [],
 };
 
 const DB_PATH = process.env.DB_PATH
@@ -63,6 +80,7 @@ export async function initDb() {
     levels:   db.data.levels   ?? [],
     subjects: db.data.subjects ?? [],
     notes:    db.data.notes    ?? [],
+    trash:    db.data.trash    ?? [],
   };
 
   // Migration : si auth.passwordHash est vide mais webdav.passwordHash existe,

@@ -3,7 +3,7 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
-import { db } from '../db.js';
+import { db, resolveVaultPath } from '../db.js';
 
 export const subjectsRouter = Router();
 
@@ -49,8 +49,8 @@ subjectsRouter.get('/:id/folders', async (req, res) => {
   if (!subject) return res.status(404).json({ error: 'matière introuvable' });
 
   const level    = db.data.levels.find(l => l.id === subject.levelId);
-  const vault    = db.data.settings?.vaultPath;
-  if (!vault || !level) return res.json([]);
+  if (!db.data.settings?.vaultPath || !level) return res.json([]);
+  const vault    = resolveVaultPath(db.data.settings.vaultPath);
 
   const base = path.join(vault, level.name, subject.outputFolder);
   const folders = [];

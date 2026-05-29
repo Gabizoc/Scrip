@@ -35,6 +35,12 @@ export const api = {
   getNoteSources: (id)         => request('GET',    `/notes/${id}/sources`),
   searchNotes:    (q)          => request('GET',    `/notes/search?q=${encodeURIComponent(q)}`),
 
+  // ── Corbeille ──────────────────────────────────────────
+  getTrash:        ()   => request('GET',    '/trash'),
+  restoreNote:     (id) => request('POST',   `/trash/${id}/restore`),
+  deleteTrashItem: (id) => request('DELETE', `/trash/${id}`),
+  emptyTrash:      ()   => request('DELETE', '/trash'),
+
   // ── Ingest ─────────────────────────────────────────────
   /** Démarre l'ingestion, retourne { jobId } */
   ingest: (photos, subjectId, levelId, userNote, subfolder) => {

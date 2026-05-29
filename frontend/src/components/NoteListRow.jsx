@@ -258,7 +258,7 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
       {confirmDelete && (
         <ConfirmModal
           title="Supprimer ce cours ?"
-          message={`« ${note.title} » sera définitivement supprimé.`}
+          message={`« ${note.title} » sera déplacé vers la corbeille. Vous pourrez le restaurer depuis Paramètres › Corbeille.`}
           confirmLabel="Supprimer"
           onConfirm={() => { setConfirmDelete(false); deleteMutation.mutate(); }}
           onCancel={() => { setConfirmDelete(false); closeSwipe(); }}

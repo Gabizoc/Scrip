@@ -2,6 +2,9 @@
 import express from 'express';
 import cors from 'cors';
 import session from 'express-session';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { FileSessionStore } from './session-store.js';
 import { errorHandler }           from './middleware/errorHandler.js';
 import { requireAuth }            from './middleware/requireAuth.js';
 import { authRouter }             from './routes/auth.js';
@@ -9,6 +12,7 @@ import { settingsRouter }         from './routes/settings.js';
 import { levelsRouter }           from './routes/levels.js';
 import { subjectsRouter }         from './routes/subjects.js';
 import { notesRouter }            from './routes/notes.js';
+import { trashRouter }            from './routes/trash.js';
 import { ingestRouter }           from './routes/ingest.js';
 import { createWebdavMiddleware } from './webdav.js';
 
@@ -24,7 +28,13 @@ export function createApp() {
 
   app.use(express.json());
 
+  const __dirname = path.dirname(fileURLToPath(import.meta.url));
+  const sessionStore = new FileSessionStore({
+    path: path.resolve(__dirname, '../data/sessions.json'),
+  });
+
   app.use(session({
+    store:             sessionStore,
     secret:            process.env.SESSION_SECRET ?? 'dev-secret-change-me',
     resave:            false,
     saveUninitialized: false,
@@ -45,6 +55,7 @@ export function createApp() {
   app.use('/api/levels',   levelsRouter);
   app.use('/api/subjects', subjectsRouter);
   app.use('/api/notes',    notesRouter);
+  app.use('/api/trash',    trashRouter);
   app.use('/api/ingest',   ingestRouter);
 
   app.use('/webdav', createWebdavMiddleware());

@@ -11,6 +11,7 @@ import Preview           from './pages/Preview.jsx';
 import Settings          from './pages/Settings/index.jsx';
 import LevelsManager     from './pages/Settings/LevelsManager.jsx';
 import SubjectsManager   from './pages/Settings/SubjectsManager.jsx';
+import Trash             from './pages/Settings/Trash.jsx';
 import Login             from './pages/Login.jsx';
 import Setup             from './pages/Setup.jsx';
 import SetupPassword     from './pages/SetupPassword.jsx';
@@ -41,6 +42,7 @@ function ProtectedLayout() {
               <Route path="/settings"          element={<Settings />} />
               <Route path="/settings/levels"   element={<LevelsManager />} />
               <Route path="/settings/subjects" element={<SubjectsManager />} />
+              <Route path="/settings/trash"    element={<Trash />} />
             </Routes>
           </PageWrapper>
         </div>

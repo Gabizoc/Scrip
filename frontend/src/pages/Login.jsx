@@ -124,7 +124,7 @@ export default function Login() {
 
           <div className="border-t border-black/[0.06] dark:border-white/[0.05] pt-4 space-y-2">
             {magicSent ? (
-              <p className="text-[12px] text-text-secondary text-center">✓ Lien envoyé — vérifie ta boîte mail</p>
+              <p className="text-[12px] text-text-secondary text-center">✓ Lien envoyé, vérifie ta boîte mail</p>
             ) : (
               <button
                 onClick={handleMagic}
