@@ -22,5 +22,8 @@ vault/
 # Fichiers de travail temporaires
 backend/_repro.mjs
 
+# Config nginx réelle (contient le domaine perso)
+nginx/scrip.conf
+
 # Brainstorming superpowers
 .superpowers/
