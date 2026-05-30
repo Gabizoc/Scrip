@@ -294,9 +294,9 @@ Reglages recommandes dans Remotely Save :
 
 | Parametre | Valeur recommandee |
 |---|---|
-| Run Once On Start Up Automatically | sync once after 1 second of start up |
-| Sync On Save (experimental) | Enable |
-| Abort Sync If Modification Above Percentage | 100 (disable the protection) |
+| Synchronisation automatique au demarrage | Une fois, 1 seconde apres le demarrage |
+| Sync a la sauvegarde (experimental) | Activer |
+| Annuler la sync si modification superieure a % | 100 (protection desactivee) |
 
 ---
 
