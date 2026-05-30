@@ -4,14 +4,14 @@ import { useQueryClient } from '@tanstack/react-query';
 import { authApi } from '../lib/auth.js';
 import GlassCard from '../components/GlassCard.jsx';
 
-export default function Login() {
+export default function Login({ authMode = 'smtp' }) {
   const navigate = useNavigate();
   const qc = useQueryClient();
-  const [email,    setEmail]    = useState('');
-  const [password, setPassword] = useState('');
-  const [error,    setError]    = useState('');
-  const [loading,  setLoading]  = useState(false);
-  const [magicSent, setMagicSent] = useState(false);
+  const [email,      setEmail]      = useState('');
+  const [password,   setPassword]   = useState('');
+  const [error,      setError]      = useState('');
+  const [loading,    setLoading]    = useState(false);
+  const [magicSent,  setMagicSent]  = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
 
   async function handleLogin(e) {
@@ -19,11 +19,11 @@ export default function Login() {
     setError('');
     setLoading(true);
     try {
-      await authApi.login(email, password);
+      await authApi.login(authMode === 'smtp' ? email : undefined, password);
       await qc.invalidateQueries({ queryKey: ['auth-status'] });
       navigate('/', { replace: true });
     } catch (err) {
-      setError(err.message ?? 'Email ou mot de passe incorrect');
+      setError(err.message ?? 'Identifiants incorrects');
     } finally {
       setLoading(false);
     }
@@ -36,7 +36,7 @@ export default function Login() {
       await authApi.magic();
       setMagicSent(true);
     } catch (err) {
-      setError(err.message ?? 'Erreur lors de l\'envoi du lien');
+      setError(err.message ?? "Erreur lors de l'envoi du lien");
     } finally {
       setLoading(false);
     }
@@ -49,7 +49,7 @@ export default function Login() {
       await authApi.forgot();
       setForgotSent(true);
     } catch (err) {
-      setError(err.message ?? 'Erreur lors de l\'envoi du lien');
+      setError(err.message ?? "Erreur lors de l'envoi du lien");
     } finally {
       setLoading(false);
     }
@@ -65,26 +65,28 @@ export default function Login() {
 
         <GlassCard className="p-6 space-y-4">
           <form onSubmit={handleLogin} className="space-y-4" method="post" action="#">
-            <div className="space-y-1.5">
-              <label htmlFor="email" className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
-                Email
-              </label>
-              <input
-                id="email"
-                name="email"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                autoComplete="username email"
-                className="w-full h-10 px-3 rounded-lg text-[13px]
-                  bg-black/[0.04] dark:bg-white/[0.05]
-                  border border-black/[0.08] dark:border-white/[0.07]
-                  text-text-primary placeholder:text-text-tertiary
-                  focus:outline-none focus:border-accent/40 transition-colors"
-                placeholder="gabi@example.com"
-              />
-            </div>
+            {authMode === 'smtp' && (
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
+                  Email
+                </label>
+                <input
+                  id="email"
+                  name="email"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  required
+                  autoComplete="username email"
+                  className="w-full h-10 px-3 rounded-lg text-[13px]
+                    bg-black/[0.04] dark:bg-white/[0.05]
+                    border border-black/[0.08] dark:border-white/[0.07]
+                    text-text-primary placeholder:text-text-tertiary
+                    focus:outline-none focus:border-accent/40 transition-colors"
+                  placeholder="gabi@example.com"
+                />
+              </div>
+            )}
 
             <div className="space-y-1.5">
               <label htmlFor="password" className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
@@ -97,6 +99,7 @@ export default function Login() {
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
+                autoFocus={authMode === 'password'}
                 autoComplete="current-password"
                 className="w-full h-10 px-3 rounded-lg text-[13px]
                   bg-black/[0.04] dark:bg-white/[0.05]
@@ -107,9 +110,7 @@ export default function Login() {
               />
             </div>
 
-            {error && (
-              <p className="text-red-500 text-[12px]">{error}</p>
-            )}
+            {error && <p className="text-red-500 text-[12px]">{error}</p>}
 
             <button
               type="submit"
@@ -122,35 +123,36 @@ export default function Login() {
             </button>
           </form>
 
-          <div className="border-t border-black/[0.06] dark:border-white/[0.05] pt-4 space-y-2">
-            {magicSent ? (
-              <p className="text-[12px] text-text-secondary text-center">✓ Lien envoyé, vérifie ta boîte mail</p>
-            ) : (
-              <button
-                onClick={handleMagic}
-                disabled={loading}
-                className="w-full h-9 rounded-lg text-[12px] font-medium
-                  bg-black/[0.05] dark:bg-white/[0.07]
-                  text-text-secondary hover:text-text-primary
-                  hover:bg-black/[0.09] dark:hover:bg-white/[0.11]
-                  disabled:opacity-40 transition-colors"
-              >
-                Connexion par lien email
-              </button>
-            )}
-
-            {forgotSent ? (
-              <p className="text-[12px] text-text-secondary text-center">✓ Email de réinitialisation envoyé</p>
-            ) : (
-              <button
-                onClick={handleForgot}
-                disabled={loading}
-                className="w-full text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
-              >
-                Mot de passe oublié ?
-              </button>
-            )}
-          </div>
+          {authMode === 'smtp' && (
+            <div className="border-t border-black/[0.06] dark:border-white/[0.05] pt-4 space-y-2">
+              {magicSent ? (
+                <p className="text-[12px] text-text-secondary text-center">Lien envoyé, vérifie ta boîte mail</p>
+              ) : (
+                <button
+                  onClick={handleMagic}
+                  disabled={loading}
+                  className="w-full h-9 rounded-lg text-[12px] font-medium
+                    bg-black/[0.05] dark:bg-white/[0.07]
+                    text-text-secondary hover:text-text-primary
+                    hover:bg-black/[0.09] dark:hover:bg-white/[0.11]
+                    disabled:opacity-40 transition-colors"
+                >
+                  Connexion par lien email
+                </button>
+              )}
+              {forgotSent ? (
+                <p className="text-[12px] text-text-secondary text-center">Email de réinitialisation envoyé</p>
+              ) : (
+                <button
+                  onClick={handleForgot}
+                  disabled={loading}
+                  className="w-full text-[11px] text-text-tertiary hover:text-text-secondary transition-colors"
+                >
+                  Mot de passe oublié ?
+                </button>
+              )}
+            </div>
+          )}
         </GlassCard>
       </div>
     </div>

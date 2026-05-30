@@ -13,13 +13,13 @@ async function authRequest(method, path, body) {
 }
 
 export const authApi = {
-  status: () => authRequest('GET', '/status'),
-  login: (email, password) => authRequest('POST', '/login', { email, password }),
-  logout: () => authRequest('POST', '/logout'),
-  magic: () => authRequest('POST', '/magic'),
-  forgot: () => authRequest('POST', '/forgot'),
-  reset: (token, password) => authRequest('POST', '/reset', { token, password }),
-  setupRequest: () => authRequest('POST', '/setup-request'),
-  setupComplete: (token, password) => authRequest('POST', '/setup-complete', { token, password }),
+  status:         ()                             => authRequest('GET',  '/status'),
+  login:          (email, password)              => authRequest('POST', '/login',           { email, password }),
+  logout:         ()                             => authRequest('POST', '/logout'),
+  magic:          ()                             => authRequest('POST', '/magic'),
+  forgot:         ()                             => authRequest('POST', '/forgot'),
+  reset:          (token, password)              => authRequest('POST', '/reset',            { token, password }),
+  setupRequest:   ()                             => authRequest('POST', '/setup-request'),
+  setupComplete:  (token, password)              => authRequest('POST', '/setup-complete',   { token, password }),
   changePassword: (currentPassword, newPassword) => authRequest('POST', '/change-password', { currentPassword, newPassword }),
 };

@@ -5,11 +5,23 @@ import { fileURLToPath } from 'node:url';
 const __dirname = dirname(fileURLToPath(import.meta.url));
 config({ path: resolve(__dirname, '../..', '.env') });
 
-const REQUIRED_ENV = ['SESSION_SECRET', 'AUTH_EMAIL'];
-const missing = REQUIRED_ENV.filter(k => !process.env[k]);
-if (missing.length > 0) {
-  console.error(`[scrip] Variables d'environnement manquantes : ${missing.join(', ')}`);
-  console.error('[scrip] Remplissez ces variables dans le fichier .env à la racine du projet.');
+if (!process.env.SESSION_SECRET) {
+  console.error('[scrip] Variable SESSION_SECRET manquante. Remplissez-la dans votre .env.');
+  process.exit(1);
+}
+
+const hasPassword = !!process.env.AUTH_PASSWORD;
+const hasSMTP     = !!(process.env.AUTH_EMAIL || process.env.SMTP_HOST);
+
+if (hasPassword && hasSMTP) {
+  console.error('[scrip] Conflit : AUTH_PASSWORD et SMTP/AUTH_EMAIL sont tous les deux configures.');
+  console.error('[scrip] Choisissez un seul mode : AUTH_PASSWORD (simple) ou AUTH_EMAIL + SMTP_* (magic link).');
+  process.exit(1);
+}
+
+if (!hasPassword && !hasSMTP) {
+  console.error('[scrip] Aucun mode d\'authentification configure.');
+  console.error('[scrip] Definissez soit AUTH_PASSWORD, soit AUTH_EMAIL + SMTP_* dans votre .env.');
   process.exit(1);
 }
 

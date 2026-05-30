@@ -78,6 +78,7 @@ export default function Settings() {
 
   async function handleLogout() {
     await authApi.logout();
+    await qc.invalidateQueries({ queryKey: ['auth-status'] });
     navigate('/login', { replace: true });
   }
 

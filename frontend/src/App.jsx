@@ -52,7 +52,8 @@ function ProtectedLayout() {
 
 function AppGuard() {
   const { data, isLoading } = useQuery({
-    queryKey: ['auth-status'], queryFn:  authApi.status, retry: false, staleTime: 60_000, });
+    queryKey: ['auth-status'], queryFn: authApi.status, retry: false, staleTime: 60_000,
+  });
 
   if (isLoading) return <div className="min-h-screen bg-bg-base" />;
 
@@ -79,9 +80,9 @@ function AppGuard() {
 
   return (
     <Routes>
-      <Route path="/login"          element={<Login />} />
-      <Route path="/reset/:token"   element={<ResetPassword />} />
-      <Route path="*"               element={<Navigate to="/login" replace />} />
+      <Route path="/login"        element={<Login authMode={data?.authMode ?? 'smtp'} />} />
+      <Route path="/reset/:token" element={<ResetPassword />} />
+      <Route path="*"             element={<Navigate to="/login" replace />} />
     </Routes>
   );
 }

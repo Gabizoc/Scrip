@@ -197,7 +197,7 @@ npm install
 cd frontend && npm install && cd ..
 ```
 
-> Minimum requis dans `.env` : `AUTH_EMAIL`, `SESSION_SECRET`, `SMTP_*`
+> Minimum requis dans `.env` : `AUTH_PASSWORD`, `SESSION_SECRET`
 
 ---
 
@@ -207,10 +207,9 @@ Copier `.env.example` en `.env` et remplir :
 
 | Variable | Requis | Description |
 |---|---|---|
-| `AUTH_EMAIL` | oui | Email autorise a se connecter |
+| `AUTH_PASSWORD` | oui | Mot de passe pour se connecter |
 | `SESSION_SECRET` | oui | Secret aleatoire (32+ chars) |
-| `PUBLIC_URL` | oui | URL publique (pour les liens email) |
-| `SMTP_*` | oui | Serveur email (magic links, reset mdp) |
+| `PUBLIC_URL` | non | URL publique (pour les liens WebDAV) |
 | `GOOGLE_API_KEY` | non | Cle Google AI Studio pour Gemini |
 | `OLLAMA_BASE_URL` | non | URL du serveur Ollama |
 | `PIPELINE_MODE` | non | `auto` (defaut) / `ollama` / `google` / `nvidia` / `mistral` |
