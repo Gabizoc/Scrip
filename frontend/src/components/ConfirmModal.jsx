@@ -3,12 +3,12 @@ import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 
 export default function ConfirmModal({
-  title        = 'Confirmer',
+  title = 'Confirmer',
   message,
   confirmLabel = 'Supprimer',
   onConfirm,
   onCancel,
-  danger       = true,
+  danger = true,
 }) {
   const cancelRef = useRef(null);
 

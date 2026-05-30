@@ -8,7 +8,7 @@ const CHUNK = 8;
 function RecentPill({ note }) {
   const navigate = useNavigate();
   const score = parseScore(note.metadata?.qualite_francais);
-  const dot   = subjectDotColor(note.subject ?? '');
+  const dot = subjectDotColor(note.subject ?? '');
 
   const startX = useRef(0);
 
@@ -49,7 +49,7 @@ function RecentPill({ note }) {
 }
 
 export default function RecentStrip({ notes }) {
-  const scrollRef   = useRef(null);
+  const scrollRef = useRef(null);
   const sentinelRef = useRef(null);
   const [visible, setVisible] = useState(CHUNK);
 
@@ -79,11 +79,11 @@ export default function RecentStrip({ notes }) {
   );
 
   const displayed = sorted.slice(0, visible);
-  const hasMore   = visible < sorted.length;
+  const hasMore = visible < sorted.length;
 
   useEffect(() => {
     const sentinel = sentinelRef.current;
-    const root     = scrollRef.current;
+    const root = scrollRef.current;
     if (!sentinel || !root || !hasMore) return;
 
     const obs = new IntersectionObserver(

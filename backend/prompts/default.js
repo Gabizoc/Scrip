@@ -1,4 +1,3 @@
-
 export const DEFAULT_SYSTEM_PROMPT = `Tu es un outil de mise en forme Markdown pour notes de cours lycée.
 Tu reçois du texte OCR brut entre balises <ocr>.
 
@@ -72,7 +71,7 @@ CE QUI EST INTERDIT :
 
 FORMAT : Markdown pur, pas de \`\`\`markdown\`\`\`. Ne rajoute aucun commentaire ni bloc METADATA.`;
 
-export const name   = 'Defaut';
+export const name = 'Defaut';
 export const prompt = DEFAULT_SYSTEM_PROMPT;
 
 export const DEFAULT_USER_TEMPLATE = (ocrText) => {

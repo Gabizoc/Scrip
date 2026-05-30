@@ -90,38 +90,27 @@ function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) 
 }
 
 export default function CreateNoteSheet({ onClose }) {
-  const qc       = useQueryClient();
+  const qc = useQueryClient();
   const navigate = useNavigate();
 
   const { data: subjects = [] } = useQuery({
-    queryKey: ['subjects'],
-    queryFn: () => api.getSubjects(),
-  });
+    queryKey: ['subjects'], queryFn: () => api.getSubjects(), });
 
-  const [title,     setTitle]     = useState('');
+  const [title, setTitle]     = useState('');
   const [subjectId, setSubjectId] = useState('');
   const [subfolder, setSubfolder] = useState('');
-  const [markdown,  setMarkdown]  = useState('');
+  const [markdown, setMarkdown]  = useState('');
 
   const { data: folders = [] } = useQuery({
-    queryKey: ['subject-folders', subjectId],
-    queryFn: () => api.getSubjectFolders(subjectId),
-    enabled: !!subjectId,
-  });
+    queryKey: ['subject-folders', subjectId], queryFn: () => api.getSubjectFolders(subjectId), enabled: !!subjectId, });
 
   const createMutation = useMutation({
     mutationFn: () => api.createNote({
-      title:     title.trim(),
-      subjectId: subjectId || undefined,
-      subfolder: subfolder.trim() || undefined,
-      markdown:  markdown.trim() || undefined,
-    }),
-    onSuccess: (note) => {
+      title: title.trim(), subjectId: subjectId || undefined, subfolder: subfolder.trim() || undefined, markdown:  markdown.trim() || undefined, }), onSuccess: (note) => {
       qc.invalidateQueries({ queryKey: ['notes'] });
       onClose();
       navigate(`/preview/${note.id}`);
-    },
-  });
+    }, });
 
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
@@ -130,10 +119,7 @@ export default function CreateNoteSheet({ onClose }) {
   }, [onClose]);
 
   const subjectOptions = subjects.map(s => ({
-    value: s.id,
-    name:  s.name,
-    icon:  s.emoji ?? null,
-  }));
+    value: s.id, name:  s.name, icon:  s.emoji ?? null, }));
 
   const canSubmit = title.trim().length > 0 && !createMutation.isPending;
 
@@ -266,7 +252,5 @@ export default function CreateNoteSheet({ onClose }) {
           </div>
         </form>
       </div>
-    </>,
-    document.body,
-  );
+    </>, document.body, );
 }

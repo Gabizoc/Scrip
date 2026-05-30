@@ -88,8 +88,8 @@ export async function purgeExpiredTrash() {
   const days = Number(db.data.settings.trashRetentionDays ?? 30);
   if (!Number.isFinite(days) || days <= 0) return 0;
 
-  const cutoff  = Date.now() - days * DAY_MS;
-  const trash   = db.data.trash ?? [];
+  const cutoff = Date.now() - days * DAY_MS;
+  const trash = db.data.trash ?? [];
   const expired = trash.filter(e => new Date(e.deletedAt).getTime() < cutoff);
   if (expired.length === 0) return 0;
 

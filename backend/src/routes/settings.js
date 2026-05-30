@@ -38,7 +38,7 @@ settingsRouter.put('/', async (req, res) => {
     if (username !== undefined) db.data.settings.webdav.username = String(username).trim();
     if (password) {
       const hash = await bcrypt.hash(String(password), 10);
-      db.data.settings.auth.passwordHash   = hash;
+      db.data.settings.auth.passwordHash = hash;
       db.data.settings.webdav.passwordHash = hash;
     }
   }

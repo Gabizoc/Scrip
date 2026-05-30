@@ -115,8 +115,8 @@ function significantWords(text) {
 
 export function isOutputValid(reference, llmOutput, {
   minOverlap = 0.55,
-  minRatio   = 0.25,
-  maxRatio   = 1.4,
+  minRatio = 0.25,
+  maxRatio = 1.4,
 } = {}) {
   if (!llmOutput || llmOutput.length < 50) {
     process.stderr.write(`    ⚠ VALIDATION: sortie trop courte ou vide → rejet\n`);
@@ -138,8 +138,8 @@ export function isOutputValid(reference, llmOutput, {
     return false;
   }
 
-  const refWords  = new Set(significantWords(reference));
-  const llmWords  = significantWords(llmOutput);
+  const refWords = new Set(significantWords(reference));
+  const llmWords = significantWords(llmOutput);
 
   if (refWords.size === 0) return true;
 

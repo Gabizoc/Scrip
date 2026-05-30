@@ -1,32 +1,18 @@
 import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_TEMPLATE } from '../../prompts/default.js';
 
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
-const NVIDIA_ENDPOINT     = 'https://integrate.api.nvidia.com/v1/chat/completions';
+const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
-const NVIDIA_MODELS = [
-  'mistralai/mistral-medium-3-instruct',
-  'meta/llama-4-maverick-17b-128e-instruct',
-  'nvidia/llama-3.1-nemotron-ultra-253b-v1',
-  'qwen/qwq-32b',
-];
+const NVIDIA_MODELS = process.env.NVIDIA_STRUCTURE_MODEL
+  ? [process.env.NVIDIA_STRUCTURE_MODEL]
+  : ['mistralai/mistral-medium-3-instruct', 'meta/llama-4-maverick-17b-128e-instruct', 'nvidia/llama-3.1-nemotron-ultra-253b-v1', 'qwen/qwq-32b'];
 
-const OPENROUTER_MODELS = [
-  'google/gemma-4-26b-a4b-it:free',
-  'google/gemma-4-31b-it:free',
-  'openrouter/auto',
-  'meta-llama/llama-3.3-70b-instruct:free',
-  'qwen/qwen3-coder:free',
-  'qwen/qwen3-next-80b-a3b-instruct:free',
-  'nousresearch/hermes-3-llama-3.1-405b:free',
-  'openai/gpt-oss-120b:free',
-  'nvidia/nemotron-3-super-120b-a12b:free',
-];
+const OPENROUTER_MODELS = process.env.OPENROUTER_STRUCTURE_MODEL
+  ? [process.env.OPENROUTER_STRUCTURE_MODEL]
+  : ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'openrouter/auto', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-coder:free', 'qwen/qwen3-next-80b-a3b-instruct:free', 'nousresearch/hermes-3-llama-3.1-405b:free', 'openai/gpt-oss-120b:free', 'nvidia/nemotron-3-super-120b-a12b:free'];
 
 const PROMPTS = {
-  default:    { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
-  histoire:   { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
-  géographie: { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
-  emc:        { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
+  default: { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE }, histoire: { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE }, géographie: { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE }, emc: { system: DEFAULT_SYSTEM_PROMPT, userTemplate: DEFAULT_USER_TEMPLATE },
 };
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
@@ -38,10 +24,7 @@ function calcMaxTokens(ocrText) {
 
 async function callNvidia(messages, apiKey, model, maxTokens) {
   const res = await fetch(NVIDIA_ENDPOINT, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
-    body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages }),
-  });
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` }, body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages }), });
   if (res.status === 429) return null;
   if (!res.ok) {
     const txt = await res.text();
@@ -56,15 +39,8 @@ async function callNvidia(messages, apiKey, model, maxTokens) {
 
 async function callOpenRouter(messages, apiKey, model, maxTokens) {
   const res = await fetch(OPENROUTER_ENDPOINT, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${apiKey}`,
-      'HTTP-Referer': 'https://scrip.local',
-      'X-Title': 'Scrip',
-    },
-    body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages }),
-  });
+    method: 'POST', headers: {
+      'Content-Type': 'application/json',  'Authorization': `Bearer ${apiKey}`,  'HTTP-Referer': 'https://scrip.local',  'X-Title': 'Scrip', }, body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages }), });
   if (res.status === 429) return null;
   if (!res.ok) {
     const txt = await res.text();
@@ -84,9 +60,7 @@ export async function structureContent(rawMarkdown, subject, level, openrouterKe
   process.stderr.write(`    OCR: ${rawMarkdown.length} chars → max_tokens: ${maxTokens}\n`);
 
   const messages = [
-    { role: 'system', content: prompt.system },
-    { role: 'user',   content: prompt.userTemplate(rawMarkdown) },
-  ];
+    { role: 'system', content: prompt.system }, { role: 'user', content: prompt.userTemplate(rawMarkdown) }, ];
 
   if (nvidiaKey) {
     for (const model of NVIDIA_MODELS) {

@@ -98,7 +98,7 @@ export default function Settings() {
   }, [settings]);
 
   const webdavEnabled = settings?.webdav?.enabled ?? false;
-  const webdavUrl     = publicUrl ? `${publicUrl.replace(/\/$/, '')}/webdav` : null;
+  const webdavUrl = publicUrl ? `${publicUrl.replace(/\/$/, '')}/webdav` : null;
 
   const nginxSnippet = `location /webdav/ {
     proxy_pass http://localhost:5001/webdav/;

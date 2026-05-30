@@ -20,8 +20,8 @@ export default function Dropdown({
 }) {
   const [open, setOpen]   = useState(false);
   const [rect, setRect]   = useState(null);
-  const triggerRef        = useRef(null);
-  const panelRef          = useRef(null);
+  const triggerRef = useRef(null);
+  const panelRef = useRef(null);
 
   const selected = options.find(o => o.value === value);
 
@@ -56,8 +56,8 @@ export default function Dropdown({
   }, [open]);
 
   const menuWidth = rect ? Math.max(rect.width, 160) : 160;
-  const menuLeft  = rect ? Math.min(rect.left, window.innerWidth - menuWidth - 8) : 0;
-  const menuTop   = rect ? rect.bottom + 6 : 0;
+  const menuLeft = rect ? Math.min(rect.left, window.innerWidth - menuWidth - 8) : 0;
+  const menuTop = rect ? rect.bottom + 6 : 0;
 
   return (
     <>

@@ -30,7 +30,7 @@ function ProgressPanel({ steps, warnings = [], error }) {
   const [timings, setTimings] = useState({});
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(Date.now());
-  const tickRef  = useRef(null);
+  const tickRef = useRef(null);
 
   useEffect(() => {
     tickRef.current = setInterval(() => setElapsed(Date.now() - startRef.current), 250);
@@ -52,9 +52,9 @@ function ProgressPanel({ steps, warnings = [], error }) {
     });
   }, [steps]);
 
-  const doneCount    = PIPELINE_STEPS.filter(def => steps.find(s => s.id === def.id)?.status === 'done').length;
-  const progressPct  = Math.round((doneCount / PIPELINE_STEPS.length) * 100);
-  const runningStep  = PIPELINE_STEPS.find(def => steps.find(s => s.id === def.id)?.status === 'running');
+  const doneCount = PIPELINE_STEPS.filter(def => steps.find(s => s.id === def.id)?.status === 'done').length;
+  const progressPct = Math.round((doneCount / PIPELINE_STEPS.length) * 100);
+  const runningStep = PIPELINE_STEPS.find(def => steps.find(s => s.id === def.id)?.status === 'running');
 
   const logEntries = steps
     .filter(s => s.detail)
@@ -104,12 +104,12 @@ function ProgressPanel({ steps, warnings = [], error }) {
 
       <div className="px-5 py-4 space-y-3">
         {PIPELINE_STEPS.map((def) => {
-          const step    = steps.find(s => s.id === def.id);
-          const status  = step?.status ?? 'pending';
-          const label   = step?.label ?? def.label;
-          const t       = timings[def.id];
-          const durMs   = t?.end ? t.end - t.start : null;
-          const Icon    = def.icon;
+          const step = steps.find(s => s.id === def.id);
+          const status = step?.status ?? 'pending';
+          const label = step?.label ?? def.label;
+          const t = timings[def.id];
+          const durMs = t?.end ? t.end - t.start : null;
+          const Icon = def.icon;
 
           return (
             <div key={def.id} className={[
@@ -250,8 +250,8 @@ export default function Capture() {
   }, []);
 
   const handleDragStart = useCallback((idx) => setDragIdx(idx), []);
-  const handleDragOver  = useCallback((e, idx) => { e.preventDefault(); setDragOverIdx(idx); }, []);
-  const handleDrop      = useCallback((idx) => {
+  const handleDragOver = useCallback((e, idx) => { e.preventDefault(); setDragOverIdx(idx); }, []);
+  const handleDrop = useCallback((idx) => {
     if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setDragOverIdx(null); return; }
     setPages(prev => {
       const next = [...prev];

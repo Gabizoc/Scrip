@@ -15,13 +15,7 @@ trashRouter.get('/', async (req, res) => {
     .map(e => {
       const n = e.note ?? {};
       return {
-        id:        e.id,
-        title:     n.title ?? '(sans titre)',
-        subject:   db.data.subjects.find(s => s.id === n.subjectId)?.name ?? n.subjectId ?? null,
-        level:     db.data.levels.find(l => l.id === n.levelId)?.name   ?? n.levelId   ?? null,
-        deletedAt: e.deletedAt,
-        expiresAt: new Date(new Date(e.deletedAt).getTime() + days * DAY_MS).toISOString(),
-      };
+        id: e.id, title: n.title ?? '(sans titre)', subject: db.data.subjects.find(s => s.id === n.subjectId)?.name ?? n.subjectId ?? null, level: db.data.levels.find(l => l.id === n.levelId)?.name   ?? n.levelId   ?? null, deletedAt: e.deletedAt, expiresAt: new Date(new Date(e.deletedAt).getTime() + days * DAY_MS).toISOString(), };
     });
   res.json(entries);
 });

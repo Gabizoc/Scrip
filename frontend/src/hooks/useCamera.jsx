@@ -1,10 +1,10 @@
 import { useRef, useCallback } from 'react';
 
 export function useCamera({ onCapture, multiple = false }) {
-  const cameraRef  = useRef(null);
+  const cameraRef = useRef(null);
   const galleryRef = useRef(null);
 
-  const triggerCamera  = useCallback(() => cameraRef.current?.click(),  []);
+  const triggerCamera = useCallback(() => cameraRef.current?.click(),  []);
   const triggerGallery = useCallback(() => galleryRef.current?.click(), []);
 
   const handleChange = useCallback((e) => {

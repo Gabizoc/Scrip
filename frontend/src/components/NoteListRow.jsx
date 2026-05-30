@@ -10,15 +10,15 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { useSubjectByName } from '../lib/SubjectsContext.jsx';
 import { api } from '../lib/api.js';
 
-const SWIPE_REVEAL  = 72;
+const SWIPE_REVEAL = 72;
 const SWIPE_TRIGGER = 55;
 
 export default function NoteListRow({ note, snippet = null, hideSubfolder = false }) {
-  const navigate    = useNavigate();
-  const qc          = useQueryClient();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const subjectData = useSubjectByName(note.subject);
-  const score       = parseScore(note.metadata?.qualite_francais);
-  const dot         = subjectDotColor(note.subject ?? '', subjectData?.color ?? null);
+  const score = parseScore(note.metadata?.qualite_francais);
+  const dot = subjectDotColor(note.subject ?? '', subjectData?.color ?? null);
   const customStyle = subjectColorStyle(subjectData?.color ?? null);
 
   const [editorRect, setEditorRect]       = useState(null);
@@ -26,8 +26,8 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showMenu, setShowMenu]           = useState(false);
   const [menuPos, setMenuPos]             = useState({ top: 0, right: 0 });
-  const menuBtnRef                        = useRef(null);
-  const menuRef                           = useRef(null);
+  const menuBtnRef = useRef(null);
+  const menuRef = useRef(null);
 
   useEffect(() => {
     if (!showMenu) return;
@@ -46,14 +46,12 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
     e.stopPropagation();
     const rect = menuBtnRef.current.getBoundingClientRect();
     setMenuPos({
-      top:   rect.bottom + 4,
-      right: window.innerWidth - rect.right,
-    });
+      top: rect.bottom + 4, right: window.innerWidth - rect.right, });
     setShowMenu(o => !o);
   }
 
-  const touchStartX    = useRef(0);
-  const swipeXAtStart  = useRef(0);
+  const touchStartX = useRef(0);
+  const swipeXAtStart = useRef(0);
   const [swipeX, setSwipeX]         = useState(0);
   const [isSwiping, setIsSwiping]   = useState(false);
 
@@ -61,13 +59,13 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
 
   function onTouchStart(e) {
     if (!isTouchDevice()) return;
-    touchStartX.current   = e.touches[0].clientX;
+    touchStartX.current = e.touches[0].clientX;
     swipeXAtStart.current = swipeX;
     setIsSwiping(true);
   }
   function onTouchMove(e) {
     if (!isSwiping) return;
-    const dx   = e.touches[0].clientX - touchStartX.current;
+    const dx = e.touches[0].clientX - touchStartX.current;
     const next = swipeXAtStart.current + dx;
     setSwipeX(Math.min(0, Math.max(next, -SWIPE_REVEAL)));
   }
@@ -84,9 +82,7 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
   function closeSwipe() { setSwipeX(0); }
 
   const deleteMutation = useMutation({
-    mutationFn: () => api.deleteNote(note.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['notes'] }),
-  });
+    mutationFn: () => api.deleteNote(note.id), onSuccess: () => qc.invalidateQueries({ queryKey: ['notes'] }), });
 
   return (
     <div className="relative overflow-hidden">
@@ -116,10 +112,7 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
         onTouchEnd={onTouchEnd}
         aria-label={`Ouvrir le cours : ${note.title}`}
         style={{
-          transform: `translateX(${swipeX}px)`,
-          transition: isSwiping ? 'none' : 'transform 0.2s ease',
-          touchAction: 'pan-y',
-        }}
+          transform: `translateX(${swipeX}px)`, transition: isSwiping ? 'none' : 'transform 0.2s ease', touchAction: 'pan-y', }}
         className="group relative flex items-center gap-3 px-4 py-2.5 cursor-pointer
           transition-colors duration-300 ease-out
           hover:bg-black/[0.025] dark:hover:bg-white/[0.035]
@@ -157,11 +150,7 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
             onClick={e => { e.stopPropagation(); setEditorRect(e.currentTarget.getBoundingClientRect()); }}
             title="Modifier la matière"
             className={[
-              'text-[10px] font-semibold px-2 py-0.5 rounded-md truncate transition',
-              'hover:ring-2 hover:ring-accent/40 hover:ring-offset-1',
-              !customStyle && note.subject ? subjectColor(note.subject) : '',
-              !customStyle && !note.subject ? 'bg-black/[0.05] dark:bg-white/[0.07] text-text-tertiary' : '',
-            ].join(' ')}
+              'text-[10px] font-semibold px-2 py-0.5 rounded-md truncate transition',  'hover:ring-2 hover:ring-accent/40 hover:ring-offset-1', !customStyle && note.subject ? subjectColor(note.subject) : '', !customStyle && !note.subject ? 'bg-black/[0.05] dark:bg-white/[0.07] text-text-tertiary' : '', ].join(' ')}
             style={customStyle ?? undefined}
           >
             {note.subject ?? '+ matière'}
@@ -229,9 +218,7 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
             <Trash2 size={13} className="shrink-0" />
             Supprimer
           </button>
-        </div>,
-        document.body,
-      )}
+        </div>, document.body, )}
 
       {showMove && (
         <MoveNoteSheet note={note} onClose={() => setShowMove(false)} />

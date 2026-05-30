@@ -5,12 +5,9 @@ import { callOllamaRaw } from './ollama.js';
 
 const GOOGLE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-const GEMINI_PRIMARY_MODELS = [
-  'gemini-2.5-flash',
-  'gemini-2.0-flash',
-  'gemini-1.5-flash-latest',
-  'gemini-1.5-flash-8b',
-];
+const GEMINI_PRIMARY_MODELS = process.env.GEMINI_MODEL
+  ? [process.env.GEMINI_MODEL]
+  : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash-8b'];
 
 const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
 

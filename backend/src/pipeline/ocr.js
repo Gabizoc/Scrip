@@ -3,7 +3,7 @@ import path from 'node:path';
 import sharp from 'sharp';
 
 const MISTRAL_CHAT_ENDPOINT = 'https://api.mistral.ai/v1/chat/completions';
-const VISION_MODEL = 'pixtral-large-latest';
+const VISION_MODEL = process.env.MISTRAL_OCR_MODEL ?? 'pixtral-large-latest';
 
 export async function prepareImage(imagePath) {
   const buffer = await sharp(imagePath)

@@ -84,14 +84,20 @@ ingestRouter.post('/', upload.array('photos', 10), async (req, res) => {
   const level = db.data.levels.find(l => l.id === (levelId ?? subject.levelId));
   if (!level) { cleanupFiles(req.files); return res.status(400).json({ error: 'niveau introuvable' }); }
 
-  const mistralKey    = process.env.MISTRAL_API_KEY;
+  const mistralKey = process.env.MISTRAL_API_KEY;
   const openrouterKey = process.env.OPENROUTER_API_KEY;
-  const nvidiaKey     = process.env.NVIDIA_API_KEY;
-  const googleKey     = process.env.GOOGLE_API_KEY;
+  const nvidiaKey = process.env.NVIDIA_API_KEY;
+  const googleKey = process.env.GOOGLE_API_KEY;
 
-  if (PIPELINE_MODE === 'google'  && !googleKey)    { cleanupFiles(req.files); return res.status(500).json({ error: 'GOOGLE_API_KEY manquante dans le .env' }); }
-  if (PIPELINE_MODE === 'ocr'     && !mistralKey)   { cleanupFiles(req.files); return res.status(500).json({ error: 'MISTRAL_API_KEY manquante dans le .env (requis pour PIPELINE_MODE=ocr)' }); }
-  if (PIPELINE_MODE === 'vision'  && !openrouterKey){ cleanupFiles(req.files); return res.status(500).json({ error: 'OPENROUTER_API_KEY manquante dans le .env (requis pour PIPELINE_MODE=vision)' }); }
+  const ollamaReachable = !!process.env.OLLAMA_BASE_URL;
+
+  if (PIPELINE_MODE === 'google'  && !googleKey)  { cleanupFiles(req.files); return res.status(500).json({ error: 'GOOGLE_API_KEY manquante dans le .env' }); }
+  if (PIPELINE_MODE === 'mistral' && !mistralKey)  { cleanupFiles(req.files); return res.status(500).json({ error: 'MISTRAL_API_KEY manquante dans le .env (requis pour PIPELINE_MODE=mistral)' }); }
+  if (PIPELINE_MODE === 'nvidia'  && !nvidiaKey)   { cleanupFiles(req.files); return res.status(500).json({ error: 'NVIDIA_API_KEY manquante dans le .env (requis pour PIPELINE_MODE=nvidia)' }); }
+  if (PIPELINE_MODE === 'auto' && !ollamaReachable && !googleKey && !nvidiaKey && !mistralKey) {
+    cleanupFiles(req.files);
+    return res.status(500).json({ error: 'Mode auto : aucune cle API disponible (GOOGLE_API_KEY, NVIDIA_API_KEY ou MISTRAL_API_KEY requise)' });
+  }
 
   const jobId = createJob();
   res.status(202).json({ jobId });
@@ -122,10 +128,10 @@ ingestRouter.get('/:jobId/events', (req, res) => {
   if (job.result) { send('done', job.result); res.end(); return; }
   if (job.error)  { send('error', { message: job.error }); res.end(); return; }
 
-  const onStep    = step    => send('step', step);
-  const onDone    = result  => { send('done', result); res.end(); };
-  const onError   = message => { send('error', { message }); res.end(); };
-  const onWarning = w       => send('warning', w);
+  const onStep = step => send('step', step);
+  const onDone = result => { send('done', result); res.end(); };
+  const onError = message => { send('error', { message }); res.end(); };
+  const onWarning = w => send('warning', w);
 
   job.emitter.on('step',    onStep);
   job.emitter.on('done',    onDone);
@@ -151,33 +157,52 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
 
   const imagePaths = files.map(f => f.path);
   const pageDetail = `${files.length} page${files.length > 1 ? 's' : ''}`;
-  const wordCount  = (text) => text.trim().split(/\s+/).filter(Boolean).length;
+  const wordCount = (text) => text.trim().split(/\s+/).filter(Boolean).length;
   let rawMarkdown, imageRegions, rawStructured;
 
-  if (PIPELINE_MODE === 'ollama') {
+  const effectiveMode = await (async () => {
+    if (PIPELINE_MODE !== 'auto') return PIPELINE_MODE;
+    const ollamaBase = process.env.OLLAMA_BASE_URL;
+    if (ollamaBase) {
+      try {
+        const r = await fetch(`${ollamaBase.replace(/\/$/, '')}/api/tags`, { signal: AbortSignal.timeout(2000) });
+        if (r.ok) return 'ollama';
+      } catch {}
+    }
+    if (googleKey)  return 'google';
+    if (nvidiaKey)  return 'nvidia';
+    if (mistralKey) return 'mistral';
+    return 'google';
+  })();
+
+  if (PIPELINE_MODE === 'auto') {
+    process.stderr.write(`[auto] mode selectionne : ${effectiveMode}\n`);
+  }
+
+  if (effectiveMode === 'ollama') {
     step('ocr', 'Analyse Ollama', 'running', pageDetail);
     step('structure', 'Structuration du contenu', 'pending');
 
     const ollamaResult = await runOllamaPipeline(imagePaths, userNote);
-    rawMarkdown   = ollamaResult.rawMarkdown;
-    imageRegions  = ollamaResult.imageRegions;
+    rawMarkdown = ollamaResult.rawMarkdown;
+    imageRegions = ollamaResult.imageRegions;
     rawStructured = rawMarkdown;
 
     const model = ollamaResult.modelUsed ?? 'ollama';
-    const wc    = wordCount(rawMarkdown);
+    const wc = wordCount(rawMarkdown);
     process.stderr.write(`\n=== OLLAMA OUTPUT (${rawMarkdown.length} chars) ===\n${rawMarkdown.slice(0, 800)}\n===\n\n`);
     step('ocr',       'Analyse Ollama',           'done', `${pageDetail} · ${wc} mots extraits`);
     step('structure', 'Structuration du contenu', 'done', model);
 
-  } else if (PIPELINE_MODE === 'google') {
+  } else if (effectiveMode === 'google') {
     step('ocr', 'Analyse Gemini', 'running', pageDetail);
     step('structure', 'Structuration du contenu', 'pending');
 
     const googleResult = await runGoogleVisionPipeline(
       imagePaths, subject.prompt, level.name, googleKey, mistralKey, nvidiaKey, openrouterKey, userNote, systemPrompt
     );
-    rawMarkdown   = googleResult.rawMarkdown;
-    imageRegions  = googleResult.imageRegions;
+    rawMarkdown = googleResult.rawMarkdown;
+    imageRegions = googleResult.imageRegions;
     rawStructured = rawMarkdown;
 
     const wc = wordCount(rawMarkdown);
@@ -191,30 +216,30 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
       warn('Gemini indisponible ou rejeté — mise en forme automatique utilisée. La note peut nécessiter une relecture.');
     }
 
-  } else if (PIPELINE_MODE === 'vision') {
-    step('ocr', 'Analyse de l\'image', 'running', pageDetail);
+  } else if (effectiveMode === 'nvidia') {
+    step('ocr', 'Analyse NVIDIA', 'running', pageDetail);
     step('structure', 'Structuration du contenu', 'pending');
 
     const visionResult = await runVisionPipeline(
-      imagePaths, subject.prompt, level.name, nvidiaKey, openrouterKey, mistralKey, userNote, systemPrompt
+      imagePaths, subject.prompt, level.name, nvidiaKey, null, mistralKey, userNote, systemPrompt
     );
-    rawMarkdown   = visionResult.rawMarkdown;
-    imageRegions  = visionResult.imageRegions;
+    rawMarkdown = visionResult.rawMarkdown;
+    imageRegions = visionResult.imageRegions;
     rawStructured = rawMarkdown;
 
     const wc = wordCount(rawMarkdown);
-    process.stderr.write(`\n=== VISION OUTPUT (${rawMarkdown.length} chars) ===\n${rawMarkdown.slice(0, 800)}\n===\n\n`);
-    step('ocr',       'Analyse de l\'image',      'done', `${pageDetail} · ${wc} mots extraits`);
-    const visionDetail = visionResult.usedFallback ? 'mise en forme automatique' : 'vision directe';
+    process.stderr.write(`\n=== NVIDIA OUTPUT (${rawMarkdown.length} chars) ===\n${rawMarkdown.slice(0, 800)}\n===\n\n`);
+    step('ocr',       'Analyse NVIDIA',           'done', `${pageDetail} · ${wc} mots extraits`);
+    const visionDetail = visionResult.usedFallback ? 'mise en forme automatique' : 'NVIDIA vision';
     step('structure', 'Structuration du contenu', 'done', visionDetail);
     if (visionResult.usedFallback) {
       warn('Modèle vision indisponible — mise en forme automatique utilisée. La note peut nécessiter une relecture.');
     }
 
   } else {
-    step('ocr', 'Lecture des notes', 'running', pageDetail);
+    step('ocr', 'OCR Mistral', 'running', pageDetail);
     const ocrResult = await runOCR(imagePaths, mistralKey);
-    rawMarkdown  = ocrResult.rawMarkdown;
+    rawMarkdown = ocrResult.rawMarkdown;
     imageRegions = ocrResult.imageRegions;
     const wc = wordCount(rawMarkdown);
     process.stderr.write(`\n=== OCR BRUT (${rawMarkdown.length} chars) ===\n${rawMarkdown.slice(0, 800)}\n===\n\n`);
@@ -272,8 +297,8 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     : path.basename(files[0].originalname, path.extname(files[0].originalname));
 
   await db.read();
-  const vaultPath   = resolveVaultPath(db.data.settings.vaultPath);
-  const syncFolder  = (db.data.settings.syncFolder ?? '').trim();
+  const vaultPath = resolveVaultPath(db.data.settings.vaultPath);
+  const syncFolder = (db.data.settings.syncFolder ?? '').trim();
   const subfolderSegments = (subfolder ?? '')
     .split(/[/\\]/)
     .map(s => sanitizeFilename(s).trim())
@@ -286,11 +311,11 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
   );
   fs.writeFileSync(notePath, note, 'utf8');
 
-  const noteId     = randomUUID();
+  const noteId = randomUUID();
   const sourcesDir = path.join(vaultPath, '_sources', noteId);
   fs.mkdirSync(sourcesDir, { recursive: true });
   const sourcePaths = files.map((f, i) => {
-    const ext  = path.extname(f.originalname) || '.jpg';
+    const ext = path.extname(f.originalname) || '.jpg';
     const dest = path.join(sourcesDir, `photo_${String(i + 1).padStart(2, '0')}${ext}`);
     fs.copyFileSync(f.path, dest);
     return dest;

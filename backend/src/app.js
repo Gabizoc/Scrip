@@ -22,41 +22,29 @@ export function createApp() {
   app.use(cors({
     origin: process.env.NODE_ENV === 'production'
       ? false
-      : 'http://localhost:5000',
-    credentials: true,
-  }));
+      : 'http://localhost:5000', credentials: true, }));
 
   app.use(express.json({ limit: '2mb' }));
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const sessionStore = new FileSessionStore({
-    path: path.resolve(__dirname, '../data/sessions.json'),
-  });
+    path: path.resolve(__dirname, '../data/sessions.json'), });
 
   app.use(session({
-    store:             sessionStore,
-    secret:            process.env.SESSION_SECRET ?? 'dev-secret-change-me',
-    resave:            false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      secure:   process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge:   30 * 24 * 60 * 60 * 1000,
-    },
-  }));
+    store: sessionStore, secret: process.env.SESSION_SECRET ?? '85WzN50dmKjTjw3YMjs', resave: false, saveUninitialized: false, cookie: {
+      httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000, }, }));
 
   app.use('/api/auth', authRouter);
 
   app.use('/api', requireAuth);
 
   app.use('/api/settings', settingsRouter);
-  app.use('/api/levels',   levelsRouter);
+  app.use('/api/levels', levelsRouter);
   app.use('/api/subjects', subjectsRouter);
-  app.use('/api/notes',    notesRouter);
-  app.use('/api/trash',    trashRouter);
-  app.use('/api/ingest',   ingestRouter);
-  app.use('/api/prompts',  promptsRouter);
+  app.use('/api/notes', notesRouter);
+  app.use('/api/trash', trashRouter);
+  app.use('/api/ingest', ingestRouter);
+  app.use('/api/prompts', promptsRouter);
 
   app.use('/webdav', createWebdavMiddleware());
 

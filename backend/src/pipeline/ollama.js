@@ -3,7 +3,7 @@ import { prepareImage, prepareImageSmall } from './ocr.js';
 import { removeExerciseBlocks } from './format-rules.js';
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:11434';
-const DEFAULT_MODEL    = 'gemma4:31b-cloud';
+const DEFAULT_MODEL = 'gemma4:31b-cloud';
 
 const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
 
@@ -96,7 +96,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
 
   const ollamaMessages = messages.map(msg => {
     if (typeof msg.content === 'string') return { role: msg.role, content: msg.content };
-    const texts  = msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
+    const texts = msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
     const images = msg.content
       .filter(b => b.type === 'image_url')
       .map(b => {
@@ -106,7 +106,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     return { role: msg.role, content: texts, ...(images.length ? { images } : {}) };
   });
 
-  const imageCount   = ollamaMessages.reduce((n, m) => n + (m.images?.length ?? 0), 0);
+  const imageCount = ollamaMessages.reduce((n, m) => n + (m.images?.length ?? 0), 0);
   const idleTimeoutMs = Math.min(180_000 + imageCount * 30_000, 600_000);
 
   const body = JSON.stringify({
@@ -153,9 +153,9 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     throw new Error(`Ollama erreur ${res.status}: ${txt}`);
   }
 
-  const reader  = res.body.getReader();
+  const reader = res.body.getReader();
   const decoder = new TextDecoder();
-  let buffer  = '';
+  let buffer = '';
   let content = '';
   try {
     while (true) {
@@ -204,7 +204,7 @@ function hasRepetitionLoop(text) {
 export async function callOllamaRaw(imagePaths) {
   const images = await Promise.all(imagePaths.map(prepareImageSmall));
   const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
-  const model   = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
+  const model = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
 
   const messages = [
     {
@@ -241,13 +241,13 @@ export async function callOllamaRaw(imagePaths) {
 }
 
 export async function runOllamaPipeline(imagePaths, userNote = null) {
-  const paths   = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
+  const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
   const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
-  const model   = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
+  const model = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
 
   process.stderr.write(`[ollama] ${paths.length} image(s), modèle: ${model}, endpoint: ${baseUrl}\n`);
 
-  const images    = await Promise.all(paths.map(prepareImage));
+  const images = await Promise.all(paths.map(prepareImage));
   const maxTokens = Math.min(4096 * paths.length, 16384);
 
   const systemInstruction = userNote
@@ -255,7 +255,7 @@ export async function runOllamaPipeline(imagePaths, userNote = null) {
     : VISION_INSTRUCTION;
   if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
 
-  const messages  = buildMessages(images, paths.length, systemInstruction);
+  const messages = buildMessages(images, paths.length, systemInstruction);
 
   process.stderr.write(`    → ${model}\n`);
   const raw = await callOllama(messages, model, baseUrl, maxTokens);

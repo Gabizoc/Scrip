@@ -46,7 +46,7 @@ function findByTitle(searchRoot, title) {
 
 function vaultSearchRoot(settings) {
   const base = resolveVaultPath(settings.vaultPath);
-  const sub  = (settings.syncFolder ?? '').trim();
+  const sub = (settings.syncFolder ?? '').trim();
   return sub ? path.join(base, sub) : base;
 }
 
@@ -67,11 +67,11 @@ function walkVault(dir, results = []) {
 }
 
 function inferFromPath(filePath, searchRoot, levels, subjects) {
-  const rel   = path.relative(searchRoot, filePath);
+  const rel = path.relative(searchRoot, filePath);
   const parts = rel.split(path.sep);
-  const levelName   = parts.length > 1 ? parts[0]   : null;
+  const levelName = parts.length > 1 ? parts[0]   : null;
   const subjectName = parts.length > 2 ? parts[1]   : null;
-  const levelId   = levelName   ? (levels.find(l   => l.name === levelName)?.id   ?? null) : null;
+  const levelId = levelName   ? (levels.find(l => l.name === levelName)?.id   ?? null) : null;
   const subjectId = subjectName ? (subjects.find(s => s.name === subjectName)?.id ?? null) : null;
   return { levelId, subjectId };
 }
@@ -99,7 +99,7 @@ notesRouter.get('/', async (req, res) => {
     try {
       const mtime = fs.statSync(note.path).mtimeMs;
       if (!note.fileMtime || mtime > note.fileMtime) {
-        const content  = fs.readFileSync(note.path, 'utf8');
+        const content = fs.readFileSync(note.path, 'utf8');
         const newTitle = extractTitle(content);
         note = { ...note, fileMtime: mtime, ...(newTitle ? { title: newTitle } : {}) };
         dirty = true;
@@ -111,27 +111,19 @@ notesRouter.get('/', async (req, res) => {
 
   if (fs.existsSync(searchRoot)) {
     const knownPaths = new Set(synced.map(n => n.path));
-    const allFiles   = walkVault(searchRoot);
+    const allFiles = walkVault(searchRoot);
 
     for (const filePath of allFiles) {
       if (knownPaths.has(filePath)) continue;
 
       try {
         const content = fs.readFileSync(filePath, 'utf8');
-        const title   = extractTitle(content) || path.basename(filePath, '.md');
-        const stat    = fs.statSync(filePath);
+        const title = extractTitle(content) || path.basename(filePath, '.md');
+        const stat = fs.statSync(filePath);
         const { levelId, subjectId } = inferFromPath(filePath, searchRoot, levels, subjects);
 
         const newNote = {
-          id:        randomUUID(),
-          title,
-          path:      filePath,
-          subjectId,
-          levelId,
-          createdAt: stat.mtime.toISOString(),
-          fileMtime: stat.mtimeMs,
-          source:    'vault-import',
-        };
+          id: randomUUID(), title, path: filePath, subjectId, levelId, createdAt: stat.mtime.toISOString(), fileMtime: stat.mtimeMs, source: 'vault-import', };
         synced.push(newNote);
         dirty = true;
       } catch { }
@@ -147,10 +139,7 @@ notesRouter.get('/', async (req, res) => {
     synced
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
       .map(note => ({
-        ...publicNote(note),
-        subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? note.subjectId,
-        level:   db.data.levels.find(l => l.id === note.levelId)?.name   ?? note.levelId,
-      }))
+        ...publicNote(note), subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? note.subjectId, level: db.data.levels.find(l => l.id === note.levelId)?.name   ?? note.levelId, }))
   );
 });
 
@@ -163,12 +152,9 @@ notesRouter.get('/search', async (req, res) => {
 
   for (const note of db.data.notes) {
     const subject = db.data.subjects.find(s => s.id === note.subjectId);
-    const level   = db.data.levels.find(l => l.id === note.levelId);
+    const level = db.data.levels.find(l => l.id === note.levelId);
     const enriched = {
-      ...publicNote(note),
-      subject: subject?.name ?? note.subjectId,
-      level:   level?.name   ?? note.levelId,
-    };
+      ...publicNote(note), subject: subject?.name ?? note.subjectId, level: level?.name   ?? note.levelId, };
 
     if (note.title?.toLowerCase().includes(q)) {
       results.push({ ...enriched, snippet: null });
@@ -180,11 +166,11 @@ notesRouter.get('/search', async (req, res) => {
     try { raw = fs.readFileSync(note.path, 'utf8'); } catch { continue; }
 
     const lower = raw.toLowerCase();
-    const idx   = lower.indexOf(q);
+    const idx = lower.indexOf(q);
     if (idx === -1) continue;
 
-    const start   = Math.max(0, idx - 40);
-    const end     = Math.min(raw.length, idx + q.length + 50);
+    const start = Math.max(0, idx - 40);
+    const end = Math.min(raw.length, idx + q.length + 50);
     const snippet =
       (start > 0 ? '…' : '') +
       raw.slice(start, end).replace(/[#*`\n]/g, ' ').replace(/\s+/g, ' ').trim() +
@@ -215,16 +201,10 @@ notesRouter.get('/:id', async (req, res) => {
   }
 
   const subject = db.data.subjects.find(s => s.id === note.subjectId);
-  const level   = db.data.levels.find(l => l.id === note.levelId);
+  const level = db.data.levels.find(l => l.id === note.levelId);
   res.json({
-    ...publicNote(note),
-    markdown,
-    note: {
-      ...publicNote(note),
-      subject: subject?.name ?? note.subjectId,
-      level:   level?.name   ?? note.levelId,
-    },
-  });
+    ...publicNote(note), markdown, note: {
+      ...publicNote(note), subject: subject?.name ?? note.subjectId, level: level?.name   ?? note.levelId, }, });
 });
 
 notesRouter.post('/', async (req, res) => {
@@ -249,39 +229,26 @@ notesRouter.post('/', async (req, res) => {
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '')
     .slice(0, 60);
-  const id       = randomUUID();
+  const id = randomUUID();
   const filename = `${slug}-${id.slice(0, 8)}.md`;
 
   const vaultPath = resolveVaultPath(db.data.settings.vaultPath);
   fs.mkdirSync(vaultPath, { recursive: true });
   const filePath = path.join(vaultPath, filename);
 
-  const now     = new Date();
+  const now = new Date();
   const content = markdown?.trim() || `# ${title.trim()}\n\n`;
   fs.writeFileSync(filePath, content, 'utf8');
 
   const note = {
-    id,
-    title: title.trim(),
-    path: filePath,
-    subjectId: resolvedSubjectId,
-    levelId:   resolvedLevelId,
-    subfolder: subfolder?.trim() || undefined,
-    createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-    sourcePaths: [],
-    metadata:    {},
-  };
+    id, title: title.trim(), path: filePath, subjectId: resolvedSubjectId, levelId: resolvedLevelId, subfolder: subfolder?.trim() || undefined, createdAt: now.toISOString(), updatedAt: now.toISOString(), sourcePaths: [], metadata: {}, };
   if (!note.subfolder) delete note.subfolder;
 
   db.data.notes.push(note);
   await db.write();
 
   res.status(201).json({
-    ...note,
-    subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? null,
-    level:   db.data.levels.find(l => l.id === note.levelId)?.name   ?? null,
-  });
+    ...note, subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? null, level: db.data.levels.find(l => l.id === note.levelId)?.name   ?? null, });
 });
 
 notesRouter.patch('/:id', async (req, res) => {
@@ -334,9 +301,7 @@ notesRouter.patch('/:id', async (req, res) => {
   note.updatedAt = new Date().toISOString();
   await db.write();
   res.json({
-    ...publicNote(note),
-    subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? note.subjectId,
-  });
+    ...publicNote(note), subject: db.data.subjects.find(s => s.id === note.subjectId)?.name ?? note.subjectId, });
 });
 
 notesRouter.get('/:id/sources', async (req, res) => {

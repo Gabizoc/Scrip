@@ -62,9 +62,7 @@ function useActiveHeading(ids) {
           .filter(e => e.isIntersecting)
           .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
         if (hit) setActiveId(hit.target.id);
-      },
-      { rootMargin: '-5% 0px -75% 0px', threshold: 0 },
-    );
+      }, { rootMargin: '-5% 0px -75% 0px', threshold: 0 }, );
     ids.forEach(id => {
       const el = document.getElementById(id);
       if (el) obs.observe(el);
@@ -94,13 +92,9 @@ function TableOfContents({ headings, activeId, onHeadingClick }) {
                 title={text}
                 style={{ paddingLeft: `${indent + 8}px` }}
                 className={[
-                  'w-full text-left leading-snug py-1.5 pr-2 rounded-md',
-                  'transition-all duration-150 truncate block',
-                  level === 1 ? 'text-[11px]' : level === 2 ? 'text-[10.5px]' : 'text-[10px]',
-                  activeId === id
+                  'w-full text-left leading-snug py-1.5 pr-2 rounded-md',  'transition-all duration-150 truncate block', level === 1 ? 'text-[11px]' : level === 2 ? 'text-[10.5px]' : 'text-[10px]', activeId === id
                     ? 'text-accent font-semibold bg-accent/[0.08]'
-                    : 'text-text-tertiary hover:text-text-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]',
-                ].join(' ')}
+                    : 'text-text-tertiary hover:text-text-secondary hover:bg-black/[0.04] dark:hover:bg-white/[0.05]', ].join(' ')}
               >
                 {level >= 3 && (
                   <span className="mr-1 opacity-30">{'·'.repeat(level - 2)}</span>
@@ -121,86 +115,66 @@ const mdComponents = {
       className="text-2xl font-bold text-text-primary mt-8 mb-4 first:mt-0">
       {children}
     </h1>
-  ),
-  h2: ({ children, node }) => (
+  ), h2: ({ children, node }) => (
     <h2 id={slugify(nodeToText(node))}
       className="text-lg font-semibold text-text-primary mt-6 mb-3 ml-4
         border-l-[3px] border-accent pl-3 rounded-sm">
       {children}
     </h2>
-  ),
-  h3: ({ children, node }) => (
+  ), h3: ({ children, node }) => (
     <h3 id={slugify(nodeToText(node))}
       className="text-base font-semibold text-text-secondary mt-4 mb-2 ml-8
         border-l-2 border-accent/40 pl-3 rounded-sm">
       {children}
     </h3>
-  ),
-  h4: ({ children, node }) => (
+  ), h4: ({ children, node }) => (
     <h4 id={slugify(nodeToText(node))}
       className="text-sm font-semibold text-text-secondary mt-3 mb-1.5 ml-12
         border-l border-accent/25 pl-3">
       {children}
     </h4>
-  ),
-  h5: ({ children, node }) => (
+  ), h5: ({ children, node }) => (
     <h5 id={slugify(nodeToText(node))}
       className="text-sm font-medium text-text-tertiary mt-2 mb-1 ml-16 pl-3">
       {children}
     </h5>
-  ),
-  h6: ({ children, node }) => (
+  ), h6: ({ children, node }) => (
     <h6 id={slugify(nodeToText(node))}
       className="text-xs font-medium text-text-tertiary mt-2 mb-1 ml-20 pl-3">
       {children}
     </h6>
-  ),
-  p: ({ children }) => (
+  ), p: ({ children }) => (
     <p className="text-[15px] text-text-primary leading-relaxed mb-3">{children}</p>
-  ),
-  ul: ({ children }) => <ul className="mb-3 space-y-1 pl-1">{children}</ul>,
-  ol: ({ children }) => <ol className="mb-3 space-y-1 pl-1 list-decimal list-inside">{children}</ol>,
-  li: ({ children }) => (
+  ), ul: ({ children }) => <ul className="mb-3 space-y-1 pl-1">{children}</ul>, ol: ({ children }) => <ol className="mb-3 space-y-1 pl-1 list-decimal list-inside">{children}</ol>, li: ({ children }) => (
     <li className="text-[15px] text-text-primary leading-relaxed flex gap-2 items-start [&>ol]:mt-1 [&>ul]:mt-1">
       <span className="mt-[6px] shrink-0 w-1.5 h-1.5 rounded-full bg-accent/60" />
       <span>{children}</span>
     </li>
-  ),
-  strong: ({ children }) => <strong className="font-semibold text-text-primary">{children}</strong>,
-  em: ({ children }) => <em className="italic text-text-secondary">{children}</em>,
-  hr: () => (
+  ), strong: ({ children }) => <strong className="font-semibold text-text-primary">{children}</strong>, em: ({ children }) => <em className="italic text-text-secondary">{children}</em>, hr: () => (
     <div className="my-6 flex items-center gap-3">
       <div className="flex-1 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
       <div className="w-1.5 h-1.5 rounded-full bg-accent/40" />
       <div className="flex-1 h-px bg-gradient-to-r from-transparent via-accent/30 to-transparent" />
     </div>
-  ),
-  table: ({ children }) => (
+  ), table: ({ children }) => (
     <div className="table-scroll-wrapper my-4 overflow-x-auto rounded-lg border border-black/[0.08] dark:border-white/[0.08]"
       style={{ scrollbarGutter: 'stable' }}>
       <table className="w-full text-sm border-collapse">{children}</table>
     </div>
-  ),
-  thead: ({ children }) => <thead className="bg-accent/[0.08] dark:bg-accent/10">{children}</thead>,
-  tbody: ({ children }) => <tbody className="divide-y divide-black/[0.05] dark:divide-white/[0.05]">{children}</tbody>,
-  tr: ({ children }) => <tr className="transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">{children}</tr>,
-  th: ({ children }) => (
+  ), thead: ({ children }) => <thead className="bg-accent/[0.08] dark:bg-accent/10">{children}</thead>, tbody: ({ children }) => <tbody className="divide-y divide-black/[0.05] dark:divide-white/[0.05]">{children}</tbody>, tr: ({ children }) => <tr className="transition-colors hover:bg-black/[0.02] dark:hover:bg-white/[0.02]">{children}</tr>, th: ({ children }) => (
     <th className="px-4 py-2.5 text-left text-xs font-semibold text-text-secondary uppercase tracking-wide whitespace-nowrap">
       {children}
     </th>
-  ),
-  td: ({ children }) => (
+  ), td: ({ children }) => (
     <td className="px-4 py-2.5 text-[14px] text-text-primary align-top">{children}</td>
-  ),
-  code: ({ children, className }) => {
+  ), code: ({ children, className }) => {
     if (className) return (
       <pre className="my-3 p-4 rounded-lg bg-bg-elevated border border-black/[0.06] dark:border-white/[0.06] overflow-x-auto text-sm font-mono text-text-primary">
         <code>{children}</code>
       </pre>
     );
     return <code className="px-1.5 py-0.5 rounded bg-accent/10 text-accent font-mono text-[13px]">{children}</code>;
-  },
-  blockquote: ({ children }) => (
+  }, blockquote: ({ children }) => (
     <blockquote className="my-3 pl-4 border-l-2 border-accent/40 text-text-secondary italic text-[14px]">
       {children}
     </blockquote>
@@ -214,8 +188,8 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
   const [pan, setPan]               = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
   const isDraggingRef = useRef(false);
-  const lastPos       = useRef({ x: 0, y: 0 });
-  const didDrag       = useRef(false);
+  const lastPos = useRef({ x: 0, y: 0 });
+  const didDrag = useRef(false);
   const lastPinchDist = useRef(null);
 
   useEffect(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, [index]);
@@ -257,9 +231,7 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
     e.preventDefault();
     didDrag.current = true;
     setPan(p => ({
-      x: p.x + e.clientX - lastPos.current.x,
-      y: p.y + e.clientY - lastPos.current.y,
-    }));
+      x: p.x + e.clientX - lastPos.current.x, y: p.y + e.clientY - lastPos.current.y, }));
     lastPos.current = { x: e.clientX, y: e.clientY };
   }
   function onPointerUp(e) {
@@ -279,9 +251,7 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
     e.preventDefault();
     if (e.touches.length === 2) {
       const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY,
-      );
+        e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY, );
       if (lastPinchDist.current !== null) {
         setZoom(z => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z * dist / lastPinchDist.current)));
       }
@@ -289,9 +259,7 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
     } else if (e.touches.length === 1 && zoom > 1) {
       const t = e.touches[0];
       setPan(p => ({
-        x: p.x + t.clientX - lastPos.current.x,
-        y: p.y + t.clientY - lastPos.current.y,
-      }));
+        x: p.x + t.clientX - lastPos.current.x, y: p.y + t.clientY - lastPos.current.y, }));
       lastPos.current = { x: t.clientX, y: t.clientY };
     }
   }
@@ -349,16 +317,7 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
           onDblClick={onDblClick}
           onClick={e => { if (didDrag.current) e.stopPropagation(); }}
           style={{
-            transform:       `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-            transformOrigin: 'center',
-            transition:      isDragging ? 'none' : 'transform 0.12s ease',
-            cursor:          isDragging ? 'grabbing' : isZoomed ? 'grab' : 'zoom-in',
-            maxHeight:       '100vh',
-            maxWidth:        '100vw',
-            objectFit:       'contain',
-            userSelect:      'none',
-            pointerEvents:   'auto',
-          }}
+            transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`, transformOrigin: 'center', transition: isDragging ? 'none' : 'transform 0.12s ease', cursor: isDragging ? 'grabbing' : isZoomed ? 'grab' : 'zoom-in', maxHeight: '100vh', maxWidth: '100vw', objectFit: 'contain', userSelect: 'none', pointerEvents: 'auto', }}
         />
       </div>
 
@@ -385,9 +344,7 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
           >›</button>
         </>
       )}
-    </div>,
-    document.body,
-  );
+    </div>, document.body, );
 }
 
 function SourcePhotos({ noteId }) {
@@ -395,10 +352,7 @@ function SourcePhotos({ noteId }) {
   const [lightbox, setLightbox] = useState(null);
 
   const { data: sources = [], isLoading } = useQuery({
-    queryKey: ['note-sources', noteId],
-    queryFn:  () => api.getNoteSources(noteId),
-    enabled:  !!noteId,
-  });
+    queryKey: ['note-sources', noteId], queryFn:  () => api.getNoteSources(noteId), enabled:  !!noteId, });
 
   if (!isLoading && sources.length === 0) return null;
 
@@ -455,18 +409,16 @@ function SourcePhotos({ noteId }) {
 
 export default function Preview() {
   const { noteId } = useParams();
-  const navigate   = useNavigate();
-  const qc         = useQueryClient();
+  const navigate = useNavigate();
+  const qc = useQueryClient();
   const [editing, setEditing]         = useState(false);
   const [draft, setDraft]             = useState('');
   const [titleDraft, setTitleDraft]   = useState('');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const textareaRef                 = useRef(null);
+  const textareaRef = useRef(null);
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['note', noteId],
-    queryFn:  () => api.getNote(noteId),
-  });
+    queryKey: ['note', noteId], queryFn:  () => api.getNote(noteId), });
 
   useEffect(() => {
     if (data?.markdown) setDraft(data.markdown);
@@ -474,21 +426,17 @@ export default function Preview() {
   }, [data?.markdown, data?.note?.title]);
 
   const patchNote = useMutation({
-    mutationFn: () => api.patchNoteMeta(noteId, { markdown: draft, title: titleDraft.trim() || undefined }),
-    onSuccess: () => {
+    mutationFn: () => api.patchNoteMeta(noteId, { markdown: draft, title: titleDraft.trim() || undefined }), onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['note', noteId] });
       qc.invalidateQueries({ queryKey: ['notes'] });
       setEditing(false);
-    },
-  });
+    }, });
 
   const deleteNote = useMutation({
-    mutationFn: () => api.deleteNote(noteId),
-    onSuccess: () => {
+    mutationFn: () => api.deleteNote(noteId), onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['notes'] });
       navigate('/');
-    },
-  });
+    }, });
 
   const lastTapRef = useRef(0);
 
@@ -557,7 +505,7 @@ export default function Preview() {
             .replace(/`(.+?)`/g, '$1');
           if (slugify(text) === id) {
             const linesBefore = draft.substring(0, charPos).split('\n').length - 1;
-            const lineHeight  = ta.scrollHeight / lines.length;
+            const lineHeight = ta.scrollHeight / lines.length;
             ta.scrollTop = Math.max(0, linesBefore * lineHeight - 60);
             ta.focus();
             ta.setSelectionRange(charPos, charPos);
@@ -571,10 +519,10 @@ export default function Preview() {
     }
   }, [editing, draft]);
 
-  const markdown    = stripFrontmatter(data?.markdown ?? '');
-  const headings    = useMemo(() => extractHeadings(markdown), [markdown]);
-  const headingIds  = useMemo(() => headings.map(h => h.id), [headings]);
-  const activeId    = useActiveHeading(headingIds);
+  const markdown = stripFrontmatter(data?.markdown ?? '');
+  const headings = useMemo(() => extractHeadings(markdown), [markdown]);
+  const headingIds = useMemo(() => headings.map(h => h.id), [headings]);
+  const activeId = useActiveHeading(headingIds);
 
   if (isLoading) return (
     <div className="px-4 py-6 md:py-8 animate-pulse">
@@ -692,8 +640,7 @@ export default function Preview() {
               {data.note.createdAt && (
                 <span className="text-xs text-text-tertiary ml-auto">
                   {new Date(data.note.createdAt).toLocaleDateString('fr-FR', {
-                    day: 'numeric', month: 'long', year: 'numeric',
-                  })}
+                    day: 'numeric', month: 'long', year: 'numeric', })}
                 </span>
               )}
             </div>

@@ -1,11 +1,11 @@
-const OPENROUTER_URL  = 'https://openrouter.ai/api/v1/chat/completions';
-const MODEL           = 'google/gemma-4-26b-a4b-it:free';
+const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const MODEL = process.env.OPENROUTER_SUMMARY_MODEL ?? 'google/gemma-4-26b-a4b-it:free';
 const MAX_INPUT_CHARS = 3000;
-const MAX_TOKENS      = 200;
+const MAX_TOKENS = 200;
 const MIN_CONTENT_LEN = 80;
-const MIN_RESULT_LEN  = 15;
-const TEMPERATURE     = 0.3;
-const TIMEOUT_MS      = 30_000;
+const MIN_RESULT_LEN = 15;
+const TEMPERATURE = 0.3;
+const TIMEOUT_MS = 30_000;
 
 export async function summarizeNote(markdown, level, apiKey) {
   if (!apiKey) return null;

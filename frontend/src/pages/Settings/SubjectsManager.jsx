@@ -189,8 +189,8 @@ function resizeImageToDataURL(file, size = 48) {
       canvas.width = canvas.height = size;
       const ctx = canvas.getContext('2d');
       const min = Math.min(img.width, img.height);
-      const sx  = (img.width  - min) / 2;
-      const sy  = (img.height - min) / 2;
+      const sx = (img.width  - min) / 2;
+      const sy = (img.height - min) / 2;
       ctx.drawImage(img, sx, sy, min, min, 0, 0, size, size);
       URL.revokeObjectURL(url);
       resolve(canvas.toDataURL('image/png'));
@@ -200,7 +200,7 @@ function resizeImageToDataURL(file, size = 48) {
 }
 
 function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
-  const ref     = useRef(null);
+  const ref = useRef(null);
   const fileRef = useRef(null);
   const [search, setSearch] = useState('');
 
@@ -230,7 +230,7 @@ function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
   const POPOVER_H = 320;
   const spaceBelow = window.innerHeight - anchorRect.bottom;
   const goUp = spaceBelow < POPOVER_H && anchorRect.top > POPOVER_H;
-  const top  = goUp
+  const top = goUp
     ? anchorRect.top  + window.scrollY - POPOVER_H - 6
     : anchorRect.bottom + window.scrollY + 6;
   const left = Math.min(

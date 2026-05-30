@@ -9,7 +9,7 @@ export default function SubjectEditor({ note, triggerRect, onClose }) {
   const qc = useQueryClient();
   const [value, setValue]   = useState(note.subject ?? '');
   const [saving, setSaving] = useState(false);
-  const inputRef  = useRef(null);
+  const inputRef = useRef(null);
   const popoverRef = useRef(null);
 
   const { data: subjects = [] } = useQuery({
@@ -44,7 +44,7 @@ export default function SubjectEditor({ note, triggerRect, onClose }) {
   }
 
   const left = Math.min(triggerRect.left, window.innerWidth - 216);
-  const top  = triggerRect.bottom + 6;
+  const top = triggerRect.bottom + 6;
 
   return createPortal(
     <div

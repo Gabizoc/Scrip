@@ -46,10 +46,10 @@ subjectsRouter.get('/:id/folders', async (req, res) => {
   const subject = db.data.subjects.find(s => s.id === req.params.id);
   if (!subject) return res.status(404).json({ error: 'matière introuvable' });
 
-  const level    = db.data.levels.find(l => l.id === subject.levelId);
+  const level = db.data.levels.find(l => l.id === subject.levelId);
   if (!db.data.settings?.vaultPath || !level) return res.json([]);
-  const vault    = resolveVaultPath(db.data.settings.vaultPath);
-  const base     = path.resolve(vault, level.name, subject.outputFolder);
+  const vault = resolveVaultPath(db.data.settings.vaultPath);
+  const base = path.resolve(vault, level.name, subject.outputFolder);
 
   if (!base.startsWith(path.resolve(vault) + path.sep) && base !== path.resolve(vault)) {
     return res.json([]);

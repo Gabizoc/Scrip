@@ -52,11 +52,7 @@ function ProtectedLayout() {
 
 function AppGuard() {
   const { data, isLoading } = useQuery({
-    queryKey: ['auth-status'],
-    queryFn:  authApi.status,
-    retry:    false,
-    staleTime: 60_000,
-  });
+    queryKey: ['auth-status'], queryFn:  authApi.status, retry: false, staleTime: 60_000, });
 
   if (isLoading) return <div className="min-h-screen bg-bg-base" />;
 

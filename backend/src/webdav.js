@@ -52,7 +52,7 @@ export function createWebdavMiddleware() {
         return res.status(401).end('Authentification requise');
       }
 
-      const decoded  = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
+      const decoded = Buffer.from(authHeader.slice(6), 'base64').toString('utf8');
       const colonIdx = decoded.indexOf(':');
       if (colonIdx === -1) {
         res.setHeader('WWW-Authenticate', 'Basic realm="Scrip"');

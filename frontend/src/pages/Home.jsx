@@ -142,7 +142,7 @@ function FileManagerView({ notes, ftResults }) {
   }
 
   const folderMap = new Map();
-  const unfiled   = [];
+  const unfiled = [];
   for (const note of notes) {
     if (note.subfolder) {
       if (!folderMap.has(note.subfolder)) folderMap.set(note.subfolder, []);
@@ -221,7 +221,7 @@ export default function Home() {
 
   const [ftResults, setFtResults]   = useState(null);
   const [ftLoading, setFtLoading]   = useState(false);
-  const ftDebounceRef               = useRef(null);
+  const ftDebounceRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem('scrip-home-view', view);
@@ -287,8 +287,8 @@ export default function Home() {
     });
   }, [notes, search, activeSubject, sort, ftResults]);
 
-  const folderTitle  = activeSubject ?? 'Tous les cours';
-  const hasNotes    = !isLoading && notes.length > 0;
+  const folderTitle = activeSubject ?? 'Tous les cours';
+  const hasNotes = !isLoading && notes.length > 0;
 
   return (
     <>

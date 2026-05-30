@@ -19,9 +19,7 @@ function isValidToken(stored, incoming) {
   if (Date.now() > stored.expiresAt) return false;
   try {
     return crypto.timingSafeEqual(
-      Buffer.from(stored.token),
-      Buffer.from(String(incoming ?? '')),
-    );
+      Buffer.from(stored.token), Buffer.from(String(incoming ?? '')), );
   } catch {
     return false;
   }
@@ -36,9 +34,7 @@ async function getBaseUrl() {
 authRouter.get('/status', async (req, res) => {
   await db.read();
   res.json({
-    loggedIn:   req.session?.loggedIn === true,
-    needsSetup: db.data.settings.auth.passwordHash === null,
-  });
+    loggedIn: req.session?.loggedIn === true, needsSetup: db.data.settings.auth.passwordHash === null, });
 });
 
 authRouter.post('/setup-request', async (req, res) => {
@@ -57,16 +53,13 @@ authRouter.post('/setup-request', async (req, res) => {
   await db.write();
 
   const baseUrl = await getBaseUrl();
-  const link    = `${baseUrl}/setup/password?token=${pending.token}`;
+  const link = `${baseUrl}/setup/password?token=${pending.token}`;
 
   try {
     await sendMail({
-      to:      process.env.AUTH_EMAIL,
-      subject: 'Scrip - Configuration initiale',
-      html:    `<p>Cliquez sur le lien pour définir votre mot de passe :</p>
+      to: process.env.AUTH_EMAIL, subject: 'Scrip - Configuration initiale', html: `<p>Cliquez sur le lien pour définir votre mot de passe :</p>
                 <p><a href="${link}">${link}</a></p>
-                <p>Ce lien expire dans 15 minutes.</p>`,
-    });
+                <p>Ce lien expire dans 15 minutes.</p>`, });
   } catch (err) {
     console.error('[auth] Erreur envoi email setup:', err.message);
   }
@@ -91,9 +84,9 @@ authRouter.post('/setup-complete', async (req, res) => {
     return res.status(401).json({ error: 'Token invalide ou expiré' });
   }
 
-  db.data.settings.auth.passwordHash      = await bcrypt.hash(password, 10);
+  db.data.settings.auth.passwordHash = await bcrypt.hash(password, 10);
   db.data.settings.auth.pendingSetupToken = null;
-  db.data.settings.webdav.passwordHash    = db.data.settings.auth.passwordHash;
+  db.data.settings.webdav.passwordHash = db.data.settings.auth.passwordHash;
   await db.write();
 
   req.session.loggedIn = true;
@@ -107,7 +100,7 @@ authRouter.post('/login', async (req, res) => {
   const emailOk = typeof email === 'string'
     && email.toLowerCase() === process.env.AUTH_EMAIL.toLowerCase();
 
-  const hash       = db.data.settings.auth.passwordHash;
+  const hash = db.data.settings.auth.passwordHash;
   const passwordOk = hash ? await bcrypt.compare(String(password ?? ''), hash) : false;
 
   if (!emailOk || !passwordOk) {
@@ -129,16 +122,13 @@ authRouter.post('/magic', async (req, res) => {
   await db.write();
 
   const baseUrl = await getBaseUrl();
-  const link    = `${baseUrl}/api/auth/magic/${pending.token}`;
+  const link = `${baseUrl}/api/auth/magic/${pending.token}`;
 
   try {
     await sendMail({
-      to:      process.env.AUTH_EMAIL,
-      subject: 'Scrip - Connexion par lien',
-      html:    `<p>Cliquez sur le lien pour vous connecter :</p>
+      to: process.env.AUTH_EMAIL, subject: 'Scrip - Connexion par lien', html: `<p>Cliquez sur le lien pour vous connecter :</p>
                 <p><a href="${link}">${link}</a></p>
-                <p>Ce lien expire dans 15 minutes.</p>`,
-    });
+                <p>Ce lien expire dans 15 minutes.</p>`, });
   } catch (err) {
     console.error('[auth] Erreur envoi magic link:', err.message);
   }
@@ -172,16 +162,13 @@ authRouter.post('/forgot', async (req, res) => {
   await db.write();
 
   const baseUrl = await getBaseUrl();
-  const link    = `${baseUrl}/reset/${pending.token}`;
+  const link = `${baseUrl}/reset/${pending.token}`;
 
   try {
     await sendMail({
-      to:      process.env.AUTH_EMAIL,
-      subject: 'Scrip - Réinitialisation du mot de passe',
-      html:    `<p>Cliquez sur le lien pour réinitialiser votre mot de passe :</p>
+      to: process.env.AUTH_EMAIL, subject: 'Scrip - Réinitialisation du mot de passe', html: `<p>Cliquez sur le lien pour réinitialiser votre mot de passe :</p>
                 <p><a href="${link}">${link}</a></p>
-                <p>Ce lien expire dans 15 minutes.</p>`,
-    });
+                <p>Ce lien expire dans 15 minutes.</p>`, });
   } catch (err) {
     console.error('[auth] Erreur envoi reset:', err.message);
   }
@@ -203,9 +190,9 @@ authRouter.post('/reset', async (req, res) => {
     return res.status(401).json({ error: 'Token invalide ou expiré' });
   }
 
-  db.data.settings.auth.passwordHash      = await bcrypt.hash(password, 10);
+  db.data.settings.auth.passwordHash = await bcrypt.hash(password, 10);
   db.data.settings.auth.pendingResetToken = null;
-  db.data.settings.webdav.passwordHash    = db.data.settings.auth.passwordHash;
+  db.data.settings.webdav.passwordHash = db.data.settings.auth.passwordHash;
   await db.write();
 
   req.session.loggedIn = true;
@@ -237,7 +224,7 @@ authRouter.post('/change-password', async (req, res) => {
   }
 
   const newHash = await bcrypt.hash(newPassword, 10);
-  db.data.settings.auth.passwordHash   = newHash;
+  db.data.settings.auth.passwordHash = newHash;
   db.data.settings.webdav.passwordHash = newHash;
   await db.write();
 

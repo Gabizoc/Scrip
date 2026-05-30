@@ -15,27 +15,9 @@ export function resolveVaultPath(stored) {
 
 const DEFAULT_DATA = {
   settings: {
-    theme: 'auto',
-    vaultPath: 'vault',
-    currentLevelId: null,
-    publicUrl: '',
-    trashRetentionDays: 30,
-    auth: {
-      passwordHash:      null,
-      pendingSetupToken: null,
-      pendingResetToken: null,
-      pendingMagicToken: null,
-    },
-    webdav: {
-      enabled:      false,
-      username:     'scrip',
-      passwordHash: null,
-    },
-  },
-  levels:   [],
-  subjects: [],
-  notes:    [],
-  trash:    [],
+    theme: 'auto', vaultPath: 'vault', currentLevelId: null, publicUrl: '', trashRetentionDays: 30, auth: {
+      passwordHash: null, pendingSetupToken: null, pendingResetToken: null, pendingMagicToken: null, }, webdav: {
+      enabled: false, username: 'scrip', passwordHash: null, }, }, levels: [], subjects: [], notes: [], trash: [],
 };
 
 const DB_PATH = process.env.DB_PATH
@@ -53,22 +35,9 @@ export async function initDb() {
 
   db.data = {
     settings: {
-      ...DEFAULT_DATA.settings,
-      ...existing,
-      auth: {
-        ...DEFAULT_DATA.settings.auth,
-        ...(existing.auth ?? {}),
-      },
-      webdav: {
-        ...DEFAULT_DATA.settings.webdav,
-        ...(existing.webdav ?? {}),
-      },
-    },
-    levels:   db.data.levels   ?? [],
-    subjects: db.data.subjects ?? [],
-    notes:    db.data.notes    ?? [],
-    trash:    db.data.trash    ?? [],
-  };
+      ...DEFAULT_DATA.settings, ...existing, auth: {
+        ...DEFAULT_DATA.settings.auth, ...(existing.auth ?? {}), }, webdav: {
+        ...DEFAULT_DATA.settings.webdav, ...(existing.webdav ?? {}), }, }, levels: db.data.levels   ?? [], subjects: db.data.subjects ?? [], notes: db.data.notes    ?? [], trash: db.data.trash    ?? [], };
 
   if (!db.data.settings.auth.passwordHash && db.data.settings.webdav.passwordHash) {
     db.data.settings.auth.passwordHash = db.data.settings.webdav.passwordHash;

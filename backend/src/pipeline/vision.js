@@ -2,18 +2,16 @@ import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage, runOCR } from './ocr.js';
 import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
 
-const NVIDIA_ENDPOINT     = 'https://integrate.api.nvidia.com/v1/chat/completions';
+const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
-const NVIDIA_VISION_MODELS = [
-  'nvidia/llama-3.2-90b-vision-instruct',
-];
+const NVIDIA_VISION_MODELS = process.env.NVIDIA_VISION_MODEL
+  ? [process.env.NVIDIA_VISION_MODEL]
+  : ['nvidia/llama-3.2-90b-vision-instruct'];
 
-const OPENROUTER_VISION_MODELS = [
-  'google/gemma-4-26b-a4b-it:free',
-  'google/gemma-4-31b-it:free',
-  'openrouter/auto',
-];
+const OPENROUTER_VISION_MODELS = process.env.OPENROUTER_VISION_MODEL
+  ? [process.env.OPENROUTER_VISION_MODEL]
+  : ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'openrouter/auto'];
 
 const VISION_SYSTEM_PROMPT = `${DEFAULT_SYSTEM_PROMPT}
 
