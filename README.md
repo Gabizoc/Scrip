@@ -192,12 +192,26 @@ Scrip bascule sur `openrouter/auto` si la limite journaliere est atteinte.
 ```bash
 git clone https://github.com/Gabizoc/Scrip.git
 cd Scrip
+chmod +x setup.sh && ./setup.sh
+```
+
+Le script installe toutes les dependances, pose les questions de configuration (auth, pipeline, cles API, modeles) et genere le `.env` automatiquement.
+
+<details>
+<summary><b>Installation manuelle (sans le script)</b></summary>
+<br>
+
+```bash
 cp .env.example .env
+# Editer .env manuellement
 npm install
-cd frontend && npm install && cd ..
+cd backend && npm install && cd ..
+cd frontend && npm install && npm run build && cd ..
 ```
 
 > Minimum requis dans `.env` : `AUTH_PASSWORD`, `SESSION_SECRET`
+
+</details>
 
 ---
 
@@ -228,10 +242,13 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 <br>
 
 ```bash
+cd backend && npm install && cd ..
 npm run dev
 ```
 
 Ouvre `http://localhost:5000`
+
+> Le frontend est servi par Vite en dev - pas besoin de le builder.
 
 </details>
 
@@ -240,8 +257,9 @@ Ouvre `http://localhost:5000`
 <br>
 
 ```bash
+cd backend && npm install && cd ..
 cd frontend && npm run build && cd ..
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 ```
 
 Reset de la base de donnees :
