@@ -290,6 +290,14 @@ certbot renew --dry-run
 3. Identifiant et mot de passe : configures dans Parametres > WebDAV
 4. **Remote base dir** : meme valeur que "Dossier de synchronisation" dans Parametres
 
+Reglages recommandes dans Remotely Save :
+
+| Parametre | Valeur recommandee |
+|---|---|
+| Run Once On Start Up Automatically | sync once after 1 second of start up |
+| Sync On Save (experimental) | Enable |
+| Abort Sync If Modification Above Percentage | 100 (disable the protection) |
+
 ---
 
 ## Prompts IA personnalises
