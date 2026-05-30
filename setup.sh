@@ -4,22 +4,55 @@ set -euo pipefail
 # ---- Couleurs ----
 RED='\033[0;31m'
 GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 CYAN='\033[0;36m'
 BOLD='\033[1m'
 DIM='\033[2m'
 RST='\033[0m'
 
+# ---- Spinner ----
+
+SPINNER_FRAMES=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+
+run_with_spinner() {
+  local label="$1"; shift
+  local tmplog; tmplog=$(mktemp)
+
+  echo -ne "  ${DIM}${SPINNER_FRAMES[0]}${RST} ${label}..."
+
+  "$@" </dev/null >"$tmplog" 2>&1 &
+  local pid=$!
+  local i=0
+
+  while kill -0 "$pid" 2>/dev/null; do
+    echo -ne "\r  ${DIM}${SPINNER_FRAMES[$((i % ${#SPINNER_FRAMES[@]}))]}${RST} ${label}..."
+    i=$((i + 1))
+    sleep 0.08
+  done
+
+  wait "$pid"
+  local code=$?
+
+  if [ "$code" -eq 0 ]; then
+    echo -e "\r  ${GREEN}✓${RST} ${label}          "
+  else
+    echo -e "\r  ${RED}✗${RST} ${label}"
+    echo -e "${RED}"
+    cat "$tmplog"
+    echo -e "${RST}"
+    rm -f "$tmplog"
+    exit "$code"
+  fi
+
+  rm -f "$tmplog"
+}
+
 # ---- Utilitaires ----
 
 print_header() { echo -e "\n${BOLD}${BLUE}$1${RST}\n"; }
-print_ok()     { echo -e "${GREEN}  ok${RST}"; }
 print_done()   { echo -e "${GREEN}✓ $1${RST}"; }
 print_info()   { echo -e "${CYAN}  $1${RST}"; }
-print_err()    { echo -e "${RED}✗ $1${RST}"; }
 
-# Selection avec fleches haut/bas + entree
 select_option() {
   local prompt="$1"; shift
   local options=("$@")
@@ -27,8 +60,8 @@ select_option() {
   local key key2
 
   echo -e "${BOLD}$prompt${RST}"
-
   tput civis
+
   while true; do
     for i in "${!options[@]}"; do
       if [ "$i" -eq "$selected" ]; then
@@ -40,9 +73,9 @@ select_option() {
 
     tput cuu "${#options[@]}"
 
-    IFS= read -r -s -n1 key 2>/dev/null || true
+    IFS= read -r -s -n1 key </dev/tty 2>/dev/null || true
     if [[ "$key" == $'\x1b' ]]; then
-      IFS= read -r -s -n2 key2 2>/dev/null || true
+      IFS= read -r -s -n2 key2 </dev/tty 2>/dev/null || true
       case "$key2" in
         '[A') [ "$selected" -gt 0 ] && selected=$((selected - 1)) ;;
         '[B') [ "$selected" -lt $((${#options[@]} - 1)) ] && selected=$((selected + 1)) ;;
@@ -60,7 +93,6 @@ select_option() {
   SELECTED_VALUE="${options[$selected]}"
 }
 
-# Saisie texte (avec valeur par defaut)
 ask_input() {
   local prompt="$1"
   local default="${2:-}"
@@ -73,22 +105,20 @@ ask_input() {
   fi
 
   if [ "$secret" = "true" ]; then
-    read -rs INPUT_VALUE; echo
+    read -rs INPUT_VALUE </dev/tty; echo
   else
-    read -r INPUT_VALUE
+    read -r INPUT_VALUE </dev/tty
   fi
 
-  [ -z "$INPUT_VALUE" ] && INPUT_VALUE="$default"
+  if [ -z "$INPUT_VALUE" ]; then INPUT_VALUE="$default"; fi
 }
 
-# Oui / Non
 ask_yesno() {
   local prompt="$1"
   local default="${2:-y}"
-  local hint
-  [ "$default" = "y" ] && hint="O/n" || hint="o/N"
+  local hint; [ "$default" = "y" ] && hint="O/n" || hint="o/N"
   echo -ne "${BOLD}$prompt${RST} ${DIM}[$hint]${RST} : "
-  read -r YN_VALUE
+  read -r YN_VALUE </dev/tty
   YN_VALUE="${YN_VALUE:-$default}"
   [[ "$YN_VALUE" =~ ^[OoYy]$ ]]
 }
@@ -100,39 +130,33 @@ echo -e "${BOLD}${BLUE}"
 echo "   ╔══════════════════════════════════╗"
 echo "   ║         Scrip  -  Setup          ║"
 echo "   ╚══════════════════════════════════╝"
-echo -e "${RST}${DIM}   Configuration interactive de votre instance${RST}\n"
+echo -e "${RST}${DIM}   Configuration interactive de votre instance"
+echo -e "   by https://gabizoc.fr${RST}\n"
 
 # ---- Verifications ----
 
 if ! command -v node &>/dev/null; then
-  print_err "Node.js introuvable. Installez Node.js 20+ avant de continuer."
+  echo -e "${RED}✗ Node.js introuvable. Installez Node.js 20+ avant de continuer.${RST}"
   exit 1
 fi
 
 NODE_VER=$(node -v | tr -d 'v' | cut -d. -f1)
 if [ "$NODE_VER" -lt 20 ]; then
-  print_err "Node.js 20+ requis (version actuelle : $(node -v))"
+  echo -e "${RED}✗ Node.js 20+ requis (version actuelle : $(node -v))${RST}"
   exit 1
 fi
 print_done "Node.js $(node -v) detecte"
 
-# ---- Installation des dependances ----
+# ---- Installation ----
 
 print_header "1 - Installation des dependances"
 
-echo -ne "  Racine        ... "
-npm install --silent && print_ok
+run_with_spinner "Racine"         npm install
+run_with_spinner "Backend"        bash -c "cd backend && npm install"
+run_with_spinner "Frontend"       bash -c "cd frontend && npm install"
+run_with_spinner "Build frontend" bash -c "cd frontend && npm run build"
 
-echo -ne "  Backend       ... "
-cd backend && npm install --silent && cd .. && print_ok
-
-echo -ne "  Frontend      ... "
-cd frontend && npm install --silent && print_ok
-
-echo -ne "  Build frontend... "
-npm run build --silent && cd .. && print_ok
-
-# ---- Configuration ----
+# ---- Serveur ----
 
 print_header "2 - Serveur"
 
@@ -182,8 +206,8 @@ else
     1) CFG_SMTP_HOST="smtp-relay.brevo.com"; CFG_SMTP_PORT="587"; CFG_SMTP_SECURE="false" ;;
     2) CFG_SMTP_HOST="ssl0.ovh.net";         CFG_SMTP_PORT="587"; CFG_SMTP_SECURE="false" ;;
     3)
-      ask_input "SMTP_HOST" ""; CFG_SMTP_HOST="$INPUT_VALUE"
-      ask_input "SMTP_PORT" "587"; CFG_SMTP_PORT="$INPUT_VALUE"
+      ask_input "SMTP_HOST" "";           CFG_SMTP_HOST="$INPUT_VALUE"
+      ask_input "SMTP_PORT" "587";        CFG_SMTP_PORT="$INPUT_VALUE"
       ask_input "SMTP_SECURE (true/false)" "false"; CFG_SMTP_SECURE="$INPUT_VALUE"
       ;;
   esac
@@ -211,15 +235,11 @@ PIPELINE_MODES=("auto" "ollama" "google" "nvidia" "mistral")
 CFG_PIPELINE="${PIPELINE_MODES[$SELECTED_INDEX]}"
 
 CFG_OLLAMA_URL=""; CFG_OLLAMA_MODEL=""
-CFG_GOOGLE_KEY=""
-CFG_NVIDIA_KEY=""
-CFG_MISTRAL_KEY=""
+CFG_GOOGLE_KEY=""; CFG_NVIDIA_KEY=""; CFG_MISTRAL_KEY=""
 
-# Ollama
 if [ "$CFG_PIPELINE" = "auto" ] || [ "$CFG_PIPELINE" = "ollama" ]; then
-  DEFAULT_OLLAMA="y"; [ "$CFG_PIPELINE" = "auto" ] && DEFAULT_OLLAMA="y"
   echo
-  if ask_yesno "Configurer Ollama ?" "$DEFAULT_OLLAMA"; then
+  if ask_yesno "Configurer Ollama ?" "y"; then
     ask_input "URL Ollama" "http://localhost:11434"
     CFG_OLLAMA_URL="$INPUT_VALUE"
 
@@ -238,7 +258,6 @@ if [ "$CFG_PIPELINE" = "auto" ] || [ "$CFG_PIPELINE" = "ollama" ]; then
   fi
 fi
 
-# Google
 if [ "$CFG_PIPELINE" = "auto" ] || [ "$CFG_PIPELINE" = "google" ]; then
   DFLT="n"; [ "$CFG_PIPELINE" = "google" ] && DFLT="y"
   echo
@@ -248,7 +267,6 @@ if [ "$CFG_PIPELINE" = "auto" ] || [ "$CFG_PIPELINE" = "google" ]; then
   fi
 fi
 
-# NVIDIA
 if [ "$CFG_PIPELINE" = "auto" ] || [ "$CFG_PIPELINE" = "nvidia" ]; then
   DFLT="n"; [ "$CFG_PIPELINE" = "nvidia" ] && DFLT="y"
   echo
@@ -258,7 +276,6 @@ if [ "$CFG_PIPELINE" = "auto" ] || [ "$CFG_PIPELINE" = "nvidia" ]; then
   fi
 fi
 
-# Mistral
 if [ "$CFG_PIPELINE" = "auto" ] || [ "$CFG_PIPELINE" = "mistral" ]; then
   DFLT="n"; [ "$CFG_PIPELINE" = "mistral" ] && DFLT="y"
   echo
@@ -281,31 +298,20 @@ print_header "5 - Ecriture du .env"
 
 {
   echo "# Scrip - Configuration generee par setup.sh"
+  echo "# by https://gabizoc.fr"
   echo ""
   echo "# ---- Cles API + Modeles ----"
   echo ""
 
-  if [ -n "$CFG_OLLAMA_URL" ]; then
+  [ -n "$CFG_OLLAMA_URL" ] && {
     echo "OLLAMA_BASE_URL=$CFG_OLLAMA_URL"
     echo "OLLAMA_MODEL=$CFG_OLLAMA_MODEL"
     echo "OLLAMA_VALIDATION=true"
     echo ""
-  fi
-
-  if [ -n "$CFG_GOOGLE_KEY" ]; then
-    echo "GOOGLE_API_KEY=$CFG_GOOGLE_KEY"
-    echo ""
-  fi
-
-  if [ -n "$CFG_MISTRAL_KEY" ]; then
-    echo "MISTRAL_API_KEY=$CFG_MISTRAL_KEY"
-    echo ""
-  fi
-
-  if [ -n "$CFG_NVIDIA_KEY" ]; then
-    echo "NVIDIA_API_KEY=$CFG_NVIDIA_KEY"
-    echo ""
-  fi
+  }
+  [ -n "$CFG_GOOGLE_KEY" ]  && { echo "GOOGLE_API_KEY=$CFG_GOOGLE_KEY";  echo ""; }
+  [ -n "$CFG_MISTRAL_KEY" ] && { echo "MISTRAL_API_KEY=$CFG_MISTRAL_KEY"; echo ""; }
+  [ -n "$CFG_NVIDIA_KEY" ]  && { echo "NVIDIA_API_KEY=$CFG_NVIDIA_KEY";  echo ""; }
 
   echo "# ---- Backend ----"
   echo ""
@@ -343,8 +349,8 @@ print_header "6 - Demarrage"
 
 if command -v pm2 &>/dev/null; then
   if ask_yesno "Demarrer Scrip avec PM2 maintenant ?" "y"; then
-    pm2 start ecosystem.config.cjs
-    pm2 save
+    run_with_spinner "Demarrage PM2" pm2 start ecosystem.config.cjs
+    pm2 save --force >/dev/null 2>&1
     print_done "Scrip demarre avec PM2"
   fi
 else
@@ -361,4 +367,4 @@ echo -e "  Auth     : ${CYAN}$([ "$AUTH_MODE" -eq 0 ] && echo "mot de passe" || 
 echo -e "  Pipeline : ${CYAN}$CFG_PIPELINE${RST}"
 [ -n "$CFG_OLLAMA_MODEL" ] && echo -e "  Modele   : ${CYAN}$CFG_OLLAMA_MODEL${RST}"
 echo -e "  URL      : ${CYAN}${CFG_PUBLIC_URL:-http://localhost:$CFG_PORT}${RST}"
-echo
+echo -e "\n${DIM}  by https://gabizoc.fr${RST}\n"
