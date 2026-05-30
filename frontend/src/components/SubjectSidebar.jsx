@@ -1,8 +1,6 @@
-
 import { subjectIcon } from '../lib/noteUtils.js';
 import SubjectIcon from './SubjectIcon.jsx';
 
-// ── Item sidebar desktop ──────────────────────────────────────────────────────
 function SidebarItem({ icon, name, count, active, onClick }) {
   return (
     <button
@@ -27,7 +25,6 @@ function SidebarItem({ icon, name, count, active, onClick }) {
   );
 }
 
-// ── Chip mobile ───────────────────────────────────────────────────────────────
 function MobileChip({ active, onClick, children }) {
   return (
     <button
@@ -44,11 +41,9 @@ function MobileChip({ active, onClick, children }) {
   );
 }
 
-// ── Composant principal ───────────────────────────────────────────────────────
 export default function SubjectSidebar({ subjects, activeSubject, onSelect, totalCount, desktopOnly, mobileOnly }) {
   return (
     <>
-      {/* ── Desktop : colonne fixe 130px ── */}
       {!mobileOnly && (
         <aside className="flex flex-col w-[130px] shrink-0 gap-0.5 pt-0.5 overflow-y-auto">
           <SidebarItem
@@ -78,7 +73,6 @@ export default function SubjectSidebar({ subjects, activeSubject, onSelect, tota
         </aside>
       )}
 
-      {/* ── Mobile : chips scrollables ── */}
       {!desktopOnly && (
         <div
           className="flex gap-2 overflow-x-auto"

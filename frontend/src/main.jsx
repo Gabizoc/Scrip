@@ -8,7 +8,7 @@ import './app.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 30_000, // 30s avant de refetch
+      staleTime: 30_000,
       retry: 1,
     },
   },

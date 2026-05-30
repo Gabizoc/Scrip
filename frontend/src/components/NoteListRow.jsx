@@ -10,8 +10,8 @@ import ConfirmModal from './ConfirmModal.jsx';
 import { useSubjectByName } from '../lib/SubjectsContext.jsx';
 import { api } from '../lib/api.js';
 
-const SWIPE_REVEAL  = 72;  // px — largeur du bouton suppression révélé
-const SWIPE_TRIGGER = 55;  // px — distance minimale pour déclencher l'ouverture
+const SWIPE_REVEAL  = 72;
+const SWIPE_TRIGGER = 55;
 
 export default function NoteListRow({ note, snippet = null, hideSubfolder = false }) {
   const navigate    = useNavigate();
@@ -29,7 +29,6 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
   const menuBtnRef                        = useRef(null);
   const menuRef                           = useRef(null);
 
-  // Fermer le menu sur clic extérieur
   useEffect(() => {
     if (!showMenu) return;
     function onDown(e) {
@@ -53,19 +52,17 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
     setShowMenu(o => !o);
   }
 
-  // ── Swipe delete ────────────────────────────────────────────────────────────
   const touchStartX    = useRef(0);
-  const swipeXAtStart  = useRef(0);   // position au moment du touchstart
+  const swipeXAtStart  = useRef(0);
   const [swipeX, setSwipeX]         = useState(0);
   const [isSwiping, setIsSwiping]   = useState(false);
 
-  // Swipe uniquement sur mobile (pointer coarse = écran tactile)
   const isTouchDevice = () => window.matchMedia('(pointer: coarse)').matches;
 
   function onTouchStart(e) {
     if (!isTouchDevice()) return;
     touchStartX.current   = e.touches[0].clientX;
-    swipeXAtStart.current = swipeX;   // mémorise la position actuelle
+    swipeXAtStart.current = swipeX;
     setIsSwiping(true);
   }
   function onTouchMove(e) {
@@ -77,7 +74,6 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
   function onTouchEnd() {
     if (!isSwiping) return;
     setIsSwiping(false);
-    // Snap : si on a glissé au-delà du trigger → ouvrir, sinon fermer
     if (swipeX <= -SWIPE_TRIGGER) {
       setSwipeX(-SWIPE_REVEAL);
     } else {
@@ -87,7 +83,6 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
 
   function closeSwipe() { setSwipeX(0); }
 
-  // ── Delete mutation ──────────────────────────────────────────────────────────
   const deleteMutation = useMutation({
     mutationFn: () => api.deleteNote(note.id),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notes'] }),
@@ -95,7 +90,6 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
 
   return (
     <div className="relative overflow-hidden">
-      {/* Fond rouge pour swipe delete — mobile uniquement */}
       <div
         className="md:hidden absolute inset-y-0 right-0 flex items-center justify-center bg-status-danger"
         style={{ width: SWIPE_REVEAL }}
@@ -112,7 +106,6 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
         </button>
       </div>
 
-      {/* Ligne principale */}
       <div
         role="button"
         tabIndex={0}
@@ -132,19 +125,16 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
           hover:bg-black/[0.025] dark:hover:bg-white/[0.035]
           bg-white dark:bg-neutral-950"
       >
-        {/* Accent left bar on hover */}
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full
           opacity-0 group-hover:opacity-100 transition-opacity duration-150"
           style={{ background: dot }}
         />
 
-        {/* Dot matière */}
         <span
           className="flex-shrink-0 w-[7px] h-[7px] rounded-full ml-1"
           style={{ background: dot }}
         />
 
-        {/* Titre + sous-dossier + snippet */}
         <span className="flex-1 min-w-0 flex flex-col justify-center">
           <span className="text-[13px] font-medium text-text-primary truncate">
             {note.title}
@@ -162,7 +152,6 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
           )}
         </span>
 
-        {/* Matière (masquée sur mobile) */}
         <span className="hidden md:inline-flex shrink-0 w-[90px] justify-center">
           <button
             onClick={e => { e.stopPropagation(); setEditorRect(e.currentTarget.getBoundingClientRect()); }}
@@ -186,12 +175,10 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
           )}
         </span>
 
-        {/* Date */}
         <span className="hidden md:block shrink-0 w-[80px] text-right text-[11px] text-text-tertiary tabular-nums">
           {relativeDate(note.createdAt)}
         </span>
 
-        {/* Score */}
         <span className="shrink-0 w-[44px] text-right">
           {score != null && (
             <span className={`text-xs font-semibold font-mono ${scoreColor(score)}`}>
@@ -200,7 +187,6 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
           )}
         </span>
 
-        {/* ⋯ Menu contextuel */}
         <button
           ref={menuBtnRef}
           onClick={openMenu}
@@ -213,7 +199,6 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
         </button>
       </div>
 
-      {/* Menu contextuel ⋯ — rendu via portal pour échapper à overflow-hidden */}
       {showMenu && createPortal(
         <div
           ref={menuRef}
@@ -248,12 +233,10 @@ export default function NoteListRow({ note, snippet = null, hideSubfolder = fals
         document.body,
       )}
 
-      {/* Sheet de déplacement */}
       {showMove && (
         <MoveNoteSheet note={note} onClose={() => setShowMove(false)} />
       )}
 
-      {/* Confirmation suppression */}
       {confirmDelete && (
         <ConfirmModal
           title="Supprimer ce cours ?"

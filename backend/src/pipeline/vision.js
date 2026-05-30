@@ -1,9 +1,3 @@
-//
-// Pipeline VISION — mode alternatif à OCR + structuration.
-// Envoie les images directement à un LLM multimodal avec le prompt de structuration.
-// Une seule étape LLM principale, mais on fait aussi un OCR léger pour valider
-// que la sortie colle au contenu réel de l'image.
-
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage, runOCR } from './ocr.js';
 import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
@@ -11,20 +5,16 @@ import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-
 const NVIDIA_ENDPOINT     = 'https://integrate.api.nvidia.com/v1/chat/completions';
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 
-// Modèles vision NVIDIA NIM (multimodaux)
-// llama-4-maverick retiré : hallucine massivement sur le texte manuscrit français
 const NVIDIA_VISION_MODELS = [
   'nvidia/llama-3.2-90b-vision-instruct',
 ];
 
-// Modèles vision OpenRouter gratuits (multimodaux)
 const OPENROUTER_VISION_MODELS = [
   'google/gemma-4-26b-a4b-it:free',
   'google/gemma-4-31b-it:free',
   'openrouter/auto',
 ];
 
-// Prompt système : combine lecture + mise en forme en une instruction
 const VISION_SYSTEM_PROMPT = `${DEFAULT_SYSTEM_PROMPT}
 
 Tu regardes directement une photo de notes manuscrites françaises.
@@ -91,15 +81,12 @@ Produis UN SEUL document Markdown unifié — pas de séparateur entre les pages
 Respecte le format défini dans le système (# pour les grandes parties, ## pour les sous-parties, etc.).
 N'invente rien : copie exactement ce qui est écrit.`;
 
-  // Annoter chaque image avec son numéro de page pour que le modèle sache l'ordre
-  const annotatedContent = count === 1
+  return count === 1
     ? [...imageBlocks, { type: 'text', text: instruction }]
     : images.flatMap(({ base64, mimeType }, i) => [
         { type: 'text', text: `— Page ${i + 1} sur ${count} —` },
         { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
       ]).concat([{ type: 'text', text: instruction }]);
-
-  return annotatedContent;
 }
 
 function cleanFences(text) {
@@ -150,21 +137,11 @@ async function callOpenRouterVision(messages, apiKey, model, maxTokens) {
   return (await res.json()).choices[0].message.content;
 }
 
-/**
- * Pipeline vision : image(s) → Markdown structuré en une seule étape LLM.
- *
- * Stratégie :
- *  1. Appel OCR léger (pixtral) en parallèle de l'appel vision → référence textuelle
- *  2. LLM vision (NVIDIA → OpenRouter) → sortie candidate
- *  3. Validation de la sortie contre le texte OCR
- *  4. Si invalide → fallback formateur basé sur des règles appliqué à l'OCR
- */
 export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, openrouterKey, mistralKey, userNote = null) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
 
   process.stderr.write(`[vision] ${paths.length} image(s), mode vision direct\n`);
 
-  // Préparer les images (resize + base64) — utilisé par les deux branches
   const images = await Promise.all(paths.map(prepareImage));
   const maxTokens = Math.min(4096 * paths.length, 16384);
 
@@ -178,7 +155,6 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
     { role: 'user',   content: buildUserContent(images, paths.length) },
   ];
 
-  // ── Lancer OCR (référence) ET vision LLM en parallèle ──────────────────────
   const ocrPromise = mistralKey
     ? runOCR(paths, mistralKey).then(r => r.rawMarkdown).catch(err => {
         process.stderr.write(`    ⚠ OCR parallèle échoué (${err.message}), validation désactivée\n`);
@@ -186,7 +162,6 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
       })
     : Promise.resolve(null);
 
-  // Vision LLM — NVIDIA puis OpenRouter
   let visionOutput = null;
 
   if (nvidiaKey) {
@@ -219,7 +194,6 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
 
   const visionCleaned = removeExerciseBlocks(cleanFences(visionOutput));
 
-  // ── Attendre l'OCR de référence et valider ─────────────────────────────────
   const ocrReference = await ocrPromise;
 
   if (ocrReference) {

@@ -41,7 +41,6 @@ subjectsRouter.patch('/:id', async (req, res) => {
   res.json(subject);
 });
 
-// GET /api/subjects/:id/folders — sous-dossiers existants dans le vault pour cette matière
 subjectsRouter.get('/:id/folders', async (req, res) => {
   await db.read();
   const subject = db.data.subjects.find(s => s.id === req.params.id);
@@ -50,8 +49,12 @@ subjectsRouter.get('/:id/folders', async (req, res) => {
   const level    = db.data.levels.find(l => l.id === subject.levelId);
   if (!db.data.settings?.vaultPath || !level) return res.json([]);
   const vault    = resolveVaultPath(db.data.settings.vaultPath);
+  const base     = path.resolve(vault, level.name, subject.outputFolder);
 
-  const base = path.join(vault, level.name, subject.outputFolder);
+  if (!base.startsWith(path.resolve(vault) + path.sep) && base !== path.resolve(vault)) {
+    return res.json([]);
+  }
+
   const folders = [];
 
   function walk(dir, prefix = '') {

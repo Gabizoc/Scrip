@@ -10,8 +10,6 @@ import GlassCard from '../components/GlassCard.jsx';
 import ConfirmModal from '../components/ConfirmModal.jsx';
 import ErrorState from '../components/ErrorState.jsx';
 
-// ── Helpers ────────────────────────────────────────────────────────────────────
-
 function slugify(text) {
   return String(text)
     .toLowerCase()
@@ -22,7 +20,6 @@ function slugify(text) {
     .trim();
 }
 
-// Extrait le texte brut d'un nœud hast (react-markdown)
 function nodeToText(node) {
   if (!node) return '';
   if (node.type === 'text') return node.value ?? '';
@@ -30,12 +27,10 @@ function nodeToText(node) {
   return '';
 }
 
-// Extrait les titres H1–H6 du markdown brut pour la TOC
 function extractHeadings(markdown = '') {
   return markdown.split('\n').map(line => {
     const m = line.match(/^(#{1,6})\s+(.+)$/);
     if (!m) return null;
-    // Supprime les marqueurs inline (**bold**, _italic_, `code`)
     const text = m[2].trim()
       .replace(/\*\*(.+?)\*\*/g, '$1')
       .replace(/\*(.+?)\*/g, '$1')
@@ -55,8 +50,6 @@ function scrollToId(id) {
   const y = el.getBoundingClientRect().top + window.scrollY - 88;
   window.scrollTo({ top: Math.max(0, y), behavior: 'smooth' });
 }
-
-// ── Hook : heading actif via IntersectionObserver ─────────────────────────────
 
 function useActiveHeading(ids) {
   const [activeId, setActiveId] = useState('');
@@ -82,9 +75,6 @@ function useActiveHeading(ids) {
   return activeId;
 }
 
-// ── Composant TOC ─────────────────────────────────────────────────────────────
-
-// Indentation TOC par niveau : H1=0, H2=12px, H3=24px, H4=36px…
 const TOC_INDENT = [0, 0, 12, 24, 36, 48, 60];
 
 function TableOfContents({ headings, activeId, onHeadingClick }) {
@@ -124,8 +114,6 @@ function TableOfContents({ headings, activeId, onHeadingClick }) {
     </nav>
   );
 }
-
-// ── Composants Markdown ───────────────────────────────────────────────────────
 
 const mdComponents = {
   h1: ({ children, node }) => (
@@ -219,23 +207,19 @@ const mdComponents = {
   ),
 };
 
-// ── Lightbox avec zoom ────────────────────────────────────────────────────────
-
 const MIN_ZOOM = 1, MAX_ZOOM = 8;
 
 function Lightbox({ sources, index, onClose, onPrev, onNext }) {
   const [zoom, setZoom]             = useState(1);
   const [pan, setPan]               = useState({ x: 0, y: 0 });
   const [isDragging, setIsDragging] = useState(false);
-  const isDraggingRef = useRef(false); // ref pour les handlers (pas de closure stale)
+  const isDraggingRef = useRef(false);
   const lastPos       = useRef({ x: 0, y: 0 });
   const didDrag       = useRef(false);
   const lastPinchDist = useRef(null);
 
-  // Reset zoom/pan quand on change de photo
   useEffect(() => { setZoom(1); setPan({ x: 0, y: 0 }); }, [index]);
 
-  // Clavier
   useEffect(() => {
     function onKey(e) {
       if (e.key === 'Escape')      onClose();
@@ -246,23 +230,18 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
     return () => window.removeEventListener('keydown', onKey);
   }, [onClose, onPrev, onNext]);
 
-  // ── Zoom molette ──────────────────────────────────────────────────────────
   function onWheel(e) {
     e.preventDefault();
     const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
     setZoom(z => Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z * factor)));
   }
 
-  // ── Double-clic ───────────────────────────────────────────────────────────
   function onDblClick(e) {
     e.stopPropagation();
     if (zoom > 1) { setZoom(1); setPan({ x: 0, y: 0 }); }
     else setZoom(2.5);
   }
 
-  // ── Drag via Pointer Events + capture ────────────────────────────────────
-  // setPointerCapture route tous les events vers cet élément, même si le pointeur
-  // sort de l'image — résout le problème de mousemove manqué sur l'overlay.
   function onPointerDown(e) {
     if (zoom <= 1) return;
     e.preventDefault();
@@ -290,7 +269,6 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
     if (didDrag.current) e.stopPropagation();
   }
 
-  // ── Pinch / tactile ───────────────────────────────────────────────────────
   function onTouchStart(e) {
     if (e.touches.length === 1)
       lastPos.current = { x: e.touches[0].clientX, y: e.touches[0].clientY };
@@ -326,7 +304,6 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
       className="fixed inset-0 z-[9999] bg-black/95 flex items-center justify-center select-none"
       onClick={() => { if (!isZoomed && !didDrag.current) onClose(); }}
     >
-      {/* Barre du haut */}
       <div
         className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 py-3 z-10"
         onClick={e => e.stopPropagation()}
@@ -354,7 +331,6 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
         </div>
       </div>
 
-      {/* Zone image */}
       <div
         className="w-full h-full flex items-center justify-center overflow-hidden"
         onWheel={onWheel}
@@ -386,7 +362,6 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
         />
       </div>
 
-      {/* Hint */}
       {!isZoomed && (
         <p className="absolute bottom-4 left-1/2 -translate-x-1/2
           text-white/25 text-[11px] pointer-events-none">
@@ -394,7 +369,6 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
         </p>
       )}
 
-      {/* Nav prev/next */}
       {sources.length > 1 && (
         <>
           <button
@@ -415,8 +389,6 @@ function Lightbox({ sources, index, onClose, onPrev, onNext }) {
     document.body,
   );
 }
-
-// ── Photos originales ─────────────────────────────────────────────────────────
 
 function SourcePhotos({ noteId }) {
   const [open, setOpen]       = useState(false);
@@ -481,8 +453,6 @@ function SourcePhotos({ noteId }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
-
 export default function Preview() {
   const { noteId } = useParams();
   const navigate   = useNavigate();
@@ -520,11 +490,9 @@ export default function Preview() {
     },
   });
 
-  // ── Double-clic / double-tap → ouvre éditeur au bon endroit ─────────────────
   const lastTapRef = useRef(0);
 
   const openEditorAt = useCallback((el) => {
-    // Remonte jusqu'au premier bloc significatif (heading, p, li, td…)
     let target = el;
     while (target && target.dataset?.mdzone === undefined) {
       if (/^(H[1-6]|P|LI|TD|TH|BLOCKQUOTE|PRE)$/.test(target.tagName)) break;
@@ -534,7 +502,6 @@ export default function Preview() {
 
     setEditing(true);
 
-    // Attend que le textarea soit monté puis scroll au bon endroit
     setTimeout(() => {
       const ta = textareaRef.current;
       if (!ta) return;
@@ -564,7 +531,6 @@ export default function Preview() {
     openEditorAt(e.target);
   }, [editing, openEditorAt]);
 
-  // Double-tap mobile (deux touches < 300 ms)
   const handleContentTouchEnd = useCallback((e) => {
     if (editing) return;
     const now = Date.now();
@@ -579,7 +545,6 @@ export default function Preview() {
     if (editing) {
       const ta = textareaRef.current;
       if (!ta) return;
-      // Trouve le numéro de ligne du heading dans le draft
       const lines = draft.split('\n');
       let charPos = 0;
       for (const line of lines) {
@@ -661,10 +626,8 @@ export default function Preview() {
     <div className="px-4 py-6 md:py-8">
       <div className="flex gap-8 justify-center max-w-[88rem] mx-auto">
 
-        {/* ── Contenu principal ───────────────────────────────────── */}
         <div className="w-full max-w-3xl min-w-0">
 
-          {/* Toolbar */}
           <div className="flex items-center justify-between mb-5 gap-4">
             <button
               onClick={() => navigate('/')}
@@ -718,7 +681,6 @@ export default function Preview() {
             </div>
           </div>
 
-          {/* Méta */}
           {data?.note && (
             <div className="flex items-center gap-2 mb-4">
               <span className="text-xs font-medium px-2.5 py-1 rounded-full bg-accent/10 text-accent">
@@ -737,7 +699,6 @@ export default function Preview() {
             </div>
           )}
 
-          {/* Contenu / Éditeur */}
           {editing ? (
             <div className="flex flex-col gap-2">
               <input
@@ -768,7 +729,6 @@ export default function Preview() {
               <ReactMarkdown remarkPlugins={[remarkGfm]} components={mdComponents}>
                 {markdown}
               </ReactMarkdown>
-              {/* Hint discret */}
               <span className="absolute bottom-3 right-4
                 text-[10px] text-text-tertiary opacity-0
                 group-hover/preview:opacity-60 transition-opacity duration-300
@@ -778,11 +738,9 @@ export default function Preview() {
             </GlassCard>
           )}
 
-          {/* ── Photos originales ─────────────────────────────────── */}
           {!editing && <SourcePhotos noteId={noteId} />}
         </div>
 
-        {/* ── TOC sidebar — desktop xl+ ───────────────────────────── */}
         {headings.length > 1 && (
           <aside className="hidden lg:block w-52 flex-shrink-0">
             <div className="sticky top-8 pt-[3.75rem]">

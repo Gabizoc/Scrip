@@ -1,13 +1,5 @@
 import { useRef, useCallback } from 'react';
 
-/**
- * Retourne deux déclencheurs :
- * - triggerCamera  : ouvre directement la caméra (capture="environment")
- * - triggerGallery : ouvre la galerie / explorateur de fichiers
- * - CameraInputs   : les deux <input> cachés à monter dans le DOM
- *
- * @param {{ onCapture: (files: File[]) => void, multiple?: boolean }} opts
- */
 export function useCamera({ onCapture, multiple = false }) {
   const cameraRef  = useRef(null);
   const galleryRef = useRef(null);
@@ -24,7 +16,6 @@ export function useCamera({ onCapture, multiple = false }) {
   const CameraInputs = useCallback(function CameraInputs() {
     return (
       <>
-        {/* Ouvre directement la caméra arrière */}
         <input
           ref={cameraRef}
           type="file"
@@ -35,7 +26,6 @@ export function useCamera({ onCapture, multiple = false }) {
           className="hidden"
           aria-hidden="true"
         />
-        {/* Ouvre la galerie / explorateur */}
         <input
           ref={galleryRef}
           type="file"

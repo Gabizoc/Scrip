@@ -14,7 +14,6 @@ const NAV_ITEMS = [
   { label: 'Corbeille',          path: '/settings/trash' },
 ];
 
-/** Copie du texte dans le presse-papiers avec feedback visuel */
 function CopyButton({ text }) {
   const [copied, setCopied] = useState(false);
   function doCopy() {
@@ -34,8 +33,6 @@ function CopyButton({ text }) {
   );
 }
 
-/** Génère un mot de passe aléatoire de 16 caractères via crypto.getRandomValues
- *  (CSPRNG du navigateur — pas Math.random). */
 function generatePassword() {
   const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$';
   const bytes = crypto.getRandomValues(new Uint8Array(16));
@@ -54,7 +51,6 @@ export default function Settings() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['settings'] }),
   });
 
-  // ── Password change local state ─────────────────────────────────────────────
   const [currentPass,  setCurrentPass]  = useState('');
   const [newPass,      setNewPass]      = useState('');
   const [confirmPass,  setConfirmPass]  = useState('');
@@ -85,15 +81,12 @@ export default function Settings() {
     navigate('/login', { replace: true });
   }
 
-  // ── WebDAV local state ──────────────────────────────────────────────────────
   const [publicUrl,    setPublicUrl]    = useState('');
   const [syncFolder,   setSyncFolder]   = useState('');
   const [webdavUser,   setWebdavUser]   = useState('scrip');
   const [webdavPass,   setWebdavPass]   = useState('');
   const [showPass,     setShowPass]     = useState(false);
   const [webdavSaved,  setWebdavSaved]  = useState(false);
-  // Guard : n'initialise les champs qu'une seule fois au premier chargement,
-  // pour éviter d'écraser les modifications en cours lors des refetch React Query.
   const initializedRef = useRef(false);
 
   useEffect(() => {
@@ -142,7 +135,6 @@ export default function Settings() {
       </div>
 
       <div className="space-y-4">
-        {/* Thème — mobile only */}
         <div className="md:hidden">
           <GlassCard className="p-4 space-y-3">
             <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Thème</h3>
@@ -150,7 +142,6 @@ export default function Settings() {
           </GlassCard>
         </div>
 
-        {/* Niveau courant */}
         <GlassCard className="p-4 space-y-3">
           <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Niveau actuel</h3>
           <Dropdown
@@ -166,7 +157,6 @@ export default function Settings() {
           />
         </GlassCard>
 
-        {/* Navigation */}
         {NAV_ITEMS.map(({ label, path }) => (
           <GlassCard key={path} className="p-4 cursor-pointer" onClick={() => navigate(path)}>
             <div className="flex items-center justify-between">
@@ -176,7 +166,6 @@ export default function Settings() {
           </GlassCard>
         ))}
 
-        {/* Vault path */}
         <GlassCard className="p-4 space-y-3">
           <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Vault path</h3>
           <input
@@ -191,9 +180,7 @@ export default function Settings() {
           />
         </GlassCard>
 
-        {/* ── Obsidian WebDAV ────────────────────────────────────────────────── */}
         <GlassCard className="p-4 space-y-4">
-          {/* Header + toggle */}
           <div className="flex items-center justify-between">
             <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Obsidian WebDAV</h3>
             <button
@@ -211,7 +198,6 @@ export default function Settings() {
             </button>
           </div>
 
-          {/* URL publique */}
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               URL publique du serveur
@@ -229,7 +215,6 @@ export default function Settings() {
             />
           </div>
 
-          {/* Sync folder */}
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Dossier de synchronisation
@@ -251,7 +236,6 @@ export default function Settings() {
             </p>
           </div>
 
-          {/* Username */}
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Identifiant
@@ -268,7 +252,6 @@ export default function Settings() {
             />
           </div>
 
-          {/* Password */}
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Mot de passe {settings?.webdav?.hasPassword ? '(laisser vide pour ne pas changer)' : ''}
@@ -308,7 +291,6 @@ export default function Settings() {
             </div>
           </div>
 
-          {/* Bouton enregistrer */}
           <button
             onClick={saveWebdav}
             disabled={updateSettings.isPending}
@@ -319,7 +301,6 @@ export default function Settings() {
             {webdavSaved ? '✓ Enregistré' : updateSettings.isPending ? 'Enregistrement…' : 'Enregistrer'}
           </button>
 
-          {/* URL WebDAV à copier dans Obsidian */}
           {webdavEnabled && webdavUrl && (
             <div className="space-y-1.5">
               <p className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
@@ -334,7 +315,6 @@ export default function Settings() {
             </div>
           )}
 
-          {/* Snippet Nginx */}
           <details className="group">
             <summary className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium cursor-pointer select-none hover:text-text-secondary transition-colors">
               Config Nginx ▸
@@ -353,7 +333,6 @@ export default function Settings() {
             </div>
           </details>
 
-          {/* Guide Remotely Save */}
           <details className="group">
             <summary className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium cursor-pointer select-none hover:text-text-secondary transition-colors">
               Guide Obsidian Remotely Save ▸
@@ -372,7 +351,6 @@ export default function Settings() {
           </details>
         </GlassCard>
 
-        {/* ── Mot de passe ──────────────────────────────────────────────────── */}
         <GlassCard className="p-4 space-y-4">
           <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Mot de passe</h3>
           <form onSubmit={handleChangePassword} className="space-y-3">
@@ -411,7 +389,6 @@ export default function Settings() {
           </form>
         </GlassCard>
 
-        {/* ── Déconnexion ───────────────────────────────────────────────────── */}
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-2 h-10 rounded-lg text-[13px] font-medium

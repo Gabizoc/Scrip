@@ -53,7 +53,6 @@ export default function RecentStrip({ notes }) {
   const sentinelRef = useRef(null);
   const [visible, setVisible] = useState(CHUNK);
 
-  // ── Drag-to-scroll ────────────────────────────────────────────────────────
   const drag = useRef({ active: false, startX: 0, scrollLeft: 0 });
 
   function onMouseDown(e) {

@@ -6,7 +6,6 @@ export const trashRouter = Router();
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// GET /api/trash — liste les notes en corbeille (plus récentes d'abord)
 trashRouter.get('/', async (req, res) => {
   await db.read();
   const days = Number(db.data.settings.trashRetentionDays ?? 30);
@@ -27,7 +26,6 @@ trashRouter.get('/', async (req, res) => {
   res.json(entries);
 });
 
-// POST /api/trash/:id/restore — restaure une note depuis la corbeille
 trashRouter.post('/:id/restore', async (req, res) => {
   await db.read();
   const idx = (db.data.trash ?? []).findIndex(e => e.id === req.params.id);
@@ -46,7 +44,6 @@ trashRouter.post('/:id/restore', async (req, res) => {
   res.json({ restored: entry.id });
 });
 
-// DELETE /api/trash — vide entièrement la corbeille
 trashRouter.delete('/', async (req, res) => {
   await db.read();
   for (const entry of (db.data.trash ?? [])) deleteTrashFiles(entry);
@@ -55,7 +52,6 @@ trashRouter.delete('/', async (req, res) => {
   res.status(204).end();
 });
 
-// DELETE /api/trash/:id — supprime définitivement une entrée
 trashRouter.delete('/:id', async (req, res) => {
   await db.read();
   const idx = (db.data.trash ?? []).findIndex(e => e.id === req.params.id);

@@ -2,10 +2,6 @@ import { motion, AnimatePresence } from 'motion/react';
 
 const SPRING = { type: 'spring', stiffness: 380, damping: 32, mass: 1 };
 
-/**
- * Sheet animée qui monte du bas.
- * Overlay cliquable pour fermer, radius xl en haut.
- */
 export default function BottomSheet({ open, onClose, children }) {
   return (
     <AnimatePresence>

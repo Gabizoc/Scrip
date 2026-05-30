@@ -52,7 +52,6 @@ export default function NoteCard({ note, index = 0 }) {
       }}
       aria-label={`Ouvrir le cours : ${note.title}`}
     >
-      {/* Ligne du haut : matière + bouton suppression */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2 min-w-0">
           <button
@@ -100,7 +99,6 @@ export default function NoteCard({ note, index = 0 }) {
         </div>
       </div>
 
-      {/* Titre + résumé */}
       <div className="flex-1 min-h-0 flex flex-col gap-1">
         <h3 className="text-[14px] font-semibold text-text-primary line-clamp-2 leading-snug">
           {note.title}
@@ -112,7 +110,6 @@ export default function NoteCard({ note, index = 0 }) {
         )}
       </div>
 
-      {/* Sous-dossier */}
       {note.subfolder && (
         <div className="flex items-center gap-1 text-[10px] text-text-tertiary">
           <FolderOpen size={10} className="shrink-0 opacity-60" />
@@ -120,7 +117,6 @@ export default function NoteCard({ note, index = 0 }) {
         </div>
       )}
 
-      {/* Ligne du bas : date + score */}
       <div className="flex items-center justify-between">
         <span className="text-xs text-text-tertiary">{date}</span>
         {score != null && (
@@ -130,12 +126,10 @@ export default function NoteCard({ note, index = 0 }) {
         )}
       </div>
 
-      {/* Sheet de déplacement */}
       {showMove && (
         <MoveNoteSheet note={note} onClose={() => setShowMove(false)} />
       )}
 
-      {/* Modal de confirmation suppression */}
       {showDeleteModal && (
         <ConfirmModal
           title="Supprimer ce cours ?"

@@ -7,10 +7,6 @@ import { api } from '../lib/api.js';
 import SubjectIcon from './SubjectIcon.jsx';
 import { subjectIcon } from '../lib/noteUtils.js';
 
-/**
- * Dropdown custom réutilisable.
- * options: [{ value, name, icon }]
- */
 function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -58,7 +54,6 @@ function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) 
           shadow-xl shadow-black/10 dark:shadow-black/40
           max-h-52 overflow-y-auto"
         >
-          {/* Option "aucune matière" */}
           <li>
             <button
               type="button"
@@ -94,11 +89,6 @@ function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) 
   );
 }
 
-/**
- * Modal de création manuelle d'un cours.
- * Props:
- *   onClose — callback de fermeture
- */
 export default function CreateNoteSheet({ onClose }) {
   const qc       = useQueryClient();
   const navigate = useNavigate();
@@ -133,7 +123,6 @@ export default function CreateNoteSheet({ onClose }) {
     },
   });
 
-  // Fermer sur Escape
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
     document.addEventListener('keydown', onKey);
@@ -156,10 +145,8 @@ export default function CreateNoteSheet({ onClose }) {
 
   return createPortal(
     <>
-      {/* Overlay */}
       <div className="fixed inset-0 bg-black/30 dark:bg-black/50 z-[9998] backdrop-blur-[2px]" />
 
-      {/* Wrapper flex */}
       <div className="modal-wrapper" onClick={onClose}>
         <form
           onSubmit={handleSubmit}
@@ -169,7 +156,6 @@ export default function CreateNoteSheet({ onClose }) {
             border border-black/[0.08] dark:border-white/[0.08]
             p-5 space-y-4"
         >
-          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-text-primary font-semibold text-[15px]">
               <PenLine size={16} className="text-accent" />
@@ -184,7 +170,6 @@ export default function CreateNoteSheet({ onClose }) {
             </button>
           </div>
 
-          {/* Titre */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Titre <span className="text-status-danger">*</span>
@@ -203,7 +188,6 @@ export default function CreateNoteSheet({ onClose }) {
             />
           </div>
 
-          {/* Matière */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Matière <span className="normal-case text-text-tertiary font-normal">(optionnel)</span>
@@ -215,7 +199,6 @@ export default function CreateNoteSheet({ onClose }) {
             />
           </div>
 
-          {/* Sous-dossier */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Sous-dossier <span className="normal-case text-text-tertiary font-normal">(optionnel)</span>
@@ -239,7 +222,6 @@ export default function CreateNoteSheet({ onClose }) {
             )}
           </div>
 
-          {/* Contenu markdown optionnel */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Contenu <span className="normal-case text-text-tertiary font-normal">(optionnel · modifiable ensuite)</span>
@@ -257,14 +239,12 @@ export default function CreateNoteSheet({ onClose }) {
             />
           </div>
 
-          {/* Erreur */}
           {createMutation.isError && (
             <p className="text-[12px] text-status-danger">
               {createMutation.error?.message ?? 'Une erreur est survenue.'}
             </p>
           )}
 
-          {/* Actions */}
           <div className="flex gap-2 pt-1">
             <button
               type="submit"

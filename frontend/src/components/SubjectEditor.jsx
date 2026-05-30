@@ -5,14 +5,6 @@ import { Check } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { subjectDotColor, subjectIcon } from '../lib/noteUtils.js';
 
-/**
- * Popover inline pour éditer la matière d'une note.
- *
- * Props :
- *   note        — objet note (id, subject)
- *   triggerRect — DOMRect du badge déclencheur (getBoundingClientRect())
- *   onClose     — callback de fermeture
- */
 export default function SubjectEditor({ note, triggerRect, onClose }) {
   const qc = useQueryClient();
   const [value, setValue]   = useState(note.subject ?? '');
@@ -20,19 +12,16 @@ export default function SubjectEditor({ note, triggerRect, onClose }) {
   const inputRef  = useRef(null);
   const popoverRef = useRef(null);
 
-  // Récupère la liste des matières existantes
   const { data: subjects = [] } = useQuery({
     queryKey: ['subjects'],
     queryFn:  () => api.getSubjects(),
   });
 
-  // Focus au montage
   useEffect(() => {
     inputRef.current?.focus();
     inputRef.current?.select();
   }, []);
 
-  // Fermer sur clic extérieur
   useEffect(() => {
     function handler(e) {
       if (popoverRef.current && !popoverRef.current.contains(e.target)) onClose();
@@ -54,7 +43,6 @@ export default function SubjectEditor({ note, triggerRect, onClose }) {
     }
   }
 
-  // Positionner sous le badge, recalé si hors écran à droite
   const left = Math.min(triggerRect.left, window.innerWidth - 216);
   const top  = triggerRect.bottom + 6;
 
@@ -65,7 +53,6 @@ export default function SubjectEditor({ note, triggerRect, onClose }) {
       className="bg-white dark:bg-neutral-900 rounded-xl shadow-2xl
         border border-black/[0.08] dark:border-white/[0.1] p-2.5 space-y-2"
     >
-      {/* Input + bouton confirmer */}
       <div className="flex gap-1.5">
         <input
           ref={inputRef}
@@ -91,7 +78,6 @@ export default function SubjectEditor({ note, triggerRect, onClose }) {
         </button>
       </div>
 
-      {/* Matières existantes */}
       {subjects.length > 0 && (
         <div className="flex flex-wrap gap-1">
           {subjects.map(s => (

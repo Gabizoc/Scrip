@@ -1,4 +1,3 @@
-// src/audit.js
 import fs from 'node:fs';
 import path from 'node:path';
 
@@ -14,11 +13,6 @@ function nextAvailablePath(filePath) {
   return path.join(dir, `${base} (${n})${ext}`);
 }
 
-/**
- * Parse les corrections factuelles tracées du contenu LLM.
- * @param {string} content
- * @returns {Array<{ original: string, corrected: string, reason: string }>}
- */
 export function parseCorrections(content) {
   const results = [];
   let match;
@@ -33,14 +27,6 @@ export function parseCorrections(content) {
   return results;
 }
 
-/**
- * Crée le fichier d'audit si des corrections factuelles ou des régions non-textuelles existent.
- * @param {string} structuredContent - Sortie LLM complète
- * @param {Array<{id:string, x1:number, y1:number, x2:number, y2:number}>} imageRegions
- * @param {string} sourceName - Nom du fichier source (ex: 'IMG_2406.jpeg')
- * @param {string} dateIngestion - ISO timestamp
- * @returns {string|null} Chemin du fichier créé, ou null si non nécessaire
- */
 export function writeAuditLog(structuredContent, imageRegions, sourceName, dateIngestion, auditDir = '_audit') {
   const corrections = parseCorrections(structuredContent);
   if (corrections.length === 0 && imageRegions.length === 0) return null;
@@ -80,11 +66,6 @@ export function writeAuditLog(structuredContent, imageRegions, sourceName, dateI
   return auditPath;
 }
 
-/**
- * Extrait le bloc METADATA HTML commenté de la sortie LLM.
- * @param {string} content - Contenu structuré du LLM
- * @returns {Object|null} Objet avec les champs METADATA, ou null si absent
- */
 export function parseMetadata(content) {
   const match = content.match(/<!--\s*METADATA\s*([\s\S]*?)-->/);
   if (!match) return null;

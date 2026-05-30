@@ -6,18 +6,14 @@ import { sendMail } from '../lib/mailer.js';
 
 export const authRouter = Router();
 
-/** Génère un token aléatoire de 32 octets (64 chars hex) */
 function generateToken() {
   return crypto.randomBytes(32).toString('hex');
 }
 
-/** Crée un objet token avec expiry 15 minutes */
 function makeToken() {
   return { token: generateToken(), expiresAt: Date.now() + 15 * 60 * 1000 };
 }
 
-/** Vérifie qu'un objet token est valide (non nul, non expiré, token correct).
- *  Utilise timingSafeEqual pour éviter les timing attacks. */
 function isValidToken(stored, incoming) {
   if (!stored) return false;
   if (Date.now() > stored.expiresAt) return false;
@@ -31,14 +27,12 @@ function isValidToken(stored, incoming) {
   }
 }
 
-/** URL publique du serveur (env > db > localhost fallback) */
 async function getBaseUrl() {
   if (process.env.PUBLIC_URL) return process.env.PUBLIC_URL.replace(/\/$/, '');
   await db.read();
   return (db.data.settings.publicUrl ?? '').replace(/\/$/, '') || `http://localhost:${process.env.PORT ?? 5001}`;
 }
 
-// ── GET /api/auth/status ──────────────────────────────────────────────────────
 authRouter.get('/status', async (req, res) => {
   await db.read();
   res.json({
@@ -47,14 +41,12 @@ authRouter.get('/status', async (req, res) => {
   });
 });
 
-// ── POST /api/auth/setup-request ─────────────────────────────────────────────
 authRouter.post('/setup-request', async (req, res) => {
   await db.read();
   if (db.data.settings.auth.passwordHash !== null) {
     return res.status(403).json({ error: 'Setup déjà effectué' });
   }
 
-  // Éviter d'écraser un token valide non expiré
   const existing = db.data.settings.auth.pendingSetupToken;
   if (existing && Date.now() <= existing.expiresAt) {
     return res.status(429).json({ error: 'Lien déjà envoyé. Vérifiez votre boîte mail (expire dans 15 min).' });
@@ -82,7 +74,6 @@ authRouter.post('/setup-request', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── POST /api/auth/setup-complete ────────────────────────────────────────────
 authRouter.post('/setup-complete', async (req, res) => {
   await db.read();
   if (db.data.settings.auth.passwordHash !== null) {
@@ -109,7 +100,6 @@ authRouter.post('/setup-complete', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── POST /api/auth/login ──────────────────────────────────────────────────────
 authRouter.post('/login', async (req, res) => {
   await db.read();
   const { email, password } = req.body ?? {};
@@ -128,7 +118,6 @@ authRouter.post('/login', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── POST /api/auth/magic ──────────────────────────────────────────────────────
 authRouter.post('/magic', async (req, res) => {
   await db.read();
   if (db.data.settings.auth.passwordHash === null) {
@@ -157,7 +146,6 @@ authRouter.post('/magic', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── GET /api/auth/magic/:token ────────────────────────────────────────────────
 authRouter.get('/magic/:token', async (req, res) => {
   await db.read();
   const { token } = req.params;
@@ -173,7 +161,6 @@ authRouter.get('/magic/:token', async (req, res) => {
   res.redirect('/');
 });
 
-// ── POST /api/auth/forgot ─────────────────────────────────────────────────────
 authRouter.post('/forgot', async (req, res) => {
   await db.read();
   if (db.data.settings.auth.passwordHash === null) {
@@ -202,7 +189,6 @@ authRouter.post('/forgot', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── POST /api/auth/reset ──────────────────────────────────────────────────────
 authRouter.post('/reset', async (req, res) => {
   await db.read();
   const { token, password } = req.body ?? {};
@@ -222,13 +208,10 @@ authRouter.post('/reset', async (req, res) => {
   db.data.settings.webdav.passwordHash    = db.data.settings.auth.passwordHash;
   await db.write();
 
-  // Auto-login après reset — l'utilisateur vient de prouver l'accès à sa boîte mail
   req.session.loggedIn = true;
   res.json({ ok: true });
 });
 
-// ── POST /api/auth/change-password ───────────────────────────────────────────
-// Route protégée — nécessite une session active
 authRouter.post('/change-password', async (req, res) => {
   if (req.session?.loggedIn !== true) {
     return res.status(401).json({ error: 'Non authentifié' });
@@ -261,7 +244,6 @@ authRouter.post('/change-password', async (req, res) => {
   res.json({ ok: true });
 });
 
-// ── POST /api/auth/logout ─────────────────────────────────────────────────────
 authRouter.post('/logout', (req, res) => {
   req.session.destroy(() => {
     res.clearCookie('connect.sid');

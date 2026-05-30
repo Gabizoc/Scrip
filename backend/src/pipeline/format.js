@@ -1,11 +1,3 @@
-// src/format.js
-
-/**
- * Assemble un fichier Markdown Obsidian avec frontmatter YAML.
- * @param {string} content - Corps markdown structuré (sans frontmatter)
- * @param {{ subject: string, level: string, dateCours: string, dateIngestion: string, sources: string[] }} meta
- * @returns {string}
- */
 export function buildNote(content, meta) {
   const sourcesInline = (meta.sources ?? []).join(', ');
   const frontmatter = [

@@ -1,5 +1,3 @@
-// Affiche soit un emoji, soit une image (data URL) selon la valeur stockée
-
 export default function SubjectIcon({ value, fallback, size = 16, className = '' }) {
   if (value?.startsWith('data:')) {
     return (

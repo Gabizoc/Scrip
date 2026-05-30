@@ -1,25 +1,15 @@
 const OPENROUTER_URL  = 'https://openrouter.ai/api/v1/chat/completions';
 const MODEL           = 'google/gemma-4-26b-a4b-it:free';
-const MAX_INPUT_CHARS = 3000;   // taille max du contenu envoyé au LLM
-const MAX_TOKENS      = 200;    // tokens max pour un résumé de 2-3 phrases
-const MIN_CONTENT_LEN = 80;     // contenu trop court → pas de résumé
-const MIN_RESULT_LEN  = 15;     // réponse trop courte → invalide
+const MAX_INPUT_CHARS = 3000;
+const MAX_TOKENS      = 200;
+const MIN_CONTENT_LEN = 80;
+const MIN_RESULT_LEN  = 15;
 const TEMPERATURE     = 0.3;
-const TIMEOUT_MS      = 30_000; // 30 secondes
+const TIMEOUT_MS      = 30_000;
 
-/**
- * Génère un résumé de 2-3 phrases à partir du markdown d'une note.
- * Retourne une string ou null si l'appel échoue / le résultat est invalide.
- *
- * @param {string} markdown  — contenu complet de la note (avec YAML frontmatter)
- * @param {string} level     — niveau scolaire ex: "1ère"
- * @param {string} apiKey    — clé OpenRouter
- * @returns {Promise<string|null>}
- */
 export async function summarizeNote(markdown, level, apiKey) {
   if (!apiKey) return null;
 
-  // Retire le frontmatter YAML
   const content = markdown.replace(/^---[\s\S]*?---\s*\n/, '').trim();
   if (content.length < MIN_CONTENT_LEN) return null;
 

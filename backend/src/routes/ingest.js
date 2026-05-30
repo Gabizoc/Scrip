@@ -17,15 +17,35 @@ import { isOutputValid, applyRulesFormat } from '../pipeline/format-rules.js';
 import { saveDebugLog } from '../pipeline/debug-log.js';
 import { createJob, getJob, emitStep, emitDone, emitError, emitWarning } from '../jobs.js';
 import { summarizeNote } from '../pipeline/summarize.js';
+import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
+import { pathToFileURL, fileURLToPath } from 'node:url';
 
-// PIPELINE_MODE=google → Gemini lit les images directement (defaut, recommande)
-// PIPELINE_MODE=ollama → modele vision via Ollama local
-// PIPELINE_MODE=vision → LLM multimodal via OpenRouter/NVIDIA
-// PIPELINE_MODE=ocr    → Mistral OCR + LLM texte (2 etapes)
+const PROMPTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../prompts');
+
+const PROMPT_KEY_RE = /^[a-z0-9_-]+$/;
+
+async function resolvePrompt(key) {
+  if (!key || key === 'default') return DEFAULT_SYSTEM_PROMPT;
+  if (!PROMPT_KEY_RE.test(key)) return DEFAULT_SYSTEM_PROMPT;
+  const file = path.join(PROMPTS_DIR, `${key}.js`);
+  if (!fs.existsSync(file)) return DEFAULT_SYSTEM_PROMPT;
+  try {
+    const mod = await import(pathToFileURL(file).href);
+    return mod.prompt ?? DEFAULT_SYSTEM_PROMPT;
+  } catch {
+    return DEFAULT_SYSTEM_PROMPT;
+  }
+}
+
 const PIPELINE_MODE = process.env.PIPELINE_MODE ?? 'google';
 const DEBUG_PIPELINE = process.env.DEBUG_PIPELINE === 'true';
 
-const upload = multer({ dest: path.join(os.tmpdir(), 'scrip-uploads') });
+const ALLOWED_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif']);
+const upload = multer({
+  dest: path.join(os.tmpdir(), 'scrip-uploads'),
+  limits: { fileSize: 20 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => cb(null, ALLOWED_MIMES.has(file.mimetype)),
+});
 export const ingestRouter = Router();
 
 function cleanupFiles(files = []) {
@@ -38,6 +58,7 @@ function sanitizeFilename(name) {
   return name
     .replace(/[—–]/g, '-')
     .replace(/[/\\:*?"<>|]/g, '-')
+    .replace(/\.{2,}/g, '-')
     .trim();
 }
 
@@ -51,7 +72,6 @@ function nextAvailablePath(filePath) {
   return path.join(dir, `${base} (${n})${ext}`);
 }
 
-// ── POST /api/ingest — démarre le traitement, retourne un jobId ──────────────
 ingestRouter.post('/', upload.array('photos', 10), async (req, res) => {
   if (!req.files?.length) return res.status(400).json({ error: 'au moins une photo requise' });
 
@@ -76,7 +96,6 @@ ingestRouter.post('/', upload.array('photos', 10), async (req, res) => {
   const jobId = createJob();
   res.status(202).json({ jobId });
 
-  // Traitement en background — ne bloque pas la réponse HTTP
   runPipeline({ jobId, files: req.files, subject, level, mistralKey, openrouterKey, nvidiaKey, googleKey, userNote: userNote ?? null, subfolder: subfolder ?? null })
     .catch(err => {
       emitError(jobId, err.message ?? String(err));
@@ -84,7 +103,6 @@ ingestRouter.post('/', upload.array('photos', 10), async (req, res) => {
     });
 });
 
-// ── GET /api/ingest/:jobId/events — SSE stream de progression ────────────────
 ingestRouter.get('/:jobId/events', (req, res) => {
   const job = getJob(req.params.jobId);
   if (!job) return res.status(404).json({ error: 'job introuvable' });
@@ -92,14 +110,13 @@ ingestRouter.get('/:jobId/events', (req, res) => {
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no'); // désactive le buffering Nginx
+  res.setHeader('X-Accel-Buffering', 'no');
   res.flushHeaders();
 
   const send = (event, data) => {
     res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
   };
 
-  // Rejouer les étapes déjà émises (si le client se connecte après le démarrage)
   job.steps.forEach(step => send('step', step));
 
   if (job.result) { send('done', job.result); res.end(); return; }
@@ -115,7 +132,6 @@ ingestRouter.get('/:jobId/events', (req, res) => {
   job.emitter.on('error',   onError);
   job.emitter.on('warning', onWarning);
 
-  // Rejouer les warnings déjà émis
   (job.warnings ?? []).forEach(w => send('warning', w));
 
   req.on('close', () => {
@@ -126,11 +142,12 @@ ingestRouter.get('/:jobId/events', (req, res) => {
   });
 });
 
-// ── Pipeline ──────────────────────────────────────────────────────────────────
 async function runPipeline({ jobId, files, subject, level, mistralKey, openrouterKey, nvidiaKey, googleKey, userNote, subfolder }) {
   const step = (id, label, status, detail) =>
     emitStep(jobId, { id, label, status, ...(detail ? { detail } : {}) });
   const warn = (message, level = 'warn') => emitWarning(jobId, message, level);
+
+  const systemPrompt = await resolvePrompt(subject.prompt);
 
   const imagePaths = files.map(f => f.path);
   const pageDetail = `${files.length} page${files.length > 1 ? 's' : ''}`;
@@ -138,7 +155,6 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
   let rawMarkdown, imageRegions, rawStructured;
 
   if (PIPELINE_MODE === 'ollama') {
-    // ── Mode OLLAMA : modèle vision local/cloud via Ollama ────────────────────
     step('ocr', 'Analyse Ollama', 'running', pageDetail);
     step('structure', 'Structuration du contenu', 'pending');
 
@@ -154,12 +170,11 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     step('structure', 'Structuration du contenu', 'done', model);
 
   } else if (PIPELINE_MODE === 'google') {
-    // ── Mode GOOGLE : Gemini vision directe ────────────────────────────────
     step('ocr', 'Analyse Gemini', 'running', pageDetail);
     step('structure', 'Structuration du contenu', 'pending');
 
     const googleResult = await runGoogleVisionPipeline(
-      imagePaths, subject.prompt, level.name, googleKey, mistralKey, nvidiaKey, openrouterKey, userNote
+      imagePaths, subject.prompt, level.name, googleKey, mistralKey, nvidiaKey, openrouterKey, userNote, systemPrompt
     );
     rawMarkdown   = googleResult.rawMarkdown;
     imageRegions  = googleResult.imageRegions;
@@ -177,12 +192,11 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     }
 
   } else if (PIPELINE_MODE === 'vision') {
-    // ── Mode VISION : image → Markdown en une seule étape ───────────────────
     step('ocr', 'Analyse de l\'image', 'running', pageDetail);
     step('structure', 'Structuration du contenu', 'pending');
 
     const visionResult = await runVisionPipeline(
-      imagePaths, subject.prompt, level.name, nvidiaKey, openrouterKey, mistralKey, userNote
+      imagePaths, subject.prompt, level.name, nvidiaKey, openrouterKey, mistralKey, userNote, systemPrompt
     );
     rawMarkdown   = visionResult.rawMarkdown;
     imageRegions  = visionResult.imageRegions;
@@ -198,7 +212,6 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     }
 
   } else {
-    // ── Mode OCR (défaut) : pixtral OCR + LLM structuration ─────────────────
     step('ocr', 'Lecture des notes', 'running', pageDetail);
     const ocrResult = await runOCR(imagePaths, mistralKey);
     rawMarkdown  = ocrResult.rawMarkdown;
@@ -212,7 +225,6 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
       rawMarkdown, subject.prompt, level.name, openrouterKey, mistralKey, nvidiaKey
     );
 
-    // Validation anti-hallucination
     const llmStripped = rawStructured
       .replace(/^```(?:markdown)?\s*\n?/i, '')
       .replace(/\n?```\s*$/i, '')
@@ -228,14 +240,12 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     step('structure', 'Structuration du contenu', 'done', usedFallback ? 'mise en forme automatique' : undefined);
   }
 
-  // 3. Nettoyage sortie LLM
   step('format', 'Mise en forme', 'running');
-  const withoutFences = rawStructured
+  const structured = rawStructured
     .replace(/^```(?:markdown)?\s*\n?/i, '')
     .replace(/\n?```\s*$/i, '')
     .trim();
-  const structured = withoutFences;
-  const contentForFile = withoutFences.replace(/\n*<!--\s*METADATA[\s\S]*?-->\s*$/i, '').trim();
+  const contentForFile = structured.replace(/\n*<!--\s*METADATA[\s\S]*?-->\s*$/i, '').trim();
 
   const now = new Date();
   const note = buildNote(contentForFile, {
@@ -248,15 +258,13 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
   const lineCount = contentForFile.split('\n').filter(l => l.trim()).length;
   step('format', 'Mise en forme', 'done', `${lineCount} lignes`);
 
-  // 4.5 Résumé automatique
   step('summary', 'Résumé automatique', 'running');
   let resume = null;
   try {
     resume = await summarizeNote(note, level.name, openrouterKey);
-  } catch { /* non-bloquant */ }
+  } catch {}
   step('summary', 'Résumé automatique', 'done', resume ? undefined : 'ignoré');
 
-  // 4. Sauvegarde
   step('save', 'Sauvegarde de la note', 'running');
   const titleMatch = contentForFile.match(/^#\s+(.+)$/m);
   const title = titleMatch
@@ -266,12 +274,10 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
   await db.read();
   const vaultPath   = resolveVaultPath(db.data.settings.vaultPath);
   const syncFolder  = (db.data.settings.syncFolder ?? '').trim();
-  // Sanitize et construit le chemin imbriqué : chaque segment est nettoyé individuellement
   const subfolderSegments = (subfolder ?? '')
     .split(/[/\\]/)
     .map(s => sanitizeFilename(s).trim())
-    .filter(Boolean);
-  // Si syncFolder est défini (ex: "test"), les notes vont dans vault/test/niveau/matiere/
+    .filter(s => s && s !== '.' && s !== '..');
   const noteDir = path.join(vaultPath, ...(syncFolder ? [syncFolder] : []), level.name, subject.outputFolder, ...subfolderSegments);
   fs.mkdirSync(noteDir, { recursive: true });
 
@@ -280,7 +286,6 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
   );
   fs.writeFileSync(notePath, note, 'utf8');
 
-  // Copie des photos originales dans _sources/{noteId}/
   const noteId     = randomUUID();
   const sourcesDir = path.join(vaultPath, '_sources', noteId);
   fs.mkdirSync(sourcesDir, { recursive: true });
@@ -316,7 +321,6 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     process.stderr.write(`[score] erreur scoring (ignorée): ${err.message}\n`);
   }
 
-  // Debug log — sauvegardé si DEBUG_PIPELINE=true OU si hallucination détectée
   const hadFallback = rawStructured !== structured && structured.length < rawMarkdown.length * 0.5;
   if (DEBUG_PIPELINE || hadFallback) {
     saveDebugLog(vaultPath, {
@@ -333,7 +337,6 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
     });
   }
 
-  // Ajoute le résumé aux métadonnées si disponible
   if (resume) metadata.resume = resume;
 
   const subfolderId = subfolderSegments.length > 0 ? subfolderSegments.join('/') : null;
@@ -355,6 +358,5 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
   await db.write();
   step('save', 'Sauvegarde de la note', 'done', title);
 
-  // Terminé
   emitDone(jobId, { note: noteRecord, markdown: note });
 }

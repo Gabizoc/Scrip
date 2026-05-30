@@ -50,13 +50,6 @@ function ProtectedLayout() {
   );
 }
 
-/**
- * Guard global — un seul appel /api/auth/status pour toute l'app.
- *
- * needsSetup → /setup (toutes les autres routes redirigent ici)
- * loggedIn   → app protégée
- * sinon      → /login ou /reset/:token
- */
 function AppGuard() {
   const { data, isLoading } = useQuery({
     queryKey: ['auth-status'],
@@ -67,7 +60,6 @@ function AppGuard() {
 
   if (isLoading) return <div className="min-h-screen bg-bg-base" />;
 
-  // Pas encore de mot de passe défini → setup obligatoire
   if (data?.needsSetup) {
     return (
       <Routes>
@@ -78,7 +70,6 @@ function AppGuard() {
     );
   }
 
-  // Connecté → app complète
   if (data?.loggedIn) {
     return (
       <Routes>
@@ -90,7 +81,6 @@ function AppGuard() {
     );
   }
 
-  // Non connecté → login ou reset uniquement
   return (
     <Routes>
       <Route path="/login"          element={<Login />} />

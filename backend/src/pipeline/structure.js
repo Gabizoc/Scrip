@@ -3,7 +3,6 @@ import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_TEMPLATE } from '../../prompts/defa
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const NVIDIA_ENDPOINT     = 'https://integrate.api.nvidia.com/v1/chat/completions';
 
-// Modèles NVIDIA NIM — bons pour l'instruction-following strict
 const NVIDIA_MODELS = [
   'mistralai/mistral-medium-3-instruct',
   'meta/llama-4-maverick-17b-128e-instruct',
@@ -11,7 +10,6 @@ const NVIDIA_MODELS = [
   'qwen/qwq-32b',
 ];
 
-// Modèles OpenRouter gratuits — filet de sécurité
 const OPENROUTER_MODELS = [
   'google/gemma-4-26b-a4b-it:free',
   'google/gemma-4-31b-it:free',
@@ -33,12 +31,7 @@ const PROMPTS = {
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
-/**
- * Calcule un max_tokens proportionnel à la taille de l'OCR.
- * Overhead Markdown ~30% + métadonnées ~200 tokens. Minimum 1024, maximum 8192.
- */
 function calcMaxTokens(ocrText) {
-  // ~4 chars par token en français
   const ocrTokens = Math.ceil(ocrText.length / 4);
   return Math.min(Math.max(Math.ceil(ocrTokens * 1.4) + 200, 1024), 8192);
 }
@@ -84,16 +77,6 @@ async function callOpenRouter(messages, apiKey, model, maxTokens) {
   return (await res.json()).choices[0].message.content;
 }
 
-/**
- * Structuration du texte OCR brut via LLM.
- *
- * Ordre de priorité :
- *   1. NVIDIA NIM (bonne instruction-following, quota généreux)
- *   2. OpenRouter (vagues avec backoff si rate-limited)
- *
- * max_tokens est volontairement limité à ~1.4× la taille de l'OCR pour empêcher
- * la sur-génération (le modèle ne peut pas inventer plus de contenu que l'original).
- */
 export async function structureContent(rawMarkdown, subject, level, openrouterKey, mistralKey, nvidiaKey) {
   const prompt = PROMPTS[subject] ?? PROMPTS['default'];
   const maxTokens = calcMaxTokens(rawMarkdown);
@@ -105,7 +88,6 @@ export async function structureContent(rawMarkdown, subject, level, openrouterKe
     { role: 'user',   content: prompt.userTemplate(rawMarkdown) },
   ];
 
-  // ── 1. NVIDIA NIM ─────────────────────────────────────────────────────────
   if (nvidiaKey) {
     for (const model of NVIDIA_MODELS) {
       process.stderr.write(`    → NVIDIA ${model}\n`);
@@ -120,7 +102,6 @@ export async function structureContent(rawMarkdown, subject, level, openrouterKe
     process.stderr.write(`    ⚠ Tous les modèles NVIDIA en 429 → bascule OpenRouter\n`);
   }
 
-  // ── 2. OpenRouter — vagues avec backoff ───────────────────────────────────
   const RETRY_DELAYS = [0, 3000, 15000];
 
   for (let round = 0; round < RETRY_DELAYS.length; round++) {
@@ -143,7 +124,6 @@ export async function structureContent(rawMarkdown, subject, level, openrouterKe
     }
   }
 
-  // ── Dernier recours ───────────────────────────────────────────────────────
   process.stderr.write(`    ⏳ dernier espoir — attente 45s puis openrouter/auto...\n`);
   await sleep(45000);
   const last = await callOpenRouter(messages, openrouterKey, 'openrouter/auto', maxTokens);

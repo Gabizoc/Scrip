@@ -4,8 +4,6 @@ import { db } from '../db.js';
 
 export const settingsRouter = Router();
 
-/** Retire passwordHash de settings avant d'envoyer au client.
- *  Expose hasPassword (bool) et hasSetup (bool) à la place. */
 function sanitize(settings) {
   const { auth: { passwordHash, pendingSetupToken, pendingResetToken, pendingMagicToken, ...authPublic } = {}, ...rest } = settings;
   const { webdav: { passwordHash: wHash, ...webdavPublic } = {} } = rest;
@@ -29,18 +27,15 @@ settingsRouter.put('/', async (req, res) => {
     if (req.body[key] !== undefined) db.data.settings[key] = req.body[key];
   }
 
-  // Délai de purge de la corbeille (entier positif, en jours)
   if (req.body.trashRetentionDays !== undefined) {
     const n = parseInt(req.body.trashRetentionDays, 10);
     if (Number.isFinite(n) && n > 0) db.data.settings.trashRetentionDays = n;
   }
 
-  // Champs WebDAV (hors password)
   if (req.body.webdav) {
     const { enabled, username, password } = req.body.webdav;
     if (enabled !== undefined) db.data.settings.webdav.enabled = Boolean(enabled);
     if (username !== undefined) db.data.settings.webdav.username = String(username).trim();
-    // Le password WebDAV est désormais géré via auth — si fourni, met à jour les deux
     if (password) {
       const hash = await bcrypt.hash(String(password), 10);
       db.data.settings.auth.passwordHash   = hash;

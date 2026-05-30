@@ -30,7 +30,6 @@ export default function Dropdown({
     setOpen(v => !v);
   }
 
-  // Close on outside click — must exclude both trigger AND panel
   useEffect(() => {
     if (!open) return;
     function onDown(e) {
@@ -45,7 +44,6 @@ export default function Dropdown({
     return () => document.removeEventListener('mousedown', onDown, true);
   }, [open]);
 
-  // Reposition on scroll/resize
   useEffect(() => {
     if (!open) return;
     function update() { setRect(triggerRef.current?.getBoundingClientRect()); }
@@ -86,7 +84,6 @@ export default function Dropdown({
 
       {open && rect && createPortal(
         <>
-          {/* Panel */}
           <div
             ref={panelRef}
             className="dropdown-panel fixed z-[9991] pt-1 pb-1.5 rounded-xl overflow-hidden

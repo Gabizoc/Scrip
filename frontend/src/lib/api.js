@@ -1,9 +1,3 @@
-
-/**
- * Client HTTP vers l'API backend.
- * Toutes les fonctions sont des async qui throw en cas d'erreur HTTP.
- */
-
 async function request(method, path, body, isMultipart = false) {
   const opts = { method, headers: {} };
 
@@ -11,7 +5,7 @@ async function request(method, path, body, isMultipart = false) {
     opts.headers['Content-Type'] = 'application/json';
     opts.body = JSON.stringify(body);
   } else if (body) {
-    opts.body = body; // FormData — pas de Content-Type manuel
+    opts.body = body;
   }
 
   const res = await fetch(`/api${path}`, opts);
@@ -24,24 +18,20 @@ async function request(method, path, body, isMultipart = false) {
 }
 
 export const api = {
-  // ── Notes ──────────────────────────────────────────────
   getNotes:       ()           => request('GET',    '/notes'),
-  getNote:        (id)         => request('GET',    `/notes/${id}`),
-  patchNote:      (id, md)     => request('PATCH',  `/notes/${id}`, { markdown: md }),
-  patchNoteMeta:  (id, data)   => request('PATCH',  `/notes/${id}`, data),
+  getNote:        (id)         => request('GET',    `/notes/${encodeURIComponent(id)}`),
+  patchNote:      (id, md)     => request('PATCH',  `/notes/${encodeURIComponent(id)}`, { markdown: md }),
+  patchNoteMeta:  (id, data)   => request('PATCH',  `/notes/${encodeURIComponent(id)}`, data),
   createNote:     (data)       => request('POST',   '/notes', data),
-  deleteNote:     (id)         => request('DELETE', `/notes/${id}`),
-  getNoteSources: (id)         => request('GET',    `/notes/${id}/sources`),
+  deleteNote:     (id)         => request('DELETE', `/notes/${encodeURIComponent(id)}`),
+  getNoteSources: (id)         => request('GET',    `/notes/${encodeURIComponent(id)}/sources`),
   searchNotes:    (q)          => request('GET',    `/notes/search?q=${encodeURIComponent(q)}`),
 
-  // ── Corbeille ──────────────────────────────────────────
   getTrash:        ()   => request('GET',    '/trash'),
-  restoreNote:     (id) => request('POST',   `/trash/${id}/restore`),
-  deleteTrashItem: (id) => request('DELETE', `/trash/${id}`),
+  restoreNote:     (id) => request('POST',   `/trash/${encodeURIComponent(id)}/restore`),
+  deleteTrashItem: (id) => request('DELETE', `/trash/${encodeURIComponent(id)}`),
   emptyTrash:      ()   => request('DELETE', '/trash'),
 
-  // ── Ingest ─────────────────────────────────────────────
-  /** Démarre l'ingestion, retourne { jobId } */
   ingest: (photos, subjectId, levelId, userNote, subfolder) => {
     const fd = new FormData();
     const files = Array.isArray(photos) ? photos : [photos];
@@ -52,23 +42,21 @@ export const api = {
     if (subfolder?.trim()) fd.append('subfolder', subfolder.trim());
     return request('POST', '/ingest', fd, true);
   },
-  /** Ouvre un flux SSE pour suivre la progression d'un job */
   ingestEvents: (jobId) => new EventSource(`/api/ingest/${jobId}/events`),
 
-  // ── Levels ─────────────────────────────────────────────
   getLevels:   ()           => request('GET',    '/levels'),
   createLevel: (name)       => request('POST',   '/levels', { name }),
-  patchLevel:  (id, name)   => request('PATCH',  `/levels/${id}`, { name }),
-  deleteLevel: (id)         => request('DELETE', `/levels/${id}`),
+  patchLevel:  (id, name)   => request('PATCH',  `/levels/${encodeURIComponent(id)}`, { name }),
+  deleteLevel: (id)         => request('DELETE', `/levels/${encodeURIComponent(id)}`),
 
-  // ── Subjects ───────────────────────────────────────────
+  getPrompts: () => request('GET', '/prompts'),
+
   getSubjects:      (levelId) => request('GET',    `/subjects${levelId ? `?levelId=${levelId}` : ''}`),
-  getSubjectFolders:(id)     => request('GET',    `/subjects/${id}/folders`),
+  getSubjectFolders:(id)     => request('GET',    `/subjects/${encodeURIComponent(id)}/folders`),
   createSubject:    (data)   => request('POST',   '/subjects', data),
-  patchSubject:     (id, data)=> request('PATCH', `/subjects/${id}`, data),
-  deleteSubject:    (id)     => request('DELETE', `/subjects/${id}`),
+  patchSubject:     (id, data)=> request('PATCH', `/subjects/${encodeURIComponent(id)}`, data),
+  deleteSubject:    (id)     => request('DELETE', `/subjects/${encodeURIComponent(id)}`),
 
-  // ── Settings ───────────────────────────────────────────
   getSettings: ()     => request('GET', '/settings'),
   putSettings: (data) => request('PUT', '/settings', data),
 };

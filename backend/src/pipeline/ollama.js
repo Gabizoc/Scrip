@@ -1,14 +1,6 @@
-//
-// Pipeline Ollama — envoie les images directement à un modèle multimodal Ollama.
-// Compatible avec tout modèle vision disponible sur Ollama (ex: gemini3-flash-preview).
-// Utilise l'API OpenAI-compatible exposée par Ollama.
-//
-// Activé par PIPELINE_MODE=ollama dans le .env
-// Configurable via OLLAMA_BASE_URL et OLLAMA_MODEL
-
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage, prepareImageSmall } from './ocr.js';
-import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
+import { removeExerciseBlocks } from './format-rules.js';
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:11434';
 const DEFAULT_MODEL    = 'gemma4:31b-cloud';
@@ -77,7 +69,6 @@ function cleanFences(text) {
 
 function buildMessages(images, count, systemInstruction = VISION_INSTRUCTION) {
   const imageBlocks = images.map(({ base64, mimeType }, i) => [
-    // Annoter chaque image avec son numéro de page pour que le modèle sache l'ordre
     { type: 'text', text: count > 1 ? `— Page ${i + 1} sur ${count} —` : '' },
     { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
   ]).flat().filter(b => b.text !== '');
@@ -96,8 +87,6 @@ N'invente rien : copie exactement ce qui est écrit.`;
   ];
 }
 
-// Utilise l'API native Ollama /api/chat (plus fiable que /v1/chat/completions
-// pour les cloud models qui retournent Internal Server Error sur l'endpoint OpenAI).
 async function callOllama(messages, model, baseUrl, maxTokens) {
   const endpoint = `${baseUrl.replace(/\/$/, '')}/api/chat`;
 
@@ -105,25 +94,18 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
   const apiKey = process.env.OLLAMA_API_KEY;
   if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
-  // Convertit le format OpenAI (image_url) → format natif Ollama (images: [base64])
   const ollamaMessages = messages.map(msg => {
     if (typeof msg.content === 'string') return { role: msg.role, content: msg.content };
     const texts  = msg.content.filter(b => b.type === 'text').map(b => b.text).join('\n');
     const images = msg.content
       .filter(b => b.type === 'image_url')
       .map(b => {
-        // "data:image/jpeg;base64,<data>" → extraire juste la partie base64
         const url = b.image_url?.url ?? '';
         return url.includes(',') ? url.split(',')[1] : url;
       });
     return { role: msg.role, content: texts, ...(images.length ? { images } : {}) };
   });
 
-  // Streaming : on lit la réponse token par token. Le timeout est une limite
-  // d'INACTIVITÉ réarmée à chaque chunk reçu (pas un plafond total) — un cours
-  // multi-pages peut donc générer plusieurs minutes sans être coupé tant que le
-  // modèle émet des tokens. Évite aussi le headersTimeout d'undici (les en-têtes
-  // arrivent immédiatement en streaming, contrairement à stream:false).
   const imageCount   = ollamaMessages.reduce((n, m) => n + (m.images?.length ?? 0), 0);
   const idleTimeoutMs = Math.min(180_000 + imageCount * 30_000, 600_000);
 
@@ -171,7 +153,6 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     throw new Error(`Ollama erreur ${res.status}: ${txt}`);
   }
 
-  // Réponse NDJSON : une ligne JSON par token, { message: { content }, done }
   const reader  = res.body.getReader();
   const decoder = new TextDecoder();
   let buffer  = '';
@@ -196,7 +177,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     const last = buffer.trim();
     if (last) {
       try { const obj = JSON.parse(last); if (obj.message?.content) content += obj.message.content; }
-      catch { /* ligne partielle finale ignorée */ }
+      catch { /* */ }
     }
   } catch (err) {
     process.stderr.write(`    [debug] erreur lecture stream: ${err.message}\n`);
@@ -209,11 +190,6 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
   return content || null;
 }
 
-/**
-/**
- * Détecte une boucle de répétition dans un texte (hallucination LLM classique).
- * Prélève des échantillons de 50 chars toutes les 80 chars et cherche un doublon.
- */
 function hasRepetitionLoop(text) {
   if (text.length < 400) return false;
   const seen = new Set();
@@ -225,11 +201,6 @@ function hasRepetitionLoop(text) {
   return false;
 }
 
-/**
- * Appel Ollama léger pour validation croisée : lit le texte brut des images
- * sans mise en forme ni filtrage. Utilisé comme référence par d'autres pipelines.
- * Retourne null en cas d'erreur, d'indisponibilité ou de boucle de répétition.
- */
 export async function callOllamaRaw(imagePaths) {
   const images = await Promise.all(imagePaths.map(prepareImageSmall));
   const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
@@ -269,12 +240,6 @@ export async function callOllamaRaw(imagePaths) {
   }
 }
 
-/**
- * Pipeline Ollama : image(s) → Markdown structuré.
- *
- * Lit OLLAMA_BASE_URL (défaut: http://localhost:11434)
- * Lit OLLAMA_MODEL    (défaut: gemini3-flash-preview)
- */
 export async function runOllamaPipeline(imagePaths, userNote = null) {
   const paths   = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
   const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
@@ -285,7 +250,6 @@ export async function runOllamaPipeline(imagePaths, userNote = null) {
   const images    = await Promise.all(paths.map(prepareImage));
   const maxTokens = Math.min(4096 * paths.length, 16384);
 
-  // Instruction finale : prompt de base + note utilisateur facultative
   const systemInstruction = userNote
     ? `${VISION_INSTRUCTION}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
     : VISION_INSTRUCTION;

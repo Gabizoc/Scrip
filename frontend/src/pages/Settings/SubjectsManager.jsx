@@ -10,19 +10,15 @@ import Dropdown from '../../components/Dropdown.jsx';
 import SubjectIcon from '../../components/SubjectIcon.jsx';
 import { subjectIcon } from '../../lib/noteUtils.js';
 
-const PROMPT_OPTIONS = ['default'];
 const EMPTY_FORM = { name: '', levelId: '', prompt: 'default', outputFolder: '', emoji: '', color: '' };
 
-// Palette de couleurs prédéfinies
 const COLOR_PALETTE = [
   '#6e6ce8', '#60a5fa', '#34d399', '#f59e0b',
   '#f472b6', '#22d3ee', '#f87171', '#a78bfa',
   '#4ade80', '#fb923c', '#e879f9', '#94a3b8',
 ];
 
-// ── Base d'emojis (sans doublons) ────────────────────────────────────────────
 const EMOJI_DATA = [
-  // Histoire
   { e: '📜', k: 'histoire document parchemin texte ancien' },
   { e: '🏛️', k: 'histoire antiquité rome grèce architecture temple' },
   { e: '🏺', k: 'histoire antiquité archéologie vase poterie' },
@@ -40,7 +36,6 @@ const EMOJI_DATA = [
   { e: '🪖', k: 'histoire guerre soldats armée militaire' },
   { e: '💣', k: 'histoire guerre mondiale conflit bombardement' },
   { e: '🕊️', k: 'histoire paix traité diplomatie' },
-  // Géographie
   { e: '🌍', k: 'géographie monde terre planète globe europe afrique' },
   { e: '🌎', k: 'géographie monde amériques globe planète' },
   { e: '🌏', k: 'géographie monde asie océanie globe planète' },
@@ -57,7 +52,6 @@ const EMOJI_DATA = [
   { e: '🌵', k: 'géographie désert cactus aride végétation' },
   { e: '🏝️', k: 'géographie île côte mer tropique' },
   { e: '🌡️', k: 'géographie physique température climat météo' },
-  // Français / Lettres / Langues
   { e: '📖', k: 'français lecture livre littérature roman texte' },
   { e: '📝', k: 'français rédaction écriture notes dissertation' },
   { e: '✍️', k: 'français écriture rédaction manuscrit' },
@@ -75,7 +69,6 @@ const EMOJI_DATA = [
   { e: '🇬🇧', k: 'anglais english royaume-uni langue' },
   { e: '🇩🇪', k: 'allemand deutsch allemagne langue' },
   { e: '🇪🇸', k: 'espagnol español espagne langue' },
-  // SVT / Biologie
   { e: '🔬', k: 'svt biologie sciences microscope labo observation' },
   { e: '🧬', k: 'svt biologie génétique adn molécule hérédité' },
   { e: '🌱', k: 'svt biologie plante nature croissance végétal' },
@@ -92,7 +85,6 @@ const EMOJI_DATA = [
   { e: '🫀', k: 'svt biologie anatomie cœur cardiaque circulation' },
   { e: '🫁', k: 'svt biologie anatomie poumons respiration' },
   { e: '🌍', k: 'svt écologie environnement planète biodiversité' },
-  // Physique-Chimie
   { e: '⚗️', k: 'chimie physique sciences labo expérience fiole' },
   { e: '🧪', k: 'chimie physique sciences test tube tube à essai' },
   { e: '🔭', k: 'physique astronomie espace étoiles lunette' },
@@ -108,7 +100,6 @@ const EMOJI_DATA = [
   { e: '🌈', k: 'physique optique lumière spectre couleurs' },
   { e: '💎', k: 'chimie minéraux cristaux structure matière' },
   { e: '🧊', k: 'physique chimie glace état solide changement' },
-  // Maths
   { e: '🔢', k: 'maths mathématiques chiffres calcul nombre entier' },
   { e: '📐', k: 'maths mathématiques géométrie triangle équerre' },
   { e: '📏', k: 'maths mathématiques mesure règle longueur' },
@@ -118,7 +109,6 @@ const EMOJI_DATA = [
   { e: '📉', k: 'maths statistiques graphique fonction décroissance' },
   { e: '🧩', k: 'maths logique puzzle réflexion démonstration' },
   { e: '🔣', k: 'maths symboles formules algèbre notation' },
-  // Philo / SES / Droit / EMC
   { e: '⚖️', k: 'philo droit justice balance équité tribunal' },
   { e: '🤔', k: 'philo philosophie réflexion pensée doute Descartes' },
   { e: '💡', k: 'philo idée réflexion innovation concept' },
@@ -132,7 +122,6 @@ const EMOJI_DATA = [
   { e: '🧾', k: 'ses économie facture consommation marché' },
   { e: '🪙', k: 'ses économie monnaie euro devise finance' },
   { e: '🕊️', k: 'emc paix citoyenneté droits valeurs' },
-  // Arts plastiques / Musique / Cinéma
   { e: '🎨', k: 'arts peinture dessin créatif couleur atelier' },
   { e: '🖌️', k: 'arts peinture dessin pinceau technique' },
   { e: '🎭', k: 'théâtre arts spectacle masque comédie tragédie' },
@@ -146,7 +135,6 @@ const EMOJI_DATA = [
   { e: '🎬', k: 'cinéma arts spectacle vidéo film réalisateur' },
   { e: '🖼️', k: 'arts peinture musée tableau toile exposition' },
   { e: '🪗', k: 'musique accordéon folk instrument traditionnel' },
-  // EPS / Sport
   { e: '🏃', k: 'eps sport course athlétisme running sprint' },
   { e: '⚽', k: 'eps sport foot football ballon équipe' },
   { e: '🏊', k: 'eps sport natation piscine eau nage' },
@@ -164,7 +152,6 @@ const EMOJI_DATA = [
   { e: '🤺', k: 'eps sport escrime duel fleuret' },
   { e: '🏐', k: 'eps sport volley-ball filet équipe' },
   { e: '🏈', k: 'eps sport rugby américain ballon ovale' },
-  // Informatique / NSI / Technologie
   { e: '💻', k: 'informatique nsi technologie code ordinateur laptop' },
   { e: '🖥️', k: 'informatique nsi ordinateur desktop bureau' },
   { e: '🤖', k: 'informatique ia robot intelligence artificielle algorithme' },
@@ -178,7 +165,6 @@ const EMOJI_DATA = [
   { e: '📡', k: 'informatique réseau signal communication satellite' },
   { e: '🔐', k: 'informatique sécurité cryptographie protection données' },
   { e: '🛰️', k: 'informatique physique satellite espace technologie' },
-  // Général scolaire
   { e: '🎓', k: 'école cours diplôme université lycée bac' },
   { e: '🔑', k: 'clé important notion essentiel à retenir' },
   { e: '🔍', k: 'recherche analyse examen méthode étude' },
@@ -192,9 +178,8 @@ const EMOJI_DATA = [
   { e: '📣', k: 'communication annonce oral expression' },
   { e: '🗂️', k: 'organisation classeur dossier fichier rangement' },
   { e: '🧾', k: 'liste fiche mémo récapitulatif résumé' },
-];
+].filter((item, idx, arr) => arr.findIndex(x => x.e === item.e) === idx);
 
-// ── Resize image ─────────────────────────────────────────────────────────────
 function resizeImageToDataURL(file, size = 48) {
   return new Promise((resolve) => {
     const img = new Image();
@@ -214,13 +199,11 @@ function resizeImageToDataURL(file, size = 48) {
   });
 }
 
-// ── Popover picker — rendu via portal dans document.body ─────────────────────
 function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
   const ref     = useRef(null);
   const fileRef = useRef(null);
   const [search, setSearch] = useState('');
 
-  // Ferme sur clic extérieur ou scroll de la page (pas du popover lui-même)
   useEffect(() => {
     function onDown(e) { if (ref.current && !ref.current.contains(e.target)) onClose(); }
     function onScroll(e) { if (ref.current && !ref.current.contains(e.target)) onClose(); }
@@ -244,8 +227,7 @@ function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
     onClose();
   }
 
-  // Calcule la position : en dessous ou au dessus du bouton
-  const POPOVER_H = 320; // hauteur estimée
+  const POPOVER_H = 320;
   const spaceBelow = window.innerHeight - anchorRect.bottom;
   const goUp = spaceBelow < POPOVER_H && anchorRect.top > POPOVER_H;
   const top  = goUp
@@ -253,7 +235,7 @@ function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
     : anchorRect.bottom + window.scrollY + 6;
   const left = Math.min(
     anchorRect.left + window.scrollX,
-    window.innerWidth - 308,   // évite de sortir à droite
+    window.innerWidth - 308,
   );
 
   return createPortal(
@@ -262,7 +244,6 @@ function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
       style={{ position: 'fixed', top: goUp ? 'auto' : anchorRect.bottom + 6, bottom: goUp ? window.innerHeight - anchorRect.top + 6 : 'auto', left: Math.min(anchorRect.left, window.innerWidth - 308), zIndex: 9999 }}
       className="dropdown-panel rounded-xl w-[300px] overflow-hidden"
     >
-      {/* Barre de recherche */}
       <div className="flex items-center gap-2 px-3 py-2.5 border-b border-black/[0.06] dark:border-white/[0.06]">
         <Search size={13} className="text-text-tertiary shrink-0" />
         <input
@@ -280,7 +261,6 @@ function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
         )}
       </div>
 
-      {/* Grille */}
       <div className="px-2 py-2 max-h-52 overflow-y-auto [scrollbar-width:thin]">
         {filtered.length === 0 ? (
           <p className="text-center text-[12px] text-text-tertiary py-4">Aucun résultat</p>
@@ -304,7 +284,6 @@ function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
         )}
       </div>
 
-      {/* Footer */}
       <div className="flex items-center gap-2 px-3 py-2 border-t border-black/[0.06] dark:border-white/[0.07]">
         <button
           type="button"
@@ -330,7 +309,6 @@ function EmojiPickerPopover({ value, onChange, onClose, anchorRect }) {
   );
 }
 
-// ── Bouton icône cliquable ────────────────────────────────────────────────────
 function EmojiButton({ value, name, onChange }) {
   const [anchorRect, setAnchorRect] = useState(null);
   const btnRef = useRef(null);
@@ -370,7 +348,6 @@ function EmojiButton({ value, name, onChange }) {
   );
 }
 
-// ── Petit champ texte inline ──────────────────────────────────────────────────
 function InlineField({ label, value, onChange, placeholder }) {
   return (
     <div className="flex flex-col gap-0.5">
@@ -390,7 +367,6 @@ function InlineField({ label, value, onChange, placeholder }) {
   );
 }
 
-// ── Sélecteur de couleur ──────────────────────────────────────────────────────
 function ColorPickerField({ value, onChange }) {
   const colorInputRef = useRef(null);
   return (
@@ -411,7 +387,6 @@ function ColorPickerField({ value, onChange }) {
             style={{ background: c, '--tw-ring-color': c }}
           />
         ))}
-        {/* Bouton custom color */}
         <button
           type="button"
           title="Couleur personnalisée"
@@ -450,8 +425,7 @@ function ColorPickerField({ value, onChange }) {
   );
 }
 
-// ── Carte matière (lecture + édition inline) ──────────────────────────────────
-function SubjectCard({ subject, levels, onPatch, onDelete }) {
+function SubjectCard({ subject, levels, prompts, onPatch, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState({});
 
@@ -471,7 +445,6 @@ function SubjectCard({ subject, levels, onPatch, onDelete }) {
 
   return (
     <GlassCard className="px-4 py-3">
-      {/* ── Ligne principale (toujours visible) ── */}
       <div className="flex items-center gap-3">
         <EmojiButton
           value={editing ? draft.emoji : (subject.emoji ?? '')}
@@ -510,7 +483,6 @@ function SubjectCard({ subject, levels, onPatch, onDelete }) {
         </button>
       </div>
 
-      {/* ── Zone d'édition inline ── */}
       {editing && (
         <div className="mt-3 pt-3 border-t border-black/[0.06] dark:border-white/[0.06] space-y-2">
           <InlineField label="Nom" value={draft.name} onChange={df('name')} placeholder="ex : Histoire" />
@@ -520,7 +492,7 @@ function SubjectCard({ subject, levels, onPatch, onDelete }) {
             <Dropdown
               value={draft.prompt}
               onChange={df('prompt')}
-              options={PROMPT_OPTIONS.map(p => ({ value: p, label: p }))}
+              options={prompts.map(p => ({ value: p.key, label: p.name }))}
               fullWidth
               className={dropdownClass}
             />
@@ -549,14 +521,14 @@ function SubjectCard({ subject, levels, onPatch, onDelete }) {
   );
 }
 
-// ── Page ──────────────────────────────────────────────────────────────────────
 export default function SubjectsManager() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [filterLevelId, setFilterLevelId] = useState('');
   const [form, setForm] = useState(EMPTY_FORM);
 
-  const { data: levels = [] }   = useQuery({ queryKey: ['levels'],   queryFn: api.getLevels });
+  const { data: levels = [] }  = useQuery({ queryKey: ['levels'],  queryFn: api.getLevels });
+  const { data: prompts = [] } = useQuery({ queryKey: ['prompts'], queryFn: api.getPrompts });
   const { data: subjects = [] } = useQuery({
     queryKey: ['subjects', filterLevelId],
     queryFn: () => api.getSubjects(filterLevelId || undefined),
@@ -607,6 +579,7 @@ export default function SubjectsManager() {
             key={s.id}
             subject={s}
             levels={levels}
+            prompts={prompts}
             onPatch={(id, data) => patch.mutate({ id, data })}
             onDelete={id => del.mutate(id)}
           />
@@ -618,7 +591,6 @@ export default function SubjectsManager() {
           </p>
         )}
 
-        {/* Formulaire création */}
         <GlassCard className="p-4 space-y-3">
           <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Nouvelle matière</h3>
 
@@ -664,7 +636,7 @@ export default function SubjectsManager() {
             <Dropdown
               value={form.prompt}
               onChange={field('prompt')}
-              options={PROMPT_OPTIONS.map(p => ({ value: p, label: p }))}
+              options={prompts.map(p => ({ value: p.key, label: p.name }))}
               fullWidth
               className={dropdownClass}
             />

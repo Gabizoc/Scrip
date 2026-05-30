@@ -6,15 +6,10 @@ import { api } from '../lib/api.js';
 import SubjectIcon from './SubjectIcon.jsx';
 import { subjectIcon } from '../lib/noteUtils.js';
 
-/**
- * Dropdown custom (sans <select> natif).
- * options: [{ value, name, icon }]  — icon = emoji string ou data URL
- */
 function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
 
-  // Fermer sur clic extérieur
   useEffect(() => {
     if (!open) return;
     function onDown(e) {
@@ -28,7 +23,6 @@ function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) 
 
   return (
     <div ref={ref} className="relative">
-      {/* Trigger */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
@@ -52,7 +46,6 @@ function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) 
         />
       </button>
 
-      {/* Liste */}
       {open && (
         <ul
           className="absolute z-[10001] mt-1 w-full rounded-lg overflow-hidden
@@ -84,13 +77,6 @@ function CustomSelect({ value, onChange, options, placeholder = 'Choisir…' }) 
   );
 }
 
-/**
- * Feuille pour déplacer une note vers une autre matière / sous-dossier.
- *
- * Props:
- *   note     — objet note (id, subjectId, subfolder)
- *   onClose  — callback de fermeture
- */
 export default function MoveNoteSheet({ note, onClose }) {
   const qc = useQueryClient();
 
@@ -119,7 +105,6 @@ export default function MoveNoteSheet({ note, onClose }) {
     },
   });
 
-  // Fermer sur Escape
   useEffect(() => {
     function onKey(e) { if (e.key === 'Escape') onClose(); }
     document.addEventListener('keydown', onKey);
@@ -133,15 +118,13 @@ export default function MoveNoteSheet({ note, onClose }) {
   const subjectOptions = subjects.map(s => ({
     value: s.id,
     name:  s.name,
-    icon:  s.emoji ?? null,   // emoji string ou data URL
+    icon:  s.emoji ?? null,
   }));
 
   return createPortal(
     <>
-      {/* Overlay */}
       <div className="fixed inset-0 bg-black/30 dark:bg-black/50 z-[9998] backdrop-blur-[2px]" />
 
-      {/* Wrapper flex */}
       <div className="modal-wrapper" onClick={onClose}>
         <div
           onClick={e => e.stopPropagation()}
@@ -150,7 +133,6 @@ export default function MoveNoteSheet({ note, onClose }) {
             border border-black/[0.08] dark:border-white/[0.08]
             p-5 space-y-4"
         >
-          {/* Header */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-text-primary font-semibold text-[15px]">
               <FolderInput size={16} className="text-accent" />
@@ -164,7 +146,6 @@ export default function MoveNoteSheet({ note, onClose }) {
             </button>
           </div>
 
-          {/* Matière — dropdown custom */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Matière
@@ -176,7 +157,6 @@ export default function MoveNoteSheet({ note, onClose }) {
             />
           </div>
 
-          {/* Sous-dossier */}
           <div className="flex flex-col gap-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
               Sous-dossier <span className="normal-case text-text-tertiary font-normal">(optionnel)</span>
@@ -209,7 +189,6 @@ export default function MoveNoteSheet({ note, onClose }) {
             )}
           </div>
 
-          {/* Actions */}
           <div className="flex gap-2 pt-1">
             <button
               onClick={() => moveMutation.mutate()}

@@ -11,7 +11,7 @@ export default function FAB() {
       transition={{ duration: 0.1 }}
       aria-label="Capturer un cours"
       className={[
-        'md:hidden',  // hidden on desktop — sidebar nav handles it
+        'md:hidden',
         'fixed bottom-20 right-5',
         'w-14 h-14 rounded-full',
         'bg-accent text-white dark:text-bg-base',

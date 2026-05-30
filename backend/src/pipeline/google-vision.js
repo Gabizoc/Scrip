@@ -1,26 +1,16 @@
-//
-// Pipeline Google Gemini — lit les images directement via l'API Google AI Studio.
-// Gemini est particulièrement bon sur les tableaux manuscrits et le français.
-//
-// Activé par PIPELINE_MODE=google dans le .env
-
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage } from './ocr.js';
-import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
+import { isOutputValid, removeExerciseBlocks } from './format-rules.js';
 import { callOllamaRaw } from './ollama.js';
 
 const GOOGLE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
-// Modèle principal : meilleure qualité
 const GEMINI_PRIMARY_MODELS = [
-  'gemini-2.5-flash',          // meilleur sur les images (stable depuis juin 2025)
-  'gemini-2.0-flash',          // rapide, très bon sur les tableaux
-  'gemini-1.5-flash-latest',   // fallback stable
-  'gemini-1.5-flash-8b',       // dernier recours, très léger
+  'gemini-2.5-flash',
+  'gemini-2.0-flash',
+  'gemini-1.5-flash-latest',
+  'gemini-1.5-flash-8b',
 ];
-
-// Modèle de validation : léger, lancé en parallèle pour cross-vérifier
-const GEMINI_VALIDATION_MODEL = 'gemini-2.0-flash-lite';
 
 const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
 
@@ -97,14 +87,9 @@ function cleanFences(text) {
     .trim();
 }
 
-/**
- * Appelle l'API Gemini avec retry sur 429.
- * @param {number} maxRetries - Nombre de tentatives supplémentaires après le 1er 429
- */
 async function callGemini(images, apiKey, model, instruction, count, { maxRetries = 2 } = {}) {
   const url = `${GOOGLE_ENDPOINT}/${model}:generateContent?key=${apiKey}`;
 
-  // Annoter chaque image avec son numéro de page pour que le modèle sache l'ordre
   const imageParts = count === 1
     ? images.map(({ base64, mimeType }) => ({
         inline_data: { mime_type: mimeType, data: base64 },
@@ -130,8 +115,6 @@ N'invente rien : copie exactement ce qui est écrit.`;
     generationConfig: {
       temperature: 0,
       maxOutputTokens: Math.min(8192 * count, 65536),
-      // Désactive le "thinking" de Gemini 2.5 Flash : il consomme des tokens en interne
-      // et laisse peu de budget pour la sortie sur les grands documents (5+ pages).
       thinkingConfig: { thinkingBudget: 0 },
     },
   };
@@ -148,12 +131,10 @@ N'invente rien : copie exactement ce qui est écrit.`;
     });
 
     if (res.status === 429) {
-      // Lire le délai suggéré par Google (header Retry-After ou body JSON)
       let retryAfterMs = null;
 
       const retryHeader = res.headers.get('Retry-After') ?? res.headers.get('retry-after');
       if (retryHeader) {
-        // Valeur en secondes (entier) ou date HTTP
         const asSeconds = parseInt(retryHeader, 10);
         retryAfterMs = isNaN(asSeconds)
           ? Math.max(0, new Date(retryHeader).getTime() - Date.now())
@@ -161,21 +142,19 @@ N'invente rien : copie exactement ce qui est écrit.`;
       }
 
       if (!retryAfterMs) {
-        // Chercher dans le body JSON : error.details[].retryDelay ou metadata.retryDelay
         try {
-          const body = await res.clone().json();
-          const details = body?.error?.details ?? [];
+          const errBody = await res.clone().json();
+          const details = errBody?.error?.details ?? [];
           for (const d of details) {
             if (d['@type']?.includes('RetryInfo') && d.retryDelay) {
-              // Format Google : "8s" ou "8.000s"
               const match = String(d.retryDelay).match(/([\d.]+)s/);
               if (match) { retryAfterMs = parseFloat(match[1]) * 1000; break; }
             }
           }
-        } catch { /* body non JSON, ignoré */ }
+        } catch { /* */ }
       }
 
-      const fallbackMs = (attempt + 1) * 8000; // 8s, 16s, 24s
+      const fallbackMs = (attempt + 1) * 8000;
       const waitMs = retryAfterMs ? Math.min(retryAfterMs + 500, 60_000) : fallbackMs;
 
       process.stderr.write(
@@ -192,7 +171,7 @@ N'invente rien : copie exactement ce qui est écrit.`;
       const txt = await res.text();
       if (res.status === 404 || res.status === 400) {
         process.stderr.write(`    ⚠ Gemini ${model} indisponible (${res.status})\n`);
-        return null; // pas la peine de retry sur 404
+        return null;
       }
       throw new Error(`Gemini erreur ${res.status}: ${txt}`);
     }
@@ -210,53 +189,32 @@ N'invente rien : copie exactement ce qui est écrit.`;
     }
     if (candidate.finishReason === 'MAX_TOKENS') {
       process.stderr.write(`    ⚠ Gemini ${model} : limite de tokens atteinte (sortie tronquée)\n`);
-      // On retourne quand même le texte partiel — mieux que rien
     }
 
     return candidate.content?.parts?.[0]?.text ?? null;
   }
 
-  return null; // tous les retries épuisés
+  return null;
 }
 
-/**
- * Pipeline Google Gemini avec fallback NVIDIA / OpenRouter.
- *
- * Stratégie (tout en parallèle) :
- *  1. Gemini principal  (gemini-2.5-flash → gemini-2.0-flash → …)
- *  2. Gemini lite       (validation croisée, avec retry 429)
- *  3. NVIDIA/OpenRouter (fallback principal ET validation de secours)
- *
- * Priorité du résultat :
- *  - Gemini principal validé par lite → retourné
- *  - Gemini principal validé par NVIDIA/OR → retourné
- *  - NVIDIA/OR seul (si Gemini complètement indisponible)
- *  - Fallback règles sur la meilleure référence disponible
- */
-export async function runGoogleVisionPipeline(imagePaths, subject, level, googleKey, mistralKey, nvidiaKey, openrouterKey, userNote = null) {
+export async function runGoogleVisionPipeline(imagePaths, subject, level, googleKey, mistralKey, nvidiaKey, openrouterKey, userNote = null, systemPrompt = null) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
 
   process.stderr.write(`[google] ${paths.length} image(s), mode Gemini vision\n`);
 
   const images = await Promise.all(paths.map(prepareImage));
 
-  // Instruction finale : prompt de base + note utilisateur facultative
+  const baseInstruction = systemPrompt ?? VISION_INSTRUCTION;
   const instruction = userNote
-    ? `${VISION_INSTRUCTION}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
-    : VISION_INSTRUCTION;
+    ? `${baseInstruction}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
+    : baseInstruction;
   if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
 
-  // ── 1. Ollama (gemma) — validation croisée en parallèle, pas de rate limit ───
-  // Désactivé si OLLAMA_VALIDATION=false dans le .env (ex: serveur sans Ollama installé)
   const ollamaEnabled = (process.env.OLLAMA_VALIDATION ?? 'true') !== 'false';
   const litePromise = ollamaEnabled
     ? callOllamaRaw(paths).catch(() => null)
     : Promise.resolve(null);
 
-  // Pas de fallback NVIDIA/OpenRouter — inutiles (404 / timeout systématique)
-  const visionFallbackPromise = Promise.resolve(null);
-
-  // ── 3. Gemini principal ──────────────────────────────────────────────────────
   let geminiOutput = null;
   let modelUsed = null;
 
@@ -271,48 +229,25 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
     await sleep(2000);
   }
 
-  // ── Résolution des résultats parallèles ─────────────────────────────────────
-  const [liteReference, visionResult] = await Promise.all([litePromise, visionFallbackPromise]);
+  const liteReference = await litePromise;
 
-  // Gemini principal disponible → tenter validation
   if (geminiOutput) {
     const geminiCleaned = removeExerciseBlocks(cleanFences(geminiOutput));
 
-    // Choisir la meilleure référence disponible :
-    // 1. Gemini lite (même moteur, plus fiable comme cross-check)
-    // 2. rawVisionOutput de NVIDIA/OR si fiable (lecture directe de l'image)
-    // 3. rawVisionOutput même non fiable (lecture brute, seuil réduit)
-    // 4. rawMarkdown fallback (OCR-based, dernier recours)
-    let reference = null;
-    let refSource = null;
-    let strict = true; // seuil 55% si même moteur, 35% sinon
-
     if (liteReference) {
-      reference = liteReference;
-      refSource = `Ollama (${process.env.OLLAMA_MODEL ?? 'gemma4:31b-cloud'})`;
-      strict = true;
-    }
-    // visionFallbackPromise est désactivé (toujours null)
+      const reference = liteReference;
+      const refSource = `Ollama (${process.env.OLLAMA_MODEL ?? 'gemma4:31b-cloud'})`;
+      const valid = isOutputValid(reference, geminiCleaned);
 
-    if (reference) {
-      const valid = strict
-        ? isOutputValid(reference, geminiCleaned)
-        : isOutputValid(reference, geminiCleaned, { minOverlap: 0.35, minRatio: 0.2, maxRatio: 1.6 });
-
-      process.stderr.write(`    [validation/${refSource}] seuil=${strict ? '55' : '35'}% — ref: ${reference.length}c, Gemini: ${geminiCleaned.length}c\n`);
+      process.stderr.write(`    [validation/${refSource}] seuil=55% — ref: ${reference.length}c, Gemini: ${geminiCleaned.length}c\n`);
 
       if (valid) {
         process.stderr.write(`    ✓ Gemini validé par ${refSource}\n`);
         return { rawMarkdown: geminiCleaned, imageRegions: [], modelUsed };
       }
 
-      // Gemini rejeté — choisir le meilleur fallback disponible :
-      // Si Gemini a au moins un titre Markdown et > 300 chars, c'est une sortie tronquée mais
-      // structurée → préférer à la référence Ollama brute (non structurée, peut avoir des boucles).
       const geminiHasStructure = /^#\s+/m.test(geminiCleaned) && geminiCleaned.length > 300;
-      const fallbackContent = geminiHasStructure
-        ? geminiCleaned
-        : (visionResult?.rawMarkdown ?? reference);
+      const fallbackContent = geminiHasStructure ? geminiCleaned : reference;
       const fallbackReason = geminiHasStructure
         ? 'sortie tronquée mais structurée'
         : 'fallback OCR formaté';
@@ -320,15 +255,8 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
       return { rawMarkdown: fallbackContent, imageRegions: [], usedFallback: true };
     }
 
-    // Aucune référence → retourner Gemini sans validation
     process.stderr.write(`    ⚠ Aucune référence disponible — Gemini retourné sans validation\n`);
     return { rawMarkdown: geminiCleaned, imageRegions: [], modelUsed };
-  }
-
-  // Gemini complètement indisponible → utiliser NVIDIA/OR
-  if (visionResult) {
-    process.stderr.write(`    ↩ Gemini indisponible — fallback NVIDIA/OR\n`);
-    return { rawMarkdown: visionResult.rawMarkdown, imageRegions: [], usedFallback: true };
   }
 
   throw new Error('Tous les providers sont indisponibles (Gemini + NVIDIA + OpenRouter).');

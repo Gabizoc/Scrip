@@ -1,7 +1,3 @@
-//
-// Sauvegarde les données de debug du pipeline dans vault/_debug/<timestamp>.json
-// Activé si DEBUG_PIPELINE=true dans le .env (ou toujours si hallucination détectée)
-
 import fs from 'node:fs';
 import path from 'node:path';
 

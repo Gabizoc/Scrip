@@ -21,8 +21,6 @@ export default function Sidebar() {
 
   return (
     <aside className="sidebar-glass hidden md:flex flex-col fixed left-0 top-0 h-screen w-56 z-20 rounded-r-2xl overflow-hidden">
-
-      {/* Logo */}
       <div className="px-6 h-16 flex items-center shrink-0
         border-b border-black/[0.06] dark:border-white/[0.06]">
         <span className="font-display text-[22px] font-bold tracking-tight text-text-primary">
@@ -30,7 +28,6 @@ export default function Sidebar() {
         </span>
       </div>
 
-      {/* Navigation */}
       <nav className="flex-1 p-3 space-y-1 overflow-y-auto">
         {NAV.map(({ to, icon: Icon, label, end }, i) => (
           <NavLink
@@ -52,7 +49,6 @@ export default function Sidebar() {
         ))}
       </nav>
 
-      {/* Theme switcher */}
       <div className="p-4 shrink-0 border-t border-black/[0.06] dark:border-white/[0.06]">
         <p className="text-[10px] font-semibold text-text-tertiary uppercase tracking-widest mb-2.5 px-1">
           Thème

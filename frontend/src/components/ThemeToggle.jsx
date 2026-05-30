@@ -7,10 +7,6 @@ const OPTIONS = [
   { value: 'auto',  Icon: Monitor, label: 'Auto'   },
 ];
 
-/**
- * Segmented control 3 options : Sombre / Clair / Auto.
- * Option active = fond accent.
- */
 export default function ThemeToggle() {
   const { theme, setTheme } = useTheme();
 

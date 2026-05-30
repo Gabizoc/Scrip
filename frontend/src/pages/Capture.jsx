@@ -9,7 +9,6 @@ import Button from '../components/Button.jsx';
 import GlassCard from '../components/GlassCard.jsx';
 import Dropdown from '../components/Dropdown.jsx';
 
-// Définition des étapes dans l'ordre
 const PIPELINE_STEPS = [
   { id: 'ocr',       label: 'Lecture des notes',      icon: Scan },
   { id: 'structure', label: 'Structuration du contenu', icon: BrainCircuit },
@@ -28,19 +27,16 @@ function ElapsedBadge({ ms }) {
 }
 
 function ProgressPanel({ steps, warnings = [], error }) {
-  // Timings client-side
   const [timings, setTimings] = useState({});
   const [elapsed, setElapsed] = useState(0);
   const startRef = useRef(Date.now());
   const tickRef  = useRef(null);
 
-  // Timer global
   useEffect(() => {
     tickRef.current = setInterval(() => setElapsed(Date.now() - startRef.current), 250);
     return () => clearInterval(tickRef.current);
   }, []);
 
-  // Enregistre start/end par step
   useEffect(() => {
     setTimings(prev => {
       const next = { ...prev };
@@ -60,14 +56,12 @@ function ProgressPanel({ steps, warnings = [], error }) {
   const progressPct  = Math.round((doneCount / PIPELINE_STEPS.length) * 100);
   const runningStep  = PIPELINE_STEPS.find(def => steps.find(s => s.id === def.id)?.status === 'running');
 
-  // Log des détails reçus
   const logEntries = steps
     .filter(s => s.detail)
     .map(s => ({ id: s.id, label: s.label ?? PIPELINE_STEPS.find(d => d.id === s.id)?.label, detail: s.detail, status: s.status }));
 
   return (
     <GlassCard className="overflow-hidden">
-      {/* Header avec timer global */}
       <div className="px-5 pt-5 pb-4 border-b border-black/[0.06] dark:border-white/[0.06]">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
@@ -86,7 +80,6 @@ function ProgressPanel({ steps, warnings = [], error }) {
           </span>
         </div>
 
-        {/* Barre de progression globale segmentée */}
         <div className="flex gap-1">
           {PIPELINE_STEPS.map((def, i) => {
             const s = steps.find(st => st.id === def.id);
@@ -109,7 +102,6 @@ function ProgressPanel({ steps, warnings = [], error }) {
         </p>
       </div>
 
-      {/* Steps */}
       <div className="px-5 py-4 space-y-3">
         {PIPELINE_STEPS.map((def) => {
           const step    = steps.find(s => s.id === def.id);
@@ -124,7 +116,6 @@ function ProgressPanel({ steps, warnings = [], error }) {
               'flex items-start gap-3 transition-all duration-300',
               status === 'pending' ? 'opacity-35' : '',
             ].join(' ')}>
-              {/* Icône statut */}
               <div className={[
                 'shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-px transition-all duration-300',
                 status === 'done'    ? 'bg-status-success/15'  :
@@ -143,7 +134,6 @@ function ProgressPanel({ steps, warnings = [], error }) {
                 )}
               </div>
 
-              {/* Texte */}
               <div className="flex-1 min-w-0">
                 <p className={[
                   'text-[13px] font-medium transition-colors leading-tight',
@@ -157,7 +147,6 @@ function ProgressPanel({ steps, warnings = [], error }) {
                 {step?.detail && (
                   <p className="text-[11px] text-text-tertiary mt-0.5 truncate">{step.detail}</p>
                 )}
-                {/* Barre shimmer si running */}
                 {status === 'running' && (
                   <div className="mt-1.5 h-0.5 w-28 rounded-full bg-accent/20 overflow-hidden">
                     <div className="h-full rounded-full bg-accent
@@ -168,14 +157,12 @@ function ProgressPanel({ steps, warnings = [], error }) {
                 )}
               </div>
 
-              {/* Durée */}
               <ElapsedBadge ms={durMs} />
             </div>
           );
         })}
       </div>
 
-      {/* Log des détails */}
       {logEntries.length > 0 && (
         <div className="mx-5 mb-5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03]
           border border-black/[0.05] dark:border-white/[0.05] overflow-hidden">
@@ -198,7 +185,6 @@ function ProgressPanel({ steps, warnings = [], error }) {
         </div>
       )}
 
-      {/* Warnings */}
       {warnings.length > 0 && (
         <div className="mx-5 mb-5 space-y-1.5">
           {warnings.map((w, i) => (
@@ -210,7 +196,6 @@ function ProgressPanel({ steps, warnings = [], error }) {
         </div>
       )}
 
-      {/* Erreur */}
       {error && (
         <div className="mx-5 mb-5">
           <p className="text-sm text-status-danger bg-status-danger/10 rounded-md px-3 py-2">
@@ -232,7 +217,6 @@ export default function Capture() {
   const [dragIdx, setDragIdx] = useState(null);
   const [dragOverIdx, setDragOverIdx] = useState(null);
 
-  // État du pipeline SSE
   const [processing, setProcessing] = useState(false);
   const [pipelineSteps, setPipelineSteps] = useState([]);
   const [pipelineError, setPipelineError] = useState(null);
@@ -265,7 +249,6 @@ export default function Capture() {
     setPages(prev => { prev.forEach(p => URL.revokeObjectURL(p.url)); return []; });
   }, []);
 
-  // Drag-and-drop reorder
   const handleDragStart = useCallback((idx) => setDragIdx(idx), []);
   const handleDragOver  = useCallback((e, idx) => { e.preventDefault(); setDragOverIdx(idx); }, []);
   const handleDrop      = useCallback((idx) => {
@@ -281,7 +264,6 @@ export default function Capture() {
   }, [dragIdx]);
   const handleDragEnd = useCallback(() => { setDragIdx(null); setDragOverIdx(null); }, []);
 
-  // Ferme le flux SSE si le composant est démonté
   useEffect(() => () => esRef.current?.close(), []);
 
   const { triggerGallery, CameraInputs } = useCamera({ onCapture: addPages, multiple: true });
@@ -304,7 +286,6 @@ export default function Capture() {
       return;
     }
 
-    // Connexion SSE
     const es = api.ingestEvents(jobId);
     esRef.current = es;
 
@@ -361,11 +342,9 @@ export default function Capture() {
         </div>
 
         <div className="space-y-4">
-          {/* Panel de progression (remplace la zone photo pendant le traitement) */}
           {processing ? (
             <ProgressPanel steps={pipelineSteps} warnings={pipelineWarnings} error={pipelineError} />
           ) : (
-            /* Zone pages */
             <GlassCard className="p-4">
               {pages.length === 0 ? (
                 <button
@@ -399,13 +378,11 @@ export default function Capture() {
                             : '',
                         ].join(' ')}>
                         <img src={url} alt={`Page ${idx + 1}`} className="w-full h-full object-cover pointer-events-none" />
-                        {/* Badge numéro de page */}
                         <div className="absolute bottom-1.5 left-1.5
                           bg-black/60 text-white text-[10px] font-semibold
                           px-1.5 py-0.5 rounded-sm leading-none">
                           p.{idx + 1}
                         </div>
-                        {/* Poignée drag visible au hover */}
                         <div className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity
                           pointer-events-none text-white/80">
                           <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
@@ -445,7 +422,6 @@ export default function Capture() {
             </GlassCard>
           )}
 
-          {/* Sélecteur matière — masqué pendant le traitement */}
           {!processing && (
             <GlassCard className="p-4 space-y-2">
               <label className="text-sm font-medium text-text-secondary">Matière</label>
@@ -468,7 +444,6 @@ export default function Capture() {
             </GlassCard>
           )}
 
-          {/* Sous-dossier facultatif */}
           {!processing && subjectId && (
             <GlassCard className="p-4">
               <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-2">
@@ -514,7 +489,6 @@ export default function Capture() {
             </GlassCard>
           )}
 
-          {/* Note facultative pour l'IA */}
           {!processing && (
             <GlassCard className="p-4">
               <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-2">

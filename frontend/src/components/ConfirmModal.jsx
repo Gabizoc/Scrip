@@ -2,17 +2,6 @@ import { useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertTriangle } from 'lucide-react';
 
-/**
- * Modal de confirmation générique.
- *
- * Props :
- *   title        — titre (string)
- *   message      — corps du message (string ou JSX)
- *   confirmLabel — texte du bouton de confirmation (défaut : "Supprimer")
- *   onConfirm    — callback quand l'utilisateur confirme
- *   onCancel     — callback quand l'utilisateur annule / ferme
- *   danger       — bool, colore le bouton en rouge (défaut : true)
- */
 export default function ConfirmModal({
   title        = 'Confirmer',
   message,
@@ -23,10 +12,8 @@ export default function ConfirmModal({
 }) {
   const cancelRef = useRef(null);
 
-  // Focus sur "Annuler" à l'ouverture (safe default)
   useEffect(() => { cancelRef.current?.focus(); }, []);
 
-  // Fermer sur Échap
   useEffect(() => {
     function handler(e) { if (e.key === 'Escape') onCancel(); }
     document.addEventListener('keydown', handler);
@@ -35,15 +22,12 @@ export default function ConfirmModal({
 
   return createPortal(
     <>
-      {/* Backdrop */}
       <div
         className="fixed inset-0 z-[9998] bg-black/40 backdrop-blur-[2px] animate-fade-in"
         aria-hidden
       />
 
-      {/* Wrapper flex — centre sur desktop, bas sur mobile */}
       <div className="modal-wrapper" onClick={e => { e.stopPropagation(); onCancel(); }}>
-      {/* Boîte */}
       <div
         role="dialog"
         aria-modal="true"
@@ -54,7 +38,6 @@ export default function ConfirmModal({
           border border-black/[0.07] dark:border-white/[0.08]
           p-6 flex flex-col gap-4"
       >
-        {/* Icône + titre */}
         <div className="flex items-start gap-3">
           <span className="flex-shrink-0 w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30
             flex items-center justify-center">
@@ -72,7 +55,6 @@ export default function ConfirmModal({
           </div>
         </div>
 
-        {/* Boutons */}
         <div className="flex gap-2 justify-end">
           <button
             ref={cancelRef}

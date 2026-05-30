@@ -1,9 +1,3 @@
-//
-// Store de sessions persistant sur disque (JSON), pour que la connexion survive
-// aux redémarrages du backend — le MemoryStore par défaut d'express-session perd
-// toutes les sessions à chaque restart. Sans dépendance externe (cohérent avec
-// l'approche lowdb/JSON du projet). Usage mono-utilisateur → volume négligeable.
-
 import fs from 'node:fs';
 import path from 'node:path';
 import session from 'express-session';
@@ -14,7 +8,7 @@ export class FileSessionStore extends Store {
   constructor({ path: filePath, cleanupIntervalMs = 60 * 60 * 1000 } = {}) {
     super();
     this.filePath = filePath;
-    this.sessions = new Map(); // sid -> { data: <session>, expires: <ms epoch|null> }
+    this.sessions = new Map();
     this._load();
     const timer = setInterval(() => this._cleanup(true), cleanupIntervalMs);
     timer.unref?.();
@@ -26,7 +20,6 @@ export class FileSessionStore extends Store {
       for (const [sid, entry] of Object.entries(obj)) this.sessions.set(sid, entry);
       this._cleanup(false);
     } catch {
-      // fichier absent ou corrompu → on repart à vide
     }
   }
 
@@ -35,9 +28,8 @@ export class FileSessionStore extends Store {
     try {
       fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
       fs.writeFileSync(tmp, JSON.stringify(Object.fromEntries(this.sessions)), 'utf8');
-      fs.renameSync(tmp, this.filePath); // écriture atomique
+      fs.renameSync(tmp, this.filePath);
     } catch {
-      /* best-effort */
     }
   }
 
@@ -68,7 +60,7 @@ export class FileSessionStore extends Store {
       this._persist();
       return cb(null, null);
     }
-    cb(null, JSON.parse(JSON.stringify(entry.data))); // copie défensive
+    cb(null, JSON.parse(JSON.stringify(entry.data)));
   }
 
   set(sid, sess, cb) {
@@ -82,9 +74,6 @@ export class FileSessionStore extends Store {
     cb?.(null);
   }
 
-  // Appelé à chaque requête d'une session existante : on rafraîchit l'expiration
-  // en mémoire. Pas de réécriture disque ici (l'expiration de 30 jours posée au
-  // login est déjà persistée) — évite une écriture à chaque requête.
   touch(sid, sess, cb) {
     const entry = this.sessions.get(sid);
     if (entry) entry.expires = this._expiryOf(sess);

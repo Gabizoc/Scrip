@@ -1,4 +1,3 @@
-
 async function authRequest(method, path, body) {
   const opts = {
     method,
@@ -14,7 +13,6 @@ async function authRequest(method, path, body) {
 }
 
 export const authApi = {
-  /** { loggedIn: bool, needsSetup: bool } */
   status:         ()                       => authRequest('GET',  '/status'),
   login:          (email, password)        => authRequest('POST', '/login',          { email, password }),
   logout:         ()                       => authRequest('POST', '/logout'),

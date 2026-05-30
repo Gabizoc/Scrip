@@ -1,11 +1,5 @@
 import { useState, useEffect } from 'react';
 
-/**
- * Gère le thème dark/light/auto.
- * - Lit depuis localStorage ('scrip.theme')
- * - Applique/retire la classe .dark sur <html>
- * - En mode 'auto' : écoute prefers-color-scheme en temps réel
- */
 export function useTheme() {
   const [theme, setThemeState] = useState(
     () => localStorage.getItem('scrip.theme') ?? 'auto'

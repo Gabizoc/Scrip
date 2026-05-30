@@ -1,9 +1,5 @@
 import nodemailer from 'nodemailer';
 
-/**
- * Envoie un email via SMTP (config dans .env).
- * Throw si la livraison échoue.
- */
 export async function sendMail({ to, subject, html }) {
   const transporter = nodemailer.createTransport({
     host:   process.env.SMTP_HOST,

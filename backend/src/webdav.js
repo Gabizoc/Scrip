@@ -1,27 +1,19 @@
 import webdavPkg from 'webdav-server';
 import bcrypt from 'bcryptjs';
+import { randomBytes } from 'node:crypto';
 import { db, resolveVaultPath } from './db.js';
 
 const { v2: webdav } = webdavPkg;
 
-// Credentials for the internal WebDAV bypass user (not exposed externally)
 const BYPASS_USER = 'scrip-internal';
-const BYPASS_PASS = 'bypass-' + Math.random().toString(36).slice(2);
+const BYPASS_PASS = randomBytes(24).toString('hex');
 
-// Internal user manager with a single bypass user
 const _userManager = new webdav.SimpleUserManager();
 _userManager.addUser(BYPASS_USER, BYPASS_PASS, true);
 
-// Cache du serveur WebDAV — recréé si vaultPath change
 let _server = null;
 let _vaultPath = null;
 
-/**
- * Retourne (et met en cache) le WebDAVServer pour le vaultPath donné.
- * Si vaultPath a changé, recrée le serveur.
- * Le serveur utilise un utilisateur bypass interne — l'auth réelle est gérée
- * par notre middleware Express avant délégation.
- */
 async function getWebdavServer(vaultPath) {
   if (_server && _vaultPath === vaultPath) return _server;
 
@@ -41,19 +33,12 @@ async function getWebdavServer(vaultPath) {
   return server;
 }
 
-/**
- * Retourne un middleware Express qui :
- * 1. Vérifie que WebDAV est activé (sinon 503)
- * 2. Vérifie la basic auth (sinon 401)
- * 3. Délègue au serveur WebDAV (en injectant les credentials bypass internes)
- */
 export function createWebdavMiddleware() {
   return async (req, res, next) => {
     try {
       await db.read();
       const { webdav: cfg, auth, vaultPath } = db.data.settings;
 
-      // 1. Vérification activation
       if (!vaultPath) {
         return res.status(503).json({ error: 'Vault path non configuré dans les paramètres Scrip' });
       }
@@ -61,7 +46,6 @@ export function createWebdavMiddleware() {
         return res.status(503).json({ error: 'WebDAV désactivé dans les paramètres Scrip' });
       }
 
-      // 2. Basic auth
       const authHeader = req.headers['authorization'] ?? '';
       if (!authHeader.startsWith('Basic ')) {
         res.setHeader('WWW-Authenticate', 'Basic realm="Scrip"');
@@ -78,7 +62,6 @@ export function createWebdavMiddleware() {
       const password = decoded.slice(colonIdx + 1);
 
       const usernameOk = cfg.username === username;
-      // Utilise auth.passwordHash (source unique) — synchronisé avec webdav.passwordHash
       const passwordOk = auth.passwordHash
         ? await bcrypt.compare(password, auth.passwordHash)
         : false;
@@ -88,17 +71,9 @@ export function createWebdavMiddleware() {
         return res.status(401).end('Identifiants incorrects');
       }
 
-      // 3. Servir le WebDAV
-      // On remplace l'en-tête Authorization par les credentials bypass internes
-      // pour que le serveur webdav-server accepte la requête sans refaire une auth.
       req.headers['authorization'] =
         `Basic ${Buffer.from(`${BYPASS_USER}:${BYPASS_PASS}`).toString('base64')}`;
 
-      // Express a strippé le préfixe /webdav de req.url avant d'appeler ce middleware.
-      // webdav.extensions.express(root, server) utilise root comme base URL dans les
-      // réponses PROPFIND (<D:href>). Si on passe '/', les hrefs générés sont /fichier.md
-      // au lieu de /webdav/fichier.md — Obsidian ne peut pas suivre les URLs.
-      // On restaure le préfixe /webdav pour que les hrefs soient corrects.
       req.url = '/webdav' + (req.url || '/');
 
       const server = await getWebdavServer(resolveVaultPath(vaultPath));

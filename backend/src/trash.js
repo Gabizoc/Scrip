@@ -1,10 +1,3 @@
-//
-// Corbeille : la suppression d'une note ne l'efface pas définitivement.
-// Les fichiers (markdown, audit, photos sources) sont déplacés dans
-// <vault>/.trash/<noteId>/ et l'enregistrement passe de db.data.notes à
-// db.data.trash avec un horodatage deletedAt. Une purge automatique supprime
-// définitivement les entrées plus vieilles que settings.trashRetentionDays.
-
 import fs from 'node:fs';
 import path from 'node:path';
 import { db, resolveVaultPath } from './db.js';
@@ -15,8 +8,6 @@ function trashRoot() {
   return path.join(resolveVaultPath(db.data.settings.vaultPath), '.trash');
 }
 
-// Déplace un fichier ou dossier, en créant le dossier parent si besoin.
-// Fallback copie+suppression si rename échoue entre deux systèmes de fichiers.
 function movePath(from, to) {
   fs.mkdirSync(path.dirname(to), { recursive: true });
   try {
@@ -31,10 +22,6 @@ function movePath(from, to) {
   }
 }
 
-/**
- * Déplace les fichiers d'une note vers la corbeille et retourne l'entrée à
- * stocker dans db.data.trash. Ne touche pas à la db (le caller s'en charge).
- */
 export function buildTrashEntry(note) {
   const dir = path.join(trashRoot(), note.id);
   fs.mkdirSync(dir, { recursive: true });
@@ -71,11 +58,6 @@ export function buildTrashEntry(note) {
   };
 }
 
-/**
- * Restaure les fichiers d'une entrée corbeille vers leurs emplacements
- * d'origine, puis supprime le dossier corbeille. Lève une erreur si un
- * emplacement d'origine est déjà occupé (conflit).
- */
 export function restoreTrashFiles(entry) {
   const files = entry.files ?? {};
   for (const key of ['note', 'audit', 'sources']) {
@@ -95,17 +77,12 @@ export function restoreTrashFiles(entry) {
   }
 }
 
-/** Supprime définitivement les fichiers d'une entrée corbeille. */
 export function deleteTrashFiles(entry) {
   if (entry.trashDir && fs.existsSync(entry.trashDir)) {
     fs.rmSync(entry.trashDir, { recursive: true, force: true });
   }
 }
 
-/**
- * Supprime définitivement les entrées corbeille plus vieilles que
- * settings.trashRetentionDays. Retourne le nombre d'entrées purgées.
- */
 export async function purgeExpiredTrash() {
   await db.read();
   const days = Number(db.data.settings.trashRetentionDays ?? 30);

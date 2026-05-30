@@ -12,16 +12,12 @@ import SubjectSidebar from '../components/SubjectSidebar.jsx';
 import ErrorState from '../components/ErrorState.jsx';
 import CreateNoteSheet from '../components/CreateNoteSheet.jsx';
 
-// ── Constantes ────────────────────────────────────────────────────────────────
-
 const SORT_OPTIONS = [
   { value: 'date-desc',  label: 'Plus récent' },
   { value: 'date-asc',   label: 'Plus ancien' },
   { value: 'score-desc', label: 'Meilleur score' },
   { value: 'title-asc',  label: 'A → Z' },
 ];
-
-// ── SortDropdown ──────────────────────────────────────────────────────────────
 
 function SortDropdown({ value, onChange }) {
   return (
@@ -35,8 +31,6 @@ function SortDropdown({ value, onChange }) {
     />
   );
 }
-
-// ── ViewToggle ────────────────────────────────────────────────────────────────
 
 function ViewToggle({ view, onChange }) {
   const btn = (v, Icon, label) => (
@@ -61,8 +55,6 @@ function ViewToggle({ view, onChange }) {
   );
 }
 
-// ── ListHeader ────────────────────────────────────────────────────────────────
-
 function ListHeader() {
   return (
     <div className="hidden md:flex items-center gap-3 px-4 py-2.5 border-b border-black/[0.05] dark:border-white/[0.06] text-[10px] uppercase tracking-widest text-text-tertiary font-semibold select-none bg-black/[0.02] dark:bg-white/[0.02]">
@@ -75,9 +67,6 @@ function ListHeader() {
   );
 }
 
-// ── File Manager ──────────────────────────────────────────────────────────────
-
-/** Ligne dossier — même gabarit qu'une NoteListRow */
 function FolderRow({ name, count, index, onClick }) {
   return (
     <div className={['row-enter', `row-${Math.min(index + 1, 10)}`].join(' ')}>
@@ -91,36 +80,29 @@ function FolderRow({ name, count, index, onClick }) {
           hover:bg-black/[0.025] dark:hover:bg-white/[0.035]
           bg-white dark:bg-neutral-950"
       >
-        {/* Barre accent gauche (hover) */}
         <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[3px] h-[60%] rounded-r-full
           bg-accent opacity-0 group-hover:opacity-100 transition-opacity duration-150" />
 
-        {/* Icône dossier — même taille que le dot */}
         <Folder size={13} className="flex-shrink-0 ml-1 text-accent opacity-70 group-hover:opacity-100 transition-opacity" />
 
-        {/* Nom */}
         <span className="flex-1 min-w-0 text-[13px] font-medium text-text-primary truncate">
           {name}
         </span>
 
-        {/* Compte — colonne date sur desktop */}
         <span className="hidden md:block shrink-0 w-[80px] text-right text-[11px] text-text-tertiary tabular-nums">
           {count} cours
         </span>
 
-        {/* Chevron — colonne score */}
         <span className="shrink-0 w-[44px] flex justify-end">
           <ChevronRight size={13} className="text-text-tertiary group-hover:text-accent transition-colors" />
         </span>
 
-        {/* Espace bouton ⋯ — pour aligner avec NoteListRow */}
         <span className="shrink-0 w-[28px]" />
       </div>
     </div>
   );
 }
 
-/** Breadcrumb quand on est dans un dossier */
 function FolderBreadcrumb({ folder, onBack }) {
   return (
     <div className="flex items-center gap-2 px-4 py-2.5
@@ -143,14 +125,11 @@ function FolderBreadcrumb({ folder, onBack }) {
   );
 }
 
-/** Vue file-manager : dossiers cliquables puis fichiers */
 function FileManagerView({ notes, ftResults }) {
   const [openFolder, setOpenFolder] = useState(null);
 
-  // Réinitialise quand les notes changent (changement de matière, etc.)
   useEffect(() => { setOpenFolder(null); }, [notes]);
 
-  // Recherche FT → liste plate, pas de navigation
   if (ftResults !== null) {
     return ftResults.map((note, i) => (
       <div key={note.id} className={[
@@ -162,7 +141,6 @@ function FileManagerView({ notes, ftResults }) {
     ));
   }
 
-  // Calcule dossiers + notes non-classées
   const folderMap = new Map();
   const unfiled   = [];
   for (const note of notes) {
@@ -176,7 +154,6 @@ function FileManagerView({ notes, ftResults }) {
   const folders = [...folderMap.keys()].sort((a, b) => a.localeCompare(b, 'fr'));
   const hasFolders = folders.length > 0;
 
-  // ── Vue à l'intérieur d'un dossier ──────────────────────────────────────────
   if (openFolder !== null) {
     const folderNotes = folderMap.get(openFolder) ?? [];
     return (
@@ -194,7 +171,6 @@ function FileManagerView({ notes, ftResults }) {
     );
   }
 
-  // ── Racine : dossiers puis notes non-classées ────────────────────────────────
   return (
     <>
       {folders.map((folder, i) => (
@@ -207,7 +183,6 @@ function FileManagerView({ notes, ftResults }) {
         />
       ))}
 
-      {/* Séparateur simple si on a des dossiers ET des notes non-classées */}
       {hasFolders && unfiled.length > 0 && (
         <div className="border-t border-black/[0.05] dark:border-white/[0.06]" />
       )}
@@ -223,8 +198,6 @@ function FileManagerView({ notes, ftResults }) {
     </>
   );
 }
-
-// ── Page principale ───────────────────────────────────────────────────────────
 
 export default function Home() {
   const { data: notes = [], isLoading, error: notesError } = useQuery({
@@ -246,20 +219,16 @@ export default function Home() {
     () => localStorage.getItem('scrip-home-view') ?? 'list',
   );
 
-  // Full-text search state
-  const [ftResults, setFtResults]   = useState(null);   // null = not active, [] = no results
+  const [ftResults, setFtResults]   = useState(null);
   const [ftLoading, setFtLoading]   = useState(false);
   const ftDebounceRef               = useRef(null);
 
-  // Persister la préférence de vue
   useEffect(() => {
     localStorage.setItem('scrip-home-view', view);
   }, [view]);
 
-  // Réinitialiser la recherche quand on change de dossier
   useEffect(() => { setSearch(''); }, [activeSubject]);
 
-  // Recherche full-text (≥ 3 chars) — debounced 400ms
   useEffect(() => {
     if (ftDebounceRef.current) clearTimeout(ftDebounceRef.current);
     if (search.trim().length < 3) {
@@ -284,7 +253,6 @@ export default function Home() {
     return () => clearTimeout(ftDebounceRef.current);
   }, [search, activeSubject]);
 
-  // Map name → emoji pour la sidebar
   const emojiMap = useMemo(() => {
     const m = new Map();
     for (const s of subjectsList) if (s.emoji) m.set(s.name, s.emoji);
@@ -302,11 +270,10 @@ export default function Home() {
   }, [notes, emojiMap]);
 
   const filtered = useMemo(() => {
-    // When full-text search is active, use backend results (already filtered/sorted)
     if (ftResults !== null) return ftResults;
 
     const q = search.toLowerCase().trim();
-    let result = notes.filter(n => {
+    const result = notes.filter(n => {
       if (activeSubject && n.subject !== activeSubject) return false;
       if (!q) return true;
       return n.title?.toLowerCase().includes(q) || n.subject?.toLowerCase().includes(q);
@@ -327,14 +294,12 @@ export default function Home() {
     <>
     <div className="flex flex-col h-screen px-3 pt-3 pb-0 sm:px-5 sm:pt-5 lg:px-8 lg:pt-6 max-w-screen-2xl mx-auto" style={{ overflow: 'clip' }}>
 
-      {/* ── Bande récents ── */}
       {hasNotes && (
         <div className="flex-shrink-0">
           <RecentStrip notes={notes} />
         </div>
       )}
 
-      {/* ── Chips mobile matières ── */}
       {hasNotes && (
         <div className="md:hidden flex-shrink-0 mb-2">
           <SubjectSidebar
@@ -347,10 +312,8 @@ export default function Home() {
         </div>
       )}
 
-      {/* ── Body : sidebar desktop + contenu ── */}
       <div className="flex gap-5 flex-1 min-h-0">
 
-        {/* Sidebar desktop uniquement */}
         {hasNotes && (
           <div className="hidden md:block flex-shrink-0">
             <SubjectSidebar
@@ -363,18 +326,14 @@ export default function Home() {
           </div>
         )}
 
-        {/* Zone principale */}
         <div className="flex-1 min-w-0 overflow-y-auto overflow-x-visible pt-2 px-3 pb-6 -mx-3">
 
-          {/* Erreur chargement */}
           {notesError && !isLoading && (
             <ErrorState message="Impossible de charger les cours." />
           )}
 
-          {/* Skeleton loading */}
           {isLoading && (
             <div className="animate-pulse">
-              {/* Fake toolbar */}
               <div className="flex items-center gap-2 mb-3">
                 <div className="h-4 w-28 rounded-full bg-black/[0.06] dark:bg-white/[0.06]" />
                 <div className="flex-1 h-7 rounded-full bg-black/[0.05] dark:bg-white/[0.05]" />
@@ -382,9 +341,7 @@ export default function Home() {
                 <div className="h-7 w-14 rounded-full bg-black/[0.05] dark:bg-white/[0.05]" />
               </div>
 
-              {/* Fake list */}
               <div className="rounded-xl border border-black/[0.06] dark:border-white/[0.07] overflow-hidden">
-                {/* Fake column header */}
                 <div className="hidden md:flex items-center gap-3 px-4 py-2.5 border-b border-black/[0.05] dark:border-white/[0.06] bg-black/[0.02] dark:bg-white/[0.02]">
                   <div className="w-[7px] ml-1" />
                   <div className="flex-1 h-2 w-8 rounded bg-black/[0.08] dark:bg-white/[0.08]" />
@@ -394,7 +351,6 @@ export default function Home() {
                   <div className="w-[28px]" />
                 </div>
 
-                {/* Fake rows — opacité décroissante pour effet "fade out" */}
                 {[1, 0.85, 0.7, 0.55, 0.4, 0.25, 0.12].map((opacity, i) => (
                   <div
                     key={i}
@@ -424,7 +380,6 @@ export default function Home() {
             </div>
           )}
 
-          {/* Empty state — aucun cours du tout */}
           {!isLoading && !notesError && notes.length === 0 && (
             <div className="flex flex-col items-center justify-center py-24 text-center">
               <div className="w-16 h-16 rounded-2xl bg-accent/10 flex items-center justify-center mb-4">
@@ -454,12 +409,9 @@ export default function Home() {
             </div>
           )}
 
-          {/* Contenu */}
           {hasNotes && (
             <>
-              {/* Header : titre + recherche + tri + toggle */}
               <div className="flex items-center gap-2 mb-3">
-                {/* Titre — masqué sur mobile */}
                 <h2 className="hidden md:flex items-center gap-1.5 text-sm font-semibold text-text-primary flex-shrink-0">
                   {ftResults !== null ? 'Résultats' : folderTitle}
                   <span className="ml-0.5 text-text-tertiary font-normal text-xs">{filtered.length}</span>
@@ -470,7 +422,6 @@ export default function Home() {
                   )}
                 </h2>
 
-                {/* Recherche — prend tout l'espace */}
                 <div className="relative flex-1">
                   <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-text-tertiary pointer-events-none" />
                   <input
@@ -498,7 +449,6 @@ export default function Home() {
                 <SortDropdown value={sort} onChange={setSort} />
                 <ViewToggle view={view} onChange={setView} />
 
-                {/* Bouton nouveau cours */}
                 <button
                   onClick={() => setShowCreate(true)}
                   title="Créer un cours"
@@ -511,7 +461,6 @@ export default function Home() {
                 </button>
               </div>
 
-              {/* Empty state — aucun résultat après filtre */}
               {filtered.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-16 text-center gap-3">
                   <p className="text-text-secondary text-sm">Aucun cours ne correspond à cette recherche</p>
@@ -523,7 +472,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Vue liste / file manager */}
               {view === 'list' && filtered.length > 0 && (
                 <div key={`list-${activeSubject}`} className="view-enter rounded-xl border border-black/[0.06] dark:border-white/[0.07] bg-white/60 dark:bg-white/[0.03] backdrop-blur-sm overflow-hidden">
                   <ListHeader />
@@ -531,7 +479,6 @@ export default function Home() {
                 </div>
               )}
 
-              {/* Vue cards */}
               {view === 'cards' && filtered.length > 0 && (
                 <div key={`cards-${activeSubject}`} className="view-enter grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 gap-3 sm:gap-4 pt-2">
                   {filtered.map((note, i) => (
@@ -545,7 +492,6 @@ export default function Home() {
       </div>
     </div>
 
-      {/* Modal création manuelle */}
       {showCreate && <CreateNoteSheet onClose={() => setShowCreate(false)} />}
     </>
   );

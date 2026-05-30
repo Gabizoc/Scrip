@@ -72,8 +72,10 @@ CE QUI EST INTERDIT :
 
 FORMAT : Markdown pur, pas de \`\`\`markdown\`\`\`. Ne rajoute aucun commentaire ni bloc METADATA.`;
 
+export const name   = 'Defaut';
+export const prompt = DEFAULT_SYSTEM_PROMPT;
+
 export const DEFAULT_USER_TEMPLATE = (ocrText) => {
-  // Extrait les ~10 premiers mots de l'OCR pour le prefill (ancre le modèle)
   const firstWords = ocrText.trim().split(/\s+/).slice(0, 8).join(' ');
 
   return `Texte OCR à mettre en forme :

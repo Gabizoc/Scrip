@@ -13,6 +13,7 @@ import { subjectsRouter }         from './routes/subjects.js';
 import { notesRouter }            from './routes/notes.js';
 import { trashRouter }            from './routes/trash.js';
 import { ingestRouter }           from './routes/ingest.js';
+import { promptsRouter }          from './routes/prompts.js';
 import { createWebdavMiddleware } from './webdav.js';
 
 export function createApp() {
@@ -25,7 +26,7 @@ export function createApp() {
     credentials: true,
   }));
 
-  app.use(express.json());
+  app.use(express.json({ limit: '2mb' }));
 
   const __dirname = path.dirname(fileURLToPath(import.meta.url));
   const sessionStore = new FileSessionStore({
@@ -40,14 +41,13 @@ export function createApp() {
     cookie: {
       httpOnly: true,
       secure:   process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
       maxAge:   30 * 24 * 60 * 60 * 1000,
     },
   }));
 
-  // Routes auth — PUBLIQUES (avant requireAuth)
   app.use('/api/auth', authRouter);
 
-  // Toutes les autres routes /api/* nécessitent une session
   app.use('/api', requireAuth);
 
   app.use('/api/settings', settingsRouter);
@@ -56,6 +56,7 @@ export function createApp() {
   app.use('/api/notes',    notesRouter);
   app.use('/api/trash',    trashRouter);
   app.use('/api/ingest',   ingestRouter);
+  app.use('/api/prompts',  promptsRouter);
 
   app.use('/webdav', createWebdavMiddleware());
 

@@ -20,7 +20,7 @@ export default function Trash() {
   const qc = useQueryClient();
 
   const [confirmEmpty, setConfirmEmpty]   = useState(false);
-  const [confirmDelete, setConfirmDelete] = useState(null); // { id, title }
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings });
   const { data: items = [], isLoading } = useQuery({ queryKey: ['trash'], queryFn: api.getTrash });
@@ -72,7 +72,6 @@ export default function Trash() {
       <h1 className="text-2xl font-bold text-text-primary mb-6">Corbeille</h1>
 
       <div className="space-y-3">
-        {/* Réglage de purge automatique */}
         <GlassCard className="p-4 space-y-2">
           <h3 className="text-xs font-semibold text-text-tertiary uppercase tracking-widest">Purge automatique</h3>
           <div className="flex items-center gap-3">
@@ -92,7 +91,6 @@ export default function Trash() {
           </div>
         </GlassCard>
 
-        {/* Liste */}
         {isLoading && (
           <p className="text-text-tertiary text-sm text-center py-6">Chargement…</p>
         )}
@@ -134,7 +132,6 @@ export default function Trash() {
           );
         })}
 
-        {/* Vider la corbeille */}
         {items.length > 0 && (
           <button
             onClick={() => setConfirmEmpty(true)}
