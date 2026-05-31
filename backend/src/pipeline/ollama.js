@@ -244,29 +244,40 @@ export async function runOllamaPipeline(imagePaths, userNote = null) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
   const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
   const model = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
+  const isCloud = model.includes(':cloud');
 
   process.stderr.write(`[ollama] ${paths.length} image(s), modèle: ${model}, endpoint: ${baseUrl}\n`);
-
-  const images = await Promise.all(paths.map(prepareImage));
-  const maxTokens = Math.min(4096 * paths.length, 16384);
 
   const systemInstruction = userNote
     ? `${VISION_INSTRUCTION}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
     : VISION_INSTRUCTION;
   if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
 
-  const messages = buildMessages(images, paths.length, systemInstruction);
+  let rawMarkdown = '';
 
-  process.stderr.write(`    → ${model}\n`);
-  const raw = await callOllama(messages, model, baseUrl, maxTokens);
-
-  if (!raw) {
-    throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
+  if (isCloud) {
+    // Modeles cloud : une image a la fois pour rester sous la limite de payload du relay
+    for (let i = 0; i < paths.length; i++) {
+      const image = await prepareImageSmall(paths[i]);
+      const messages = buildMessages([image], 1, systemInstruction);
+      process.stderr.write(`    → ${model} [${i + 1}/${paths.length}]\n`);
+      const raw = await callOllama(messages, model, baseUrl, 4096);
+      if (!raw) throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
+      rawMarkdown += (rawMarkdown ? '\n\n' : '') + cleanFences(raw);
+      process.stderr.write(`    ✓ image ${i + 1}/${paths.length} → ${raw.length} chars\n`);
+    }
+  } else {
+    // Modeles locaux : toutes les images en une seule requete
+    const images = await Promise.all(paths.map(prepareImage));
+    const maxTokens = Math.min(4096 * paths.length, 16384);
+    const messages = buildMessages(images, paths.length, systemInstruction);
+    process.stderr.write(`    → ${model}\n`);
+    const raw = await callOllama(messages, model, baseUrl, maxTokens);
+    if (!raw) throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
+    process.stderr.write(`    ✓ Ollama ${model} → ${raw.length} chars\n`);
+    rawMarkdown = cleanFences(raw);
   }
 
-  process.stderr.write(`    ✓ Ollama ${model} → ${raw.length} chars\n`);
-
-  const cleaned = cleanFences(raw);
-  const filtered = removeExerciseBlocks(cleaned);
+  const filtered = removeExerciseBlocks(rawMarkdown);
   return { rawMarkdown: filtered, imageRegions: [], modelUsed: model };
 }
