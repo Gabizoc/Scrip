@@ -17,6 +17,7 @@ import { sanitizeSegment, sanitizeRelPath, safeJoin, noteFolderSegments } from '
 import { parse, z } from '../lib/validate.js';
 import { log } from '../lib/logger.js';
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
+import { topCorrections } from '../lib/corrections.js';
 
 const PROMPTS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../prompts');
 
@@ -189,7 +190,12 @@ async function runPipeline(job, { step, warn }) {
   step({ id: 'structure', label: 'Structuration du contenu', status: 'pending' });
 
   const { rawMarkdown, rawStructured, imageRegions, detail, usedFallback, fallbackWarning } =
-    await provider.run(imagePaths, { userNote: params.userNote, systemPrompt, level });
+    await provider.run(imagePaths, {
+      userNote: params.userNote,
+      systemPrompt,
+      vocabulary: subject.vocabulary,
+      corrections: topCorrections(subject),
+    });
 
   log.debug(`=== SORTIE ${mode.toUpperCase()} (${rawMarkdown.length} chars) ===\n${rawMarkdown.slice(0, 800)}`);
   step({ id: 'ocr', label: provider.label, status: 'done', detail: `${pageDetail} · ${wordCount(rawMarkdown)} mots extraits` });

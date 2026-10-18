@@ -6,6 +6,7 @@ import { db, resolveVaultPath } from '../db.js';
 import { buildTrashEntry } from '../trash.js';
 import { parse, z } from '../lib/validate.js';
 import { sanitizeRelPath, safeJoin, noteFolderSegments } from '../lib/paths.js';
+import { extractCorrections, recordCorrections } from '../lib/corrections.js';
 
 export const notesRouter = Router();
 
@@ -262,7 +263,11 @@ notesRouter.patch('/:id', async (req, res) => {
 
   if (markdown !== undefined) {
     if (markdown.trim().length === 0) return res.status(400).json({ error: 'markdown ne peut pas être vide' });
+    // Sur une note issue de photos, les mots corrigés à la main sont retenus pour la matière.
+    const subject = note.sourcePaths?.length ? db.data.subjects.find(s => s.id === note.subjectId) : null;
+    const before = subject ? await fs.promises.readFile(note.path, 'utf8').catch(() => null) : null;
     await fs.promises.writeFile(note.path, markdown, 'utf8');
+    if (before !== null) recordCorrections(subject, extractCorrections(before, markdown));
   }
 
   if (title?.trim()) note.title = title.trim();

@@ -1,6 +1,5 @@
 import { log } from '../lib/logger.js';
 import { llmSignal } from './http.js';
-import { DEFAULT_SYSTEM_PROMPT, DEFAULT_USER_TEMPLATE } from '../../prompts/default.js';
 
 const OPENROUTER_ENDPOINT = 'https://openrouter.ai/api/v1/chat/completions';
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1/chat/completions';
@@ -18,11 +17,6 @@ const OPENROUTER_MODELS = process.env.OPENROUTER_STRUCTURE_MODEL
   : ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-coder:free', 'qwen/qwen3-next-80b-a3b-instruct:free', 'nousresearch/hermes-3-llama-3.1-405b:free', 'openai/gpt-oss-120b:free', 'nvidia/nemotron-3-super-120b-a12b:free', FREE_ROUTER];
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-function calcMaxTokens(ocrText) {
-  const ocrTokens = Math.ceil(ocrText.length / 4);
-  return Math.min(Math.max(Math.ceil(ocrTokens * 1.4) + 200, 1024), 8192);
-}
 
 async function callNvidia(messages, apiKey, model, maxTokens) {
   const res = await fetch(NVIDIA_ENDPOINT, { signal: llmSignal(),
@@ -55,13 +49,9 @@ async function callOpenRouter(messages, apiKey, model, maxTokens) {
   return (await res.json()).choices[0].message.content;
 }
 
-export async function structureContent(rawMarkdown, { systemPrompt = DEFAULT_SYSTEM_PROMPT, openrouterKey, nvidiaKey } = {}) {
-  const maxTokens = calcMaxTokens(rawMarkdown);
-
-  log.debug(`OCR: ${rawMarkdown.length} chars → max_tokens: ${maxTokens}`);
-
-  const messages = [
-    { role: 'system', content: systemPrompt }, { role: 'user', content: DEFAULT_USER_TEMPLATE(rawMarkdown) }, ];
+// Structuration (passe 2) via NVIDIA puis OpenRouter : messages vient de buildStructureMessages().
+export async function structureContent(messages, { openrouterKey, nvidiaKey, maxTokens } = {}) {
+  log.debug(`structuration → max_tokens: ${maxTokens}`);
 
   if (nvidiaKey) {
     for (const model of NVIDIA_MODELS) {

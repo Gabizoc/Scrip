@@ -1,7 +1,6 @@
 import { log } from '../lib/logger.js';
-import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
-import { prepareImage, prepareImageSmall } from './ocr.js';
-import { removeExerciseBlocks } from './format-rules.js';
+import { prepareImage, preparePages } from './image.js';
+import { buildTranscriptionPrompt, buildTranscriptionContent, finishTranscription, cleanFences } from './transcribe.js';
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:11434';
 const CLOUD_BASE_URL = 'https://ollama.com';
@@ -33,90 +32,6 @@ export async function pingOllama(timeoutMs = 2000) {
   } catch {
     return false;
   }
-}
-
-// Consignes propres à la lecture d'image, ajoutées après le prompt de la matière.
-const VISION_SUFFIX = `
-
-Tu regardes directement une photo de notes manuscrites françaises.
-Lis EXACTEMENT le texte physiquement écrit dans l'image — n'ajoute rien de tes connaissances.
-
-TABLEAUX :
-- Compte d'abord le nombre exact de colonnes en regardant les séparateurs verticaux
-- Le header doit avoir EXACTEMENT ce nombre de colonnes
-- Si la 1ère colonne n'a pas de titre écrit → header vide : |  |
-- Chaque ligne de données doit avoir le MÊME nombre de cellules que le header
-- Si une cellule est vide → laisse vide entre les pipes : |  |
-
-TEXTE MANUSCRIT :
-- Si un mot est illisible → écris [illisible]
-- Ne complète jamais avec tes connaissances
-
-ZONES D'EXERCICES — IGNORER ABSOLUMENT :
-
-Ce cahier contient deux types de contenu. Tu ne dois retranscrire QUE le cours.
-
-▸ SIGNAL PRINCIPAL — deux traits horizontaux au stylo :
-  Chaque zone d'exercice est encadrée par un trait horizontal avant et un après.
-  Tout le contenu entre ces deux traits = ignorer entièrement.
-
-▸ SIGNAL TEXTUEL — blocs numérotés courts :
-  À l'intérieur des traits, le texte est organisé en réponses courtes numérotées : 1) … 2) … 3) …
-  Ces réponses répondent à des questions (elles n'exposent pas un concept en prose continue).
-  Ce pattern = toujours des exercices, jamais des sous-parties de cours.
-
-▸ INDICE OPTIONNEL — référence de page :
-  Parfois (pas toujours) une référence "p.67" ou "p.77" apparaît dans la zone.
-  Quand elle est présente, c'est une confirmation supplémentaire que c'est un exercice.
-
-▸ DISTINCTION COURS vs EXERCICE :
-  Cours   → prose continue, paragraphes qui développent une idée, définitions approfondies
-  Exercice → réponses courtes numérotées 1) 2) 3), chaque item tient en 1-3 lignes
-
-COMPORTEMENT ATTENDU :
-- Avant la zone d'exercice → transcrire le cours normalement
-- Zone d'exercice (entre les deux traits, items numérotés courts) → ignorer complètement
-- Après la zone d'exercice → reprendre le cours comme si la zone n'avait pas existé
-- Ne mentionne JAMAIS les exercices dans ta sortie, ni les références de page
-
-RAPPEL DU FORMAT ATTENDU (applique-le sur ce que tu lis) :
-# Titre
-# I - Grande partie        ← H1
-## A) Sous-partie          ← H2
-## B) Sous-partie          ← H2
-# II - Grande partie       ← H1
-# Conclusion               ← H1 si présente
-# Définitions              ← H1, toujours en dernier si présentes
-* **Terme :** Définition`;
-
-const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}${VISION_SUFFIX}`;
-
-
-function cleanFences(text) {
-  return text
-    .replace(/^```(?:markdown)?\s*\n?/i, '')
-    .replace(/\n?```\s*$/i, '')
-    .trim();
-}
-
-function buildMessages(images, count, systemInstruction = VISION_INSTRUCTION) {
-  const imageBlocks = images.map(({ base64, mimeType }, i) => [
-    { type: 'text', text: count > 1 ? `— Page ${i + 1} sur ${count} —` : '' },
-    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
-  ]).flat().filter(b => b.text !== '');
-
-  const instruction = count === 1
-    ? 'Lis et formate en Markdown structuré le texte manuscrit de cette photo. Respecte le format du système.'
-    : `Ces ${count} images sont les pages d'UN SEUL cours manuscrit, dans l'ordre.
-Lis-les comme un document continu : une phrase peut commencer page ${1} et finir page ${2}, un tableau peut s'étaler sur plusieurs pages, une partie peut continuer d'une page à l'autre.
-Produis UN SEUL document Markdown unifié — pas de séparateur entre les pages.
-Respecte le format défini dans le système (# pour les grandes parties, ## pour les sous-parties, etc.).
-N'invente rien : copie exactement ce qui est écrit.`;
-
-  return [
-    { role: 'system', content: systemInstruction },
-    { role: 'user',   content: [...imageBlocks, { type: 'text', text: instruction }] },
-  ];
 }
 
 async function callOllama(messages, model, baseUrl, maxTokens) {
@@ -240,7 +155,8 @@ function hasRepetitionLoop(text) {
 }
 
 export async function callOllamaRaw(imagePaths) {
-  const images = await Promise.all(imagePaths.map(prepareImageSmall));
+  // Lecture de référence, toutes pages en une requête : taille modérée pour le payload.
+  const images = await Promise.all(imagePaths.map(p => prepareImage(p, { maxSide: 1200, quality: 75 })));
   const { baseUrl, model } = getOllamaConfig();
 
   const messages = [
@@ -284,43 +200,37 @@ export async function ollamaChat(messages, maxTokens = 512) {
   return raw ? cleanFences(raw) : null;
 }
 
-export async function runOllamaPipeline(imagePaths, { userNote = null, systemPrompt = null } = {}) {
+// Transcription (passe 1). La structuration se fait ensuite sur le texte (cf. providers.js).
+export async function runOllamaTranscription(imagePaths, { vocabulary, corrections, userNote } = {}) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
   const { baseUrl, model, isCloud } = getOllamaConfig();
 
   log.debug(`[ollama] ${paths.length} image(s), modèle: ${model}, endpoint: ${baseUrl}`);
 
-  const baseInstruction = systemPrompt ? `${systemPrompt}${VISION_SUFFIX}` : VISION_INSTRUCTION;
-  const systemInstruction = userNote
-    ? `${baseInstruction}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
-    : baseInstruction;
-  if (userNote) log.debug(`[userNote] "${userNote}"`);
-
-  let rawMarkdown = '';
+  const system = { role: 'system', content: buildTranscriptionPrompt({ vocabulary, corrections, userNote }) };
+  const unreachable = () => new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
 
   if (isCloud) {
-    // Modeles cloud : une image a la fois pour rester sous la limite de payload du relay
+    // Modèles cloud : une page par requête pour rester sous la limite de payload du relay
+    const parts = [];
     for (let i = 0; i < paths.length; i++) {
-      const image = await prepareImageSmall(paths[i]);
-      const messages = buildMessages([image], 1, systemInstruction);
+      const pages = await preparePages([paths[i]]);
+      const user = { role: 'user', content: buildTranscriptionContent(pages, { firstPage: i + 1, totalPages: paths.length }) };
       log.debug(`→ ${model} [${i + 1}/${paths.length}]`);
-      const raw = await callOllama(messages, model, baseUrl, 4096);
-      if (!raw) throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
-      rawMarkdown += (rawMarkdown ? '\n\n' : '') + cleanFences(raw);
-      log.debug(`✓ image ${i + 1}/${paths.length} → ${raw.length} chars`);
+      const raw = await callOllama([system, user], model, baseUrl, 4096);
+      if (!raw) throw unreachable();
+      parts.push(finishTranscription(raw));
+      log.debug(`✓ page ${i + 1}/${paths.length} → ${raw.length} chars`);
     }
-  } else {
-    // Modeles locaux : toutes les images en une seule requete
-    const images = await Promise.all(paths.map(prepareImage));
-    const maxTokens = Math.min(4096 * paths.length, 16384);
-    const messages = buildMessages(images, paths.length, systemInstruction);
-    log.debug(`→ ${model}`);
-    const raw = await callOllama(messages, model, baseUrl, maxTokens);
-    if (!raw) throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
-    log.debug(`✓ Ollama ${model} → ${raw.length} chars`);
-    rawMarkdown = cleanFences(raw);
+    return { transcription: parts.join('\n\n'), modelUsed: model };
   }
 
-  const filtered = removeExerciseBlocks(rawMarkdown);
-  return { rawMarkdown: filtered, imageRegions: [], modelUsed: model };
+  // Modèles locaux : toutes les pages en une seule requête
+  const pages = await preparePages(paths);
+  const user = { role: 'user', content: buildTranscriptionContent(pages) };
+  log.debug(`→ ${model}`);
+  const raw = await callOllama([system, user], model, baseUrl, Math.min(4096 * paths.length, 16384));
+  if (!raw) throw unreachable();
+  log.debug(`✓ Ollama ${model} → ${raw.length} chars`);
+  return { transcription: finishTranscription(raw), modelUsed: model };
 }

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Trash2, Pencil, Check } from 'lucide-react';
+import { Trash2, Pencil, Check, X } from 'lucide-react';
 import GlassCard from '../GlassCard.jsx';
 import Dropdown from '../Dropdown.jsx';
 import EmojiButton from './EmojiButton.jsx';
@@ -24,13 +24,42 @@ function InlineField({ label, value, onChange, placeholder }) {
   );
 }
 
+function Corrections({ corrections, onRemove }) {
+  if (!corrections?.length) return null;
+  return (
+    <div className="flex flex-col gap-1">
+      <label className="text-[10px] uppercase tracking-wide text-text-tertiary font-medium">
+        Corrections apprises · rappelées à l'IA
+      </label>
+      <div className="flex flex-wrap gap-1">
+        {corrections.map(c => (
+          <span
+            key={`${c.from}→${c.to}`}
+            className="flex items-center gap-1 text-[11px] pl-2 pr-1 py-0.5 rounded-full
+              bg-black/[0.04] dark:bg-white/[0.06] text-text-secondary"
+          >
+            <span className="line-through text-text-tertiary">{c.from}</span> → {c.to}
+            {c.count > 1 && <span className="text-text-tertiary">×{c.count}</span>}
+            <button
+              onClick={() => onRemove(c)}
+              className="p-0.5 rounded-full hover:text-status-danger transition-colors"
+              title="Oublier cette correction"
+            >
+              <X size={10} />
+            </button>
+          </span>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 export default function SubjectCard({ subject, levels, prompts, onPatch, onDelete }) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft]     = useState({});
 
   function startEdit() {
-    setDraft({ name: subject.name, outputFolder: subject.outputFolder, prompt: subject.prompt, emoji: subject.emoji ?? '', color: subject.color ?? '' });
+    setDraft({ name: subject.name, outputFolder: subject.outputFolder, prompt: subject.prompt, emoji: subject.emoji ?? '', color: subject.color ?? '', vocabulary: subject.vocabulary ?? '' });
     setEditing(true);
   }
   function cancelEdit() { setEditing(false); }
@@ -97,6 +126,25 @@ export default function SubjectCard({ subject, levels, prompts, onPatch, onDelet
               className={dropdownClass}
             />
           </div>
+          <div className="flex flex-col gap-0.5">
+            <label className="text-[10px] uppercase tracking-wide text-text-tertiary font-medium">Vocabulaire de la matière</label>
+            <textarea
+              value={draft.vocabulary}
+              onChange={e => df('vocabulary')(e.target.value)}
+              rows={3}
+              maxLength={5000}
+              placeholder="Termes, noms propres, abréviations… séparés par des virgules. Aide l'IA à lire ton écriture."
+              className="px-2.5 py-1.5 rounded-md text-[13px] resize-y
+                bg-black/[0.04] dark:bg-white/[0.05]
+                border border-black/[0.08] dark:border-white/[0.07]
+                text-text-primary placeholder:text-text-tertiary
+                focus:outline-none focus:border-accent/40 transition-colors"
+            />
+          </div>
+          <Corrections
+            corrections={subject.corrections}
+            onRemove={c => onPatch(subject.id, { corrections: subject.corrections.filter(x => x !== c) })}
+          />
           <ColorPickerField value={draft.color ?? ''} onChange={df('color')} />
           <div className="flex gap-2 pt-1">
             <button

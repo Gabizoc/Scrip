@@ -17,6 +17,14 @@ const subjectFields = {
   // Emoji ou petite image en data URL (icône personnalisée, 48 px).
   emoji:        z.string().max(100_000).nullish(),
   color:        z.string().max(32).nullish(),
+  // Termes propres à la matière, rappelés au modèle pour déchiffrer l'écriture.
+  vocabulary:   z.string().max(5000).nullish(),
+  // Corrections apprises (cf. lib/corrections.js) ; modifiables pour en retirer.
+  corrections:  z.array(z.object({
+    from:  z.string().min(1).max(100),
+    to:    z.string().min(1).max(100),
+    count: z.number().int().min(1),
+  })).max(200).optional(),
 };
 
 const createSchema = z.object({ ...subjectFields, levelId: nonEmpty('levelId') });
@@ -31,11 +39,11 @@ subjectsRouter.get('/', (req, res) => {
 });
 
 subjectsRouter.post('/', async (req, res) => {
-  const { name, levelId, prompt, outputFolder, emoji, color } = parse(createSchema, req.body);
+  const { name, levelId, prompt, outputFolder, emoji, color, vocabulary } = parse(createSchema, req.body);
   if (!db.data.levels.some(l => l.id === levelId)) {
     return res.status(400).json({ error: 'niveau introuvable' });
   }
-  const subject = { id: randomUUID(), name, levelId, prompt, outputFolder, ...(emoji ? { emoji } : {}), ...(color ? { color } : {}) };
+  const subject = { id: randomUUID(), name, levelId, prompt, outputFolder, ...(emoji ? { emoji } : {}), ...(color ? { color } : {}), ...(vocabulary?.trim() ? { vocabulary: vocabulary.trim() } : {}) };
   db.data.subjects.push(subject);
   await db.write();
   res.status(201).json(subject);
@@ -45,7 +53,7 @@ subjectsRouter.patch('/:id', async (req, res) => {
   const body = parse(patchSchema, req.body);
   const subject = db.data.subjects.find(s => s.id === req.params.id);
   if (!subject) return res.status(404).json({ error: 'matière introuvable' });
-  for (const key of ['name', 'prompt', 'outputFolder', 'emoji', 'color']) {
+  for (const key of ['name', 'prompt', 'outputFolder', 'emoji', 'color', 'vocabulary', 'corrections']) {
     if (body[key] !== undefined) subject[key] = body[key];
   }
   await db.write();

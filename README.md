@@ -117,7 +117,7 @@ npm run dev
 | `nvidia` | NVIDIA NIM (`NVIDIA_API_KEY`) |
 | `mistral` | OCR Mistral + structuration (`MISTRAL_API_KEY`) |
 
-**OpenRouter** n'est pas un mode à part. Il ne reçoit **que du texte**, jamais les photos : la structuration du texte OCR en mode `mistral`, et le résumé automatique des notes (avec repli sur Ollama).
+**OpenRouter** n'est pas un mode à part. Il ne reçoit **que du texte**, jamais les photos : la structuration du texte OCR en mode `mistral` (et en secours dans les autres modes), et le résumé automatique des notes (avec repli sur Ollama).
 
 <details>
 <summary><b>Ollama &nbsp;·&nbsp; recommandé, 100 % gratuit</b></summary>
@@ -263,7 +263,11 @@ Copie `.env.example` en `.env` : chaque variable y est commentée. Les principal
 | `GOOGLE_API_KEY`, `GEMINI_MODEL` | Google Gemini |
 | `NVIDIA_API_KEY` | NVIDIA NIM |
 | `MISTRAL_API_KEY` | Mistral |
-| `OPENROUTER_API_KEY` | OpenRouter (texte seulement : structuration en mode `mistral`, résumé) |
+| `OPENROUTER_API_KEY` | OpenRouter (texte seulement : structuration en mode `mistral` ou en secours, résumé) |
+| `GEMINI_THINKING_BUDGET` | Tokens de raisonnement de Gemini pour lire les photos (défaut `1024`, `0` pour désactiver) |
+| `IMAGE_MAX_SIDE` | Plus grand côté des images envoyées à l'IA, en pixels (défaut `1600`) |
+| `IMAGE_TILING` | `false` : envoie chaque page entière au lieu de deux bandes haute et basse |
+| `IMAGE_ENHANCE` | `false` : désactive le rehaussement du contraste des photos |
 | `LLM_TIMEOUT_MS` | Délai max d'un appel IA (défaut `180000`) |
 
 **Serveur**
@@ -492,6 +496,14 @@ Réglages recommandés dans Remotely Save :
 - **Hors ligne**, la PWA garde la capture sur l'appareil et l'envoie dès le retour du réseau (visible dans la file d'attente de la page Capture).
 - Formats acceptés : JPEG, PNG, WebP (jusqu'à 10 photos de 20 Mo). Le HEIC n'est pas pris en charge : sur iPhone, choisis *Réglages > Appareil photo > Formats > Le plus compatible*.
 - Sur ordinateur, le bouton **Comparer** d'une note affiche la photo originale à côté, y compris pendant l'édition.
+
+**Lecture de l'écriture manuscrite**
+
+1. **Préparation des photos** : orientation corrigée, contraste rehaussé, et chaque page en portrait découpée en deux bandes qui se chevauchent, pour que l'IA lise l'écriture en plus grand.
+2. **Transcription** : le modèle vision recopie seulement ce qui est écrit, mot pour mot, sans mise en forme. Il marque les mots douteux et écarte les zones d'exercices.
+3. **Structuration** : un appel texte met la transcription en Markdown avec le prompt de la matière. Le résultat est comparé à la transcription : s'il invente ou perd du contenu, une mise en forme automatique le remplace.
+
+Pour aider la lecture, renseigne le **vocabulaire** de chaque matière (*Paramètres > Matières*, bouton crayon) : termes techniques, noms propres, abréviations. Quand tu corriges à la main un mot mal lu dans une note, Scrip retient la correction pour cette matière et la rappelle à l'IA aux analyses suivantes. Les corrections apprises s'affichent dans la fiche de la matière, et tu peux les supprimer. Les modifications faites directement dans Obsidian ne sont pas prises en compte.
 
 ---
 
