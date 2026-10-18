@@ -175,6 +175,12 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     clearTimeout(timer);
     const txt = await res.text();
     process.stderr.write(`    [debug] réponse erreur: ${txt.slice(0, 500)}\n`);
+    if (res.status === 401) {
+      const hint = apiKey
+        ? `cle OLLAMA_API_KEY refusee (${apiKey.slice(0, 4)}…, ${apiKey.length} chars) — verifie-la sur https://ollama.com/settings/keys et redemarre le backend apres modification du .env`
+        : 'OLLAMA_API_KEY manquante dans le .env';
+      throw new Error(`Ollama 401 : ${hint}`);
+    }
     if (res.status === 404) {
       process.stderr.write(`    ⚠ Ollama modèle "${model}" introuvable — vérifie que le modèle est installé (ollama pull ${model})\n`);
       return null;
