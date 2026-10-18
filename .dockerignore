@@ -1,0 +1,12 @@
+node_modules
+**/node_modules
+frontend/dist
+backend/data
+vault
+logs
+.env
+.git
+.github
+.claude
+docs
+*.log

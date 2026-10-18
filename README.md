@@ -30,6 +30,8 @@
 - [Configuration](#configuration)
 - [Deploiement](#deploiement)
 - [Sync Obsidian](#sync-obsidian)
+- [Ingestion](#fonctionnement-de-lingestion)
+- [Developpement](#developpement)
 - [Prompts personnalises](#prompts-ia-personnalises)
 - [Structure](#structure)
 
@@ -187,8 +189,8 @@ Scrip bascule sur `openrouter/auto` si la limite journaliere est atteinte.
 
 | Couche | Technologies |
 |---|---|
-| Backend | Node.js 20, Express, lowdb (JSON) |
-| Frontend | React 18, Vite, Tailwind CSS |
+| Backend | Node.js 20+, Express 5, lowdb (JSON), zod, pino |
+| Frontend | React 18, Vite, Tailwind CSS, PWA (service worker, file hors ligne) |
 | IA | Ollama / Google Gemini / NVIDIA / Mistral / OpenRouter |
 | Sync | WebDAV natif, compatible Obsidian Remotely Save |
 
@@ -213,9 +215,8 @@ Le script installe toutes les dependances, pose les questions de configuration (
 ```bash
 cp .env.example .env
 # Editer .env manuellement
-npm install
-cd backend && npm install && cd ..
-cd frontend && npm install && npm run build && cd ..
+npm install          # installe backend + frontend (workspaces npm)
+npm run build
 ```
 
 > Minimum requis dans `.env` : `AUTH_PASSWORD`, `SESSION_SECRET`
@@ -231,12 +232,17 @@ Copier `.env.example` en `.env` et remplir :
 | Variable | Requis | Description |
 |---|---|---|
 | `AUTH_PASSWORD` | oui | Mot de passe pour se connecter |
-| `SESSION_SECRET` | oui | Secret aleatoire (32+ chars) |
+| `SESSION_SECRET` | oui | Secret aleatoire (16 caracteres minimum ; la valeur d'exemple est refusee en production) |
 | `PUBLIC_URL` | non | URL publique (pour les liens WebDAV) |
 | `GOOGLE_API_KEY` | non | Cle Google AI Studio pour Gemini |
 | `OLLAMA_BASE_URL` | non | URL du serveur Ollama |
 | `OLLAMA_API_KEY` | non | Cle Ollama Cloud (appel direct a ollama.com, sans installation) |
 | `PIPELINE_MODE` | non | `auto` (defaut) / `ollama` / `google` / `nvidia` / `mistral` |
+| `PORT` | non | Port du backend (defaut `7001`) |
+| `FRONTEND_PORT` | non | Port du serveur de dev Vite (defaut `5000`) |
+| `LOG_LEVEL` | non | `info` (defaut) ou `debug` pour les traces detaillees du pipeline |
+| `LLM_TIMEOUT_MS` | non | Delai max d'un appel IA (defaut `180000`) |
+| `SERVE_FRONTEND` | non | `true` : le backend sert aussi le frontend compile (utilise par Docker) |
 
 Generer un `SESSION_SECRET` :
 ```bash
@@ -252,7 +258,7 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 <br>
 
 ```bash
-cd backend && npm install && cd ..
+npm install
 npm run dev
 ```
 
@@ -267,8 +273,8 @@ Ouvre `http://localhost:5000`
 <br>
 
 ```bash
-cd backend && npm install && cd ..
-cd frontend && npm run build && cd ..
+npm install
+npm run build
 pm2 start ecosystem.config.cjs
 ```
 
@@ -276,6 +282,21 @@ Reset de la base de donnees :
 ```bash
 node backend/scripts/reset-db.js
 ```
+
+</details>
+
+<details>
+<summary><b>Docker</b></summary>
+<br>
+
+```bash
+cp .env.example .env   # remplir AUTH_PASSWORD, SESSION_SECRET, cles IA…
+docker compose up -d --build
+```
+
+L'image sert l'API, le WebDAV et le frontend sur le port `7001` (lie a `127.0.0.1` : place Nginx + HTTPS devant, les cookies de session etant `secure` en production). La base (`backend/data`) et le vault (`vault`) sont montes en volumes.
+
+Pour un Ollama installe sur la machine hote, decommenter `OLLAMA_BASE_URL` dans `docker-compose.yml`.
 
 </details>
 
@@ -315,7 +336,7 @@ certbot renew --dry-run
 
 1. Installer le plugin **Remotely Save** dans Obsidian
 2. Choisir **WebDAV**, entrer l'URL : `https://ton-domaine.com/webdav`
-3. Identifiant et mot de passe : configures dans Parametres > WebDAV
+3. Identifiant et mot de passe : configures dans Parametres > WebDAV. Par defaut, WebDAV utilise le mot de passe de connexion ; tu peux definir un mot de passe dedie (conseille, il reste stocke dans Obsidian).
 4. **Remote base dir** : meme valeur que "Dossier de synchronisation" dans Parametres
 
 Reglages recommandes dans Remotely Save :
@@ -328,6 +349,26 @@ Reglages recommandes dans Remotely Save :
 
 ---
 
+## Fonctionnement de l'ingestion
+
+- Les photos envoyees sont placees dans une **file persistante** (`backend/data/uploads`) et traitees une par une : un redemarrage du serveur ne perd pas une analyse en cours, elle reprend automatiquement.
+- **Hors ligne**, la PWA enregistre la capture sur l'appareil et l'envoie toute seule au retour du reseau (visible dans la file d'attente de la page Capture).
+- Formats acceptes : JPEG, PNG, WebP (10 photos de 20 Mo max). Sur iPhone, choisir *Reglages > Appareil photo > Formats > Le plus compatible* (le HEIC n'est pas pris en charge).
+- Sur ordinateur, le bouton **Comparer** d'une note affiche la photo originale a cote, y compris pendant l'edition.
+
+---
+
+## Developpement
+
+```bash
+npm run lint           # ESLint (backend + frontend)
+npm run format         # Prettier
+```
+
+La CI GitHub Actions lance le lint, une verification syntaxique du backend, le build du frontend et le build de l'image Docker.
+
+---
+
 ## Prompts IA personnalises
 
 Ajouter un fichier dans `backend/prompts/` en suivant le template `prompt.example.js` :
@@ -337,7 +378,7 @@ export const name = 'Ma matiere';
 export const prompt = `Ton prompt personnalise...`;
 ```
 
-Il apparait automatiquement dans le dropdown lors de la creation d'une matiere.
+Il apparait automatiquement dans le dropdown lors de la creation d'une matiere. Le prompt est utilise par tous les fournisseurs (Ollama, Gemini, NVIDIA, Mistral) ; les consignes de lecture d'image leur sont ajoutees automatiquement.
 
 ---
 
