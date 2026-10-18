@@ -28,6 +28,7 @@
 - [Configuration IA](#configuration-ia)
 - [Configuration (.env)](#configuration-env)
 - [Déploiement](#déploiement)
+  - [VPS + PM2](#production-sur-un-vps-pm2) · [Docker](#production-avec-docker) · [Nginx et HTTPS](#nginx-et-https) · [Mise à jour](#mettre-à-jour) · [Dépannage](#logs-et-dépannage)
 - [Sync Obsidian](#sync-obsidian)
 - [Fonctionnement de l'ingestion](#fonctionnement-de-lingestion)
 - [Prompts IA personnalisés](#prompts-ia-personnalisés)
@@ -284,87 +285,187 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 ## Déploiement
 
-<details>
-<summary><b>Développement local</b></summary>
-<br>
+Trois façons de faire tourner Scrip :
+
+| Méthode | Pour qui | Frontend servi par |
+|---|---|---|
+| [Développement local](#développement-local) | Tester ou modifier le code | Vite (`localhost:5000`) |
+| [VPS + PM2](#production-sur-un-vps-pm2) | Serveur Linux, installation « classique » | Nginx (`frontend/dist`) |
+| [Docker](#production-avec-docker) | Tout-en-un, mises à jour simples | Le backend (`SERVE_FRONTEND=true`) |
+
+En production, **HTTPS est obligatoire** : les cookies de session sont marqués `secure` (sinon la connexion échoue en boucle) et la PWA a besoin d'HTTPS pour s'installer et fonctionner hors ligne.
+
+### Développement local
 
 ```bash
 npm install
 npm run dev
 ```
 
-Ouvre `http://localhost:5000`. En dev, le frontend est servi par Vite : pas besoin de le compiler.
+Ouvre `http://localhost:5000`. Vite sert le frontend avec rechargement à chaud et redirige `/api` vers le backend (port `7001`), qui redémarre à chaque modification.
 
-</details>
+### Production sur un VPS (PM2)
 
-<details>
-<summary><b>Production (VPS + PM2 + Nginx)</b></summary>
-<br>
+**Prérequis :** un VPS Linux (Debian/Ubuntu), un nom de domaine qui pointe vers son IP, les ports 80 et 443 ouverts.
+
+**1. Installer Node.js, PM2 et Nginx**
+
+```bash
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+sudo apt install -y nodejs nginx git
+sudo npm install -g pm2
+```
+
+**2. Récupérer et configurer Scrip**
+
+```bash
+git clone https://github.com/Gabizoc/Scrip.git /var/www/scrip
+cd /var/www/scrip
+./setup.sh             # ou : cp .env.example .env, puis éditer
+```
+
+Dans `.env`, vérifie au minimum :
+- `SESSION_SECRET` : une vraie valeur aléatoire (la valeur d'exemple est refusée en production) ;
+- `AUTH_PASSWORD` (ou `AUTH_EMAIL` + `SMTP_*`) ;
+- `PUBLIC_URL=https://ton-domaine.com` ;
+- la configuration d'au moins un fournisseur IA.
+
+**3. Compiler et lancer**
 
 ```bash
 npm install
-npm run build
+npm run build          # génère frontend/dist, servi par Nginx
 pm2 start ecosystem.config.cjs
+pm2 save               # mémorise les processus lancés
+pm2 startup            # relance PM2 au démarrage du serveur (exécuter la commande affichée)
 ```
 
-PM2 lance le backend sur le port `7001` ; Nginx sert `frontend/dist` et redirige `/api` et `/webdav` vers le backend (voir ci-dessous).
+`ecosystem.config.cjs` lance le backend avec `NODE_ENV=production` sur le port `7001`. Ce port **prend le pas sur `PORT` du `.env`** : pour en changer, modifie-le dans `ecosystem.config.cjs` et dans la config Nginx.
 
-</details>
-
-<details>
-<summary><b>Docker</b></summary>
-<br>
+**4. Vérifier que le backend répond**
 
 ```bash
-cp .env.example .env   # remplir SESSION_SECRET, AUTH_PASSWORD, clés IA…
+curl http://127.0.0.1:7001/api/auth/status
+```
+
+Il reste à configurer [Nginx et HTTPS](#nginx-et-https).
+
+### Production avec Docker
+
+**Prérequis :** Docker avec le plugin Compose, et Nginx sur l'hôte pour le HTTPS.
+
+```bash
+git clone https://github.com/Gabizoc/Scrip.git && cd Scrip
+cp .env.example .env   # remplir SESSION_SECRET, AUTH_PASSWORD, PUBLIC_URL, clés IA…
 docker compose up -d --build
 ```
 
-L'image sert l'API, le WebDAV et le frontend sur le port `7001`, lié à `127.0.0.1` : place Nginx + HTTPS devant, car les cookies de session sont `secure` en production. La base (`backend/data`) et le vault (`vault`) sont montés en volumes.
+Ce que fait l'image :
+- elle compile le frontend et le sert depuis le backend, avec l'API et le WebDAV, sur le port `7001` ;
+- le port n'est publié que sur `127.0.0.1` : l'application n'est pas exposée directement, il faut Nginx devant ;
+- la base (`backend/data`) et les notes (`vault`) sont montées depuis l'hôte : elles survivent aux reconstructions de l'image ;
+- un healthcheck interroge `/api/auth/status` toutes les 30 s (`docker compose ps` affiche l'état).
 
-Pour utiliser un Ollama installé sur la machine hôte, décommente `OLLAMA_BASE_URL` dans `docker-compose.yml`.
-
-</details>
-
-<details>
-<summary><b>Nginx</b></summary>
-<br>
+Le conteneur tourne avec l'utilisateur `node` (UID 1000). Si les logs affichent une erreur `EACCES` sur `backend/data` ou `vault` :
 
 ```bash
-cp nginx/scrip.conf.example /etc/nginx/sites-available/scrip
-# Éditer le fichier : remplacer YOUR_DOMAIN et YOUR_APP_PATH
-ln -s /etc/nginx/sites-available/scrip /etc/nginx/sites-enabled/scrip
-nginx -t && systemctl reload nginx
+sudo chown -R 1000:1000 backend/data vault
 ```
 
-</details>
+**Ollama installé sur l'hôte :** décommente `OLLAMA_BASE_URL: http://host.docker.internal:11434` dans `docker-compose.yml`. Par défaut, Ollama n'écoute que sur `127.0.0.1` : lance-le avec `OLLAMA_HOST=0.0.0.0` pour que le conteneur puisse le joindre. Inutile avec Ollama Cloud (`OLLAMA_API_KEY`).
 
-<details>
-<summary><b>HTTPS avec Certbot (Let's Encrypt)</b></summary>
-<br>
+### Nginx et HTTPS
+
+La config d'exemple (`nginx/scrip.conf.example`) fait référence aux certificats Let's Encrypt : obtiens-les **avant** d'activer le site, sinon `nginx -t` échoue.
+
+**1. Obtenir le certificat**
 
 ```bash
-apt install certbot python3-certbot-nginx
-certbot --nginx -d ton-domaine.com
+sudo apt install -y certbot python3-certbot-nginx
+sudo certbot certonly --nginx -d ton-domaine.com
 ```
 
-Certbot modifie la config Nginx et renouvelle le certificat automatiquement. Pour vérifier le renouvellement :
+Le renouvellement est automatique ; pour le tester : `sudo certbot renew --dry-run`.
+
+**2. Installer la config**
 
 ```bash
-certbot renew --dry-run
+sudo cp nginx/scrip.conf.example /etc/nginx/sites-available/scrip
+sudo nano /etc/nginx/sites-available/scrip   # remplacer YOUR_DOMAIN et YOUR_APP_PATH
+sudo ln -s /etc/nginx/sites-available/scrip /etc/nginx/sites-enabled/scrip
+sudo nginx -t && sudo systemctl reload nginx
 ```
 
-</details>
+Ce que fait la config :
 
-<details>
-<summary><b>Réinitialiser la base de données</b></summary>
-<br>
+| Chemin | Rôle |
+|---|---|
+| `/` | Sert `frontend/dist`, avec repli sur `index.html` pour le routage de la PWA |
+| `/sw.js` | Jamais mis en cache, sinon les téléphones ne voient pas les mises à jour |
+| `/api/` | Proxy vers le backend ; timeout de 300 s pour le pipeline IA, uploads jusqu'à 210 Mo |
+| `/webdav/` | Proxy vers le serveur WebDAV pour Obsidian |
+| port 80 | Redirection vers HTTPS |
+
+**Avec Docker**, le backend sert aussi le frontend : remplace les blocs `root`, `location /`, `/sw.js` et le cache des assets par un proxy unique (en gardant `/api/` tel quel pour ses timeouts) :
+
+```nginx
+location / {
+    proxy_pass         http://127.0.0.1:7001;
+    proxy_http_version 1.1;
+    proxy_set_header   Host              $host;
+    proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+    proxy_set_header   X-Forwarded-Proto $scheme;
+    client_max_body_size 50m;
+}
+```
+
+### Mettre à jour
+
+**PM2 :**
+```bash
+cd /var/www/scrip
+git pull
+npm install
+npm run build
+pm2 restart scrip-backend
+```
+
+**Docker :**
+```bash
+git pull
+docker compose up -d --build
+```
+
+Les téléphones récupèrent la nouvelle version de la PWA au prochain lancement.
+
+### Sauvegardes
+
+Toutes les données tiennent dans deux dossiers, à sauvegarder régulièrement :
+
+| Dossier | Contenu |
+|---|---|
+| `backend/data/` | Base JSON (matières, notes, paramètres), sessions, photos en attente de traitement |
+| `vault/` | Notes Markdown (aussi présentes dans ton vault Obsidian si la sync est active) |
 
 ```bash
-npm run db:reset
+tar czf scrip-backup-$(date +%F).tar.gz backend/data vault
 ```
 
-</details>
+Pour repartir d'une base vide : `npm run db:reset`.
+
+### Logs et dépannage
+
+**Logs :** `pm2 logs scrip-backend` (fichiers dans `logs/`) ou `docker compose logs -f`. Pour plus de détails sur le pipeline IA : `LOG_LEVEL=debug`.
+
+| Symptôme | Cause probable |
+|---|---|
+| Le serveur refuse de démarrer | `SESSION_SECRET` absent, trop court ou encore la valeur d'exemple, ou les deux modes de connexion configurés à la fois : le message d'erreur indique lequel |
+| La connexion réussit puis renvoie à l'écran de login | Site servi en HTTP : en production, le cookie de session n'est envoyé qu'en HTTPS |
+| `413 Request Entity Too Large` à l'envoi de photos | `client_max_body_size` trop faible dans Nginx |
+| `504 Gateway Timeout` pendant une analyse | `proxy_read_timeout` trop court pour le modèle IA utilisé |
+| L'app ne se met pas à jour sur le téléphone | `/sw.js` mis en cache par Nginx ou un CDN |
+| `EACCES` sous Docker | Droits des dossiers montés (voir [Docker](#production-avec-docker)) |
+
 
 ---
 
