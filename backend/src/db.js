@@ -17,16 +17,31 @@ const DEFAULT_DATA = {
   settings: {
     theme: 'auto', vaultPath: 'vault', currentLevelId: null, publicUrl: '', trashRetentionDays: 30, auth: {
       passwordHash: null, pendingSetupToken: null, pendingResetToken: null, pendingMagicToken: null, }, webdav: {
-      enabled: false, username: 'scrip', passwordHash: null, }, }, levels: [], subjects: [], notes: [], trash: [],
+      enabled: false, username: 'scrip', passwordHash: null, }, }, levels: [], subjects: [], notes: [], trash: [], jobs: [],
 };
 
 const DB_PATH = process.env.DB_PATH
   ?? path.join(__dirname, '../data/db.json');
 
-fs.mkdirSync(path.dirname(DB_PATH), { recursive: true });
+export const DATA_DIR = path.dirname(DB_PATH);
+
+fs.mkdirSync(DATA_DIR, { recursive: true });
+
+// La base est chargée une seule fois au démarrage puis gardée en mémoire : les
+// appels suivants à read() sont sans effet. Recharger le fichier à chaque requête
+// écrasait les modifications d'une requête concurrente entre deux await.
+class MemoryLow extends Low {
+  #loaded = false;
+
+  async read() {
+    if (this.#loaded) return;
+    await super.read();
+    this.#loaded = true;
+  }
+}
 
 const adapter = new JSONFile(DB_PATH);
-export const db = new Low(adapter, DEFAULT_DATA);
+export const db = new MemoryLow(adapter, DEFAULT_DATA);
 
 export async function initDb() {
   await db.read();
@@ -37,10 +52,16 @@ export async function initDb() {
     settings: {
       ...DEFAULT_DATA.settings, ...existing, auth: {
         ...DEFAULT_DATA.settings.auth, ...(existing.auth ?? {}), }, webdav: {
-        ...DEFAULT_DATA.settings.webdav, ...(existing.webdav ?? {}), }, }, levels: db.data.levels   ?? [], subjects: db.data.subjects ?? [], notes: db.data.notes    ?? [], trash: db.data.trash    ?? [], };
+        ...DEFAULT_DATA.settings.webdav, ...(existing.webdav ?? {}), }, }, levels: db.data.levels   ?? [], subjects: db.data.subjects ?? [], notes: db.data.notes    ?? [], trash: db.data.trash    ?? [], jobs: db.data.jobs     ?? [], };
 
-  if (!db.data.settings.auth.passwordHash && db.data.settings.webdav.passwordHash) {
-    db.data.settings.auth.passwordHash = db.data.settings.webdav.passwordHash;
+  const { auth, webdav } = db.data.settings;
+  if (!auth.passwordHash && webdav.passwordHash) {
+    auth.passwordHash = webdav.passwordHash;
+  }
+  // Anciennes versions : le hash WebDAV était une copie de celui de l'app. null = « utiliser
+  // le mot de passe de l'app » ; un hash distinct n'existe que s'il a été défini explicitement.
+  if (webdav.passwordHash && webdav.passwordHash === auth.passwordHash) {
+    webdav.passwordHash = null;
   }
 
   await db.write();
