@@ -99,6 +99,15 @@ OLLAMA_MODEL=gemma4:31b-cloud
 OLLAMA_VALIDATION=true
 ```
 
+**Sans installer Ollama - [Ollama Cloud](https://docs.ollama.com/cloud) direct :**
+
+Cree une cle sur [ollama.com/settings/keys](https://ollama.com/settings/keys), puis :
+```env
+OLLAMA_API_KEY=ta_cle_ollama
+OLLAMA_MODEL=gemma4:31b
+```
+Sans `OLLAMA_BASE_URL`, Scrip appelle directement `https://ollama.com`. Les noms en `-cloud` / `:cloud` sont convertis automatiquement (`gemma4:31b-cloud` -> `gemma4:31b`). Liste des modeles dispo : `https://ollama.com/api/tags`.
+
 </details>
 
 <details>
@@ -226,6 +235,7 @@ Copier `.env.example` en `.env` et remplir :
 | `PUBLIC_URL` | non | URL publique (pour les liens WebDAV) |
 | `GOOGLE_API_KEY` | non | Cle Google AI Studio pour Gemini |
 | `OLLAMA_BASE_URL` | non | URL du serveur Ollama |
+| `OLLAMA_API_KEY` | non | Cle Ollama Cloud (appel direct a ollama.com, sans installation) |
 | `PIPELINE_MODE` | non | `auto` (defaut) / `ollama` / `google` / `nvidia` / `mistral` |
 
 Generer un `SESSION_SECRET` :

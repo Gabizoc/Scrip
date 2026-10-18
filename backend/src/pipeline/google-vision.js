@@ -1,7 +1,7 @@
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage } from './ocr.js';
 import { isOutputValid, removeExerciseBlocks } from './format-rules.js';
-import { callOllamaRaw } from './ollama.js';
+import { callOllamaRaw, getOllamaConfig } from './ollama.js';
 
 const GOOGLE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 
@@ -233,7 +233,7 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
 
     if (liteReference) {
       const reference = liteReference;
-      const refSource = `Ollama (${process.env.OLLAMA_MODEL ?? 'gemma4:31b-cloud'})`;
+      const refSource = `Ollama (${getOllamaConfig().model})`;
       const valid = isOutputValid(reference, geminiCleaned);
 
       process.stderr.write(`    [validation/${refSource}] seuil=55% — ref: ${reference.length}c, Gemini: ${geminiCleaned.length}c\n`);

@@ -9,7 +9,7 @@ import { runOCR } from '../pipeline/ocr.js';
 import { structureContent } from '../pipeline/structure.js';
 import { runVisionPipeline } from '../pipeline/vision.js';
 import { runGoogleVisionPipeline } from '../pipeline/google-vision.js';
-import { runOllamaPipeline } from '../pipeline/ollama.js';
+import { runOllamaPipeline, isOllamaConfigured, pingOllama } from '../pipeline/ollama.js';
 import { buildNote } from '../pipeline/format.js';
 import { writeAuditLog } from '../pipeline/audit.js';
 import { scoreNote } from '../pipeline/score.js';
@@ -89,7 +89,7 @@ ingestRouter.post('/', upload.array('photos', 10), async (req, res) => {
   const nvidiaKey = process.env.NVIDIA_API_KEY;
   const googleKey = process.env.GOOGLE_API_KEY;
 
-  const ollamaReachable = !!process.env.OLLAMA_BASE_URL;
+  const ollamaReachable = isOllamaConfigured();
 
   if (PIPELINE_MODE === 'google'  && !googleKey)  { cleanupFiles(req.files); return res.status(500).json({ error: 'GOOGLE_API_KEY manquante dans le .env' }); }
   if (PIPELINE_MODE === 'mistral' && !mistralKey)  { cleanupFiles(req.files); return res.status(500).json({ error: 'MISTRAL_API_KEY manquante dans le .env (requis pour PIPELINE_MODE=mistral)' }); }
@@ -162,13 +162,7 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
 
   const effectiveMode = await (async () => {
     if (PIPELINE_MODE !== 'auto') return PIPELINE_MODE;
-    const ollamaBase = process.env.OLLAMA_BASE_URL;
-    if (ollamaBase) {
-      try {
-        const r = await fetch(`${ollamaBase.replace(/\/$/, '')}/api/tags`, { signal: AbortSignal.timeout(2000) });
-        if (r.ok) return 'ollama';
-      } catch {}
-    }
+    if (await pingOllama()) return 'ollama';
     if (googleKey)  return 'google';
     if (nvidiaKey)  return 'nvidia';
     if (mistralKey) return 'mistral';

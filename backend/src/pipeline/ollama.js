@@ -3,7 +3,36 @@ import { prepareImage, prepareImageSmall } from './ocr.js';
 import { removeExerciseBlocks } from './format-rules.js';
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:11434';
+const CLOUD_BASE_URL = 'https://ollama.com';
 const DEFAULT_MODEL = 'gemma4:31b-cloud';
+
+// Ollama Cloud (https://docs.ollama.com/cloud) : appel direct a ollama.com avec OLLAMA_API_KEY,
+// sans installation locale. Si seule la cle est definie, on bascule automatiquement sur le cloud.
+export function getOllamaConfig() {
+  const apiKey = process.env.OLLAMA_API_KEY || null;
+  const baseUrl = (process.env.OLLAMA_BASE_URL || (apiKey ? CLOUD_BASE_URL : DEFAULT_BASE_URL)).replace(/\/$/, '');
+  const direct = /^https?:\/\/(www\.)?ollama\.com$/i.test(baseUrl);
+  let model = process.env.OLLAMA_MODEL || DEFAULT_MODEL;
+  // L'API ollama.com attend le nom brut (gemma4:31b), pas la variante CLI (gemma4:31b-cloud / gemma4:cloud)
+  if (direct) model = model.replace(/-cloud$/, '').replace(/:cloud$/, '');
+  return { apiKey, baseUrl, model, direct, isCloud: direct || /[:-]cloud$/.test(model) };
+}
+
+export function isOllamaConfigured() {
+  return !!(process.env.OLLAMA_BASE_URL || process.env.OLLAMA_API_KEY);
+}
+
+export async function pingOllama(timeoutMs = 2000) {
+  if (!isOllamaConfigured()) return false;
+  const { baseUrl, apiKey } = getOllamaConfig();
+  try {
+    const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+    const r = await fetch(`${baseUrl}/api/tags`, { headers, signal: AbortSignal.timeout(timeoutMs) });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
 
 const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
 
@@ -91,7 +120,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
   const endpoint = `${baseUrl.replace(/\/$/, '')}/api/chat`;
 
   const headers = { 'Content-Type': 'application/json' };
-  const apiKey = process.env.OLLAMA_API_KEY;
+  const { apiKey } = getOllamaConfig();
   if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
   const ollamaMessages = messages.map(msg => {
@@ -203,8 +232,7 @@ function hasRepetitionLoop(text) {
 
 export async function callOllamaRaw(imagePaths) {
   const images = await Promise.all(imagePaths.map(prepareImageSmall));
-  const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
-  const model = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
+  const { baseUrl, model } = getOllamaConfig();
 
   const messages = [
     {
@@ -242,9 +270,7 @@ export async function callOllamaRaw(imagePaths) {
 
 export async function runOllamaPipeline(imagePaths, userNote = null) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
-  const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
-  const model = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
-  const isCloud = model.includes(':cloud');
+  const { baseUrl, model, isCloud } = getOllamaConfig();
 
   process.stderr.write(`[ollama] ${paths.length} image(s), modèle: ${model}, endpoint: ${baseUrl}\n`);
 
