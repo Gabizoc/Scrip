@@ -1,11 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import session from 'express-session';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { FileSessionStore } from './session-store.js';
+import { FileSessionStore, SESSION_COOKIE } from './session-store.js';
+import { DATA_DIR, PROJECT_ROOT } from './db.js';
 import { errorHandler }           from './middleware/errorHandler.js';
 import { requireAuth }            from './middleware/requireAuth.js';
+import { loginLimiter }           from './middleware/rateLimit.js';
 import { authRouter }             from './routes/auth.js';
 import { settingsRouter }         from './routes/settings.js';
 import { levelsRouter }           from './routes/levels.js';
@@ -21,21 +23,23 @@ export function createApp() {
 
   app.set('trust proxy', 1);
 
-  app.use(cors({
-    origin: process.env.NODE_ENV === 'production'
-      ? false
-      : 'http://localhost:5000', credentials: true, }));
+  // Le backend ne sert que du JSON et du WebDAV : pas besoin de CSP pour des pages HTML.
+  app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: { policy: 'same-origin' } }));
+
+  if (process.env.NODE_ENV !== 'production') {
+    const frontendPort = process.env.FRONTEND_PORT ?? 5000;
+    app.use(cors({ origin: `http://localhost:${frontendPort}`, credentials: true }));
+  }
 
   app.use(express.json({ limit: '2mb' }));
 
-  const __dirname = path.dirname(fileURLToPath(import.meta.url));
-  const sessionStore = new FileSessionStore({
-    path: path.resolve(__dirname, '../data/sessions.json'), });
+  const sessionStore = new FileSessionStore({ path: path.join(DATA_DIR, 'sessions.json') });
 
   app.use(session({
-    store: sessionStore, secret: process.env.SESSION_SECRET ?? '85WzN50dmKjTjw3YMjs', resave: false, saveUninitialized: false, cookie: {
+    name: SESSION_COOKIE, store: sessionStore, secret: process.env.SESSION_SECRET, resave: false, saveUninitialized: false, cookie: {
       httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 30 * 24 * 60 * 60 * 1000, }, }));
 
+  app.use(['/api/auth/login', '/api/auth/magic', '/api/auth/forgot', '/api/auth/reset', '/api/auth/setup-request', '/api/auth/setup-complete', '/api/auth/change-password'], loginLimiter);
   app.use('/api/auth', authRouter);
 
   app.use('/api', requireAuth);
@@ -49,6 +53,19 @@ export function createApp() {
   app.use('/api/prompts', promptsRouter);
 
   app.use('/webdav', createWebdavMiddleware());
+
+  // Sert le frontend compilé (image Docker, ou déploiement sans nginx devant).
+  if (process.env.SERVE_FRONTEND === 'true') {
+    const dist = path.join(PROJECT_ROOT, 'frontend', 'dist');
+    app.use(express.static(dist, {
+      index: false,
+      setHeaders: (res, filePath) => {
+        if (filePath.endsWith('sw.js')) res.setHeader('Cache-Control', 'no-cache');
+        else if (filePath.includes(`${path.sep}assets${path.sep}`)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      },
+    }));
+    app.get(/^\/(?!api\/|webdav\/).*/, (req, res) => res.sendFile(path.join(dist, 'index.html')));
+  }
 
   app.use(errorHandler);
   return app;
