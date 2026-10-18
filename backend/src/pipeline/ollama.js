@@ -1,6 +1,6 @@
 import { log } from '../lib/logger.js';
 import { prepareImage, preparePages } from './image.js';
-import { buildTranscriptionPrompt, buildTranscriptionContent, finishTranscription, cleanFences } from './transcribe.js';
+import { buildTranscriptionPrompt, buildTranscriptionContent, finishTranscription, cleanFences, hasRepetitionLoop } from './transcribe.js';
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:11434';
 const CLOUD_BASE_URL = 'https://ollama.com';
@@ -34,7 +34,12 @@ export async function pingOllama(timeoutMs = 2000) {
   }
 }
 
-async function callOllama(messages, model, baseUrl, maxTokens) {
+// Nouvel essai après une boucle : un peu d'aléa et une pénalité de répétition l'en font sortir.
+const LOOP_RETRY_OPTIONS = { temperature: 0.4, repeat_penalty: 1.15 };
+// Fréquence (en caractères reçus) de la recherche de boucle pendant le streaming.
+const LOOP_CHECK_EVERY = 1500;
+
+async function callOllama(messages, model, baseUrl, maxTokens, extraOptions = {}) {
   const endpoint = `${baseUrl.replace(/\/$/, '')}/api/chat`;
 
   const headers = { 'Content-Type': 'application/json' };
@@ -58,7 +63,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
 
   const body = JSON.stringify({
     model,
-    options: { temperature: 0, num_predict: maxTokens },
+    options: { temperature: 0, num_predict: maxTokens, ...extraOptions },
     messages: ollamaMessages,
     stream: true,
   });
@@ -110,6 +115,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
   const decoder = new TextDecoder();
   let buffer = '';
   let content = '';
+  let checkedAt = 0;
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -125,6 +131,15 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
         try { obj = JSON.parse(line); } catch { continue; }
         if (obj.error) throw new Error(`Ollama: ${typeof obj.error === 'string' ? obj.error : JSON.stringify(obj.error)}`);
         if (obj.message?.content) content += obj.message.content;
+      }
+      // Coupe le flux dès qu'une boucle apparaît plutôt que d'attendre num_predict tokens.
+      if (content.length - checkedAt >= LOOP_CHECK_EVERY) {
+        checkedAt = content.length;
+        if (hasRepetitionLoop(content)) {
+          log.warn(`⚠ Ollama ${model} : boucle de répétition détectée → génération interrompue`);
+          await reader.cancel().catch(() => {});
+          break;
+        }
       }
     }
     const last = buffer.trim();
@@ -143,15 +158,14 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
   return content || null;
 }
 
-function hasRepetitionLoop(text) {
-  if (text.length < 400) return false;
-  const seen = new Set();
-  for (let i = 0; i < text.length - 50; i += 80) {
-    const sample = text.slice(i, i + 50);
-    if (seen.has(sample)) return true;
-    seen.add(sample);
-  }
-  return false;
+// Transcrit une requête ; si le modèle part en boucle, réessaie une fois avec d'autres réglages.
+async function transcribeOnce(messages, model, baseUrl, maxTokens) {
+  const first = await callOllama(messages, model, baseUrl, maxTokens);
+  if (!first || !hasRepetitionLoop(first)) return { raw: first, looped: false };
+  log.warn(`↻ ${model} : nouvel essai après une boucle de répétition`);
+  const second = await callOllama(messages, model, baseUrl, maxTokens, LOOP_RETRY_OPTIONS);
+  if (second && !hasRepetitionLoop(second)) return { raw: second, looped: false };
+  return { raw: first, looped: true };
 }
 
 export async function callOllamaRaw(imagePaths) {
@@ -213,24 +227,26 @@ export async function runOllamaTranscription(imagePaths, { vocabulary, correctio
   if (isCloud) {
     // Modèles cloud : une page par requête pour rester sous la limite de payload du relay
     const parts = [];
+    const loopedPages = [];
     for (let i = 0; i < paths.length; i++) {
       const pages = await preparePages([paths[i]]);
       const user = { role: 'user', content: buildTranscriptionContent(pages, { firstPage: i + 1, totalPages: paths.length }) };
       log.debug(`→ ${model} [${i + 1}/${paths.length}]`);
-      const raw = await callOllama([system, user], model, baseUrl, 4096);
+      const { raw, looped } = await transcribeOnce([system, user], model, baseUrl, 4096);
       if (!raw) throw unreachable();
+      if (looped) loopedPages.push(i + 1);
       parts.push(finishTranscription(raw));
       log.debug(`✓ page ${i + 1}/${paths.length} → ${raw.length} chars`);
     }
-    return { transcription: parts.join('\n\n'), modelUsed: model };
+    return { transcription: parts.join('\n\n'), modelUsed: model, loopedPages };
   }
 
   // Modèles locaux : toutes les pages en une seule requête
   const pages = await preparePages(paths);
   const user = { role: 'user', content: buildTranscriptionContent(pages) };
   log.debug(`→ ${model}`);
-  const raw = await callOllama([system, user], model, baseUrl, Math.min(4096 * paths.length, 16384));
+  const { raw, looped } = await transcribeOnce([system, user], model, baseUrl, Math.min(4096 * paths.length, 16384));
   if (!raw) throw unreachable();
   log.debug(`✓ Ollama ${model} → ${raw.length} chars`);
-  return { transcription: finishTranscription(raw), modelUsed: model };
+  return { transcription: finishTranscription(raw), modelUsed: model, loopedPages: looped ? paths.map((_, i) => i + 1) : [] };
 }

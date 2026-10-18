@@ -19,6 +19,8 @@ LECTURE :
 - Ne corrige pas l'orthographe, ne reformule pas, ne résume pas, n'ajoute rien de tes connaissances
 - Mot douteux : écris ta meilleure lecture suivie de [?] (ex : "cytoplasme[?]")
 - Mot impossible à lire : écris [illisible]
+- Passage trop petit, flou ou coupé : écris [zone illisible] et passe à la suite. Ne devine JAMAIS un texte et ne le complète pas de mémoire, même si tu le reconnais
+- Document imprimé collé ou photocopié (extrait, manuel) : recopie-le seulement s'il est net, sinon écris [document imprimé illisible]
 - Ignore le texte barré
 - Texte encadré, souligné ou surligné : entoure-le de ** **
 - Schémas et dessins : recopie seulement les mots écrits dedans (légendes, annotations)
@@ -90,11 +92,43 @@ export function cleanFences(text) {
     .trim();
 }
 
+// Position (en caractères) où le texte part en boucle, ou -1. Un modèle vision qui ne
+// parvient pas à lire peut répéter indéfiniment les mêmes mots : on repère un groupe de
+// 5 mots qui revient 4 fois, et la boucle commence à sa 2e occurrence.
+export function findRepetitionLoop(text, { gram = 5, minRepeats = 4 } = {}) {
+  const words = [];
+  const re = /\S+/g;
+  let m;
+  while ((m = re.exec(text))) words.push({ w: m[0].toLowerCase(), at: m.index });
+
+  const seen = new Map();
+  for (let k = 0; k + gram <= words.length; k++) {
+    const slice = words.slice(k, k + gram);
+    // Ignore les groupes sans vrais mots (cellules de tableau vides, ponctuation).
+    if (slice.filter(x => /\p{L}{3,}/u.test(x.w)).length < 3) continue;
+    const key = slice.map(x => x.w).join(' ');
+    const positions = seen.get(key);
+    if (!positions) { seen.set(key, [k]); continue; }
+    positions.push(k);
+    if (positions.length >= minRepeats) return words[positions[1]].at;
+  }
+  return -1;
+}
+
+export function hasRepetitionLoop(text) {
+  return findRepetitionLoop(text) >= 0;
+}
+
 export function finishTranscription(raw) {
-  const text = cleanFences(raw)
+  let text = cleanFences(raw)
     .split('\n')
     .filter(line => line.trim().toLowerCase() !== EXERCISE_MARKER)
     .join('\n');
+  const loopAt = findRepetitionLoop(text);
+  if (loopAt >= 0) {
+    log.warn(`⚠ transcription en boucle : coupée à ${loopAt}/${text.length} caractères`);
+    text = `${text.slice(0, loopAt).trimEnd()}\n[zone illisible]`;
+  }
   return deduplicateOCR(text);
 }
 
@@ -131,7 +165,10 @@ export function finalizeStructure(transcription, structured) {
   const cleaned = structured
     ? removeExerciseBlocks(cleanFences(structured).replace(/\n*<!--\s*METADATA[\s\S]*?-->\s*$/i, ''))
     : null;
-  if (cleaned && isOutputValid(transcription, cleaned)) {
+  // Une répétition déjà présente dans la transcription (même phrase sur plusieurs pages) n'est pas une boucle.
+  if (cleaned && hasRepetitionLoop(cleaned) && !hasRepetitionLoop(transcription)) {
+    log.warn('⚠ structuration en boucle → rejet');
+  } else if (cleaned && isOutputValid(transcription, cleaned)) {
     return { rawStructured: cleaned, usedFallback: false };
   }
   log.debug('↩ Structuration rejetée ou indisponible → mise en forme par règles');

@@ -41,7 +41,10 @@ async function structureText(messages, maxTokens, primary) {
 // Enchaîne les deux passes et renvoie { rawMarkdown, rawStructured, imageRegions, detail, usedFallback, fallbackWarning }.
 // rawMarkdown est la transcription (texte lu), rawStructured le Markdown final avant mise en forme.
 async function twoPass({ transcribe, structure, label }, imagePaths, ctx) {
-  const { transcription, usedFallback: readFallback, detail } = await transcribe(imagePaths, ctx);
+  const { transcription, usedFallback: readFallback, detail, loopedPages = [] } = await transcribe(imagePaths, ctx);
+  const warnings = loopedPages.length
+    ? [`L'IA n'a pas réussi à lire ${loopedPages.length > 1 ? 'les pages' : 'la page'} ${loopedPages.join(', ')} (texte trop petit ou flou) : la lecture a été coupée là où elle tournait en boucle, marquée [zone illisible]. Reprends ${loopedPages.length > 1 ? 'ces pages' : 'cette page'} en photo de plus près.`]
+    : [];
   const messages = buildStructureMessages(transcription, ctx);
   const structured = await structureText(messages, structureMaxTokens(transcription), structure);
   const { rawStructured, usedFallback: formatFallback } = finalizeStructure(transcription, structured);
@@ -51,6 +54,7 @@ async function twoPass({ transcribe, structure, label }, imagePaths, ctx) {
     imageRegions: [],
     detail: formatFallback ? 'mise en forme automatique' : (detail ?? label),
     usedFallback: !!(readFallback || formatFallback),
+    warnings,
     fallbackWarning: formatFallback
       ? 'Structuration indisponible ou rejetée — mise en forme automatique utilisée. La note peut nécessiter une relecture.'
       : 'Les deux lectures des photos ne concordent pas — la note peut nécessiter une relecture.',
@@ -66,7 +70,7 @@ const PROVIDERS = {
       label: 'ollama',
       transcribe: async (paths, c) => {
         const r = await runOllamaTranscription(paths, c);
-        return { transcription: r.transcription, detail: r.modelUsed };
+        return { ...r, detail: r.modelUsed };
       },
       structure: (messages, maxTokens) => ollamaChat(messages, maxTokens),
     }, imagePaths, ctx),

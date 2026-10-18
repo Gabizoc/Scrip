@@ -2,7 +2,7 @@ import { log } from '../lib/logger.js';
 import { llmSignal } from './http.js';
 import { preparePages } from './image.js';
 import { isOutputValid } from './format-rules.js';
-import { buildTranscriptionPrompt, buildTranscriptionContent, finishTranscription, cleanFences } from './transcribe.js';
+import { buildTranscriptionPrompt, buildTranscriptionContent, finishTranscription, cleanFences, hasRepetitionLoop } from './transcribe.js';
 import { callOllamaRaw, getOllamaConfig } from './ollama.js';
 
 const GOOGLE_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
@@ -33,7 +33,7 @@ function toGeminiParts(content) {
   });
 }
 
-async function callGemini(model, apiKey, { system, content, maxOutputTokens, thinkingBudget = 0 }, { maxRetries = 2 } = {}) {
+async function callGemini(model, apiKey, { system, content, maxOutputTokens, thinkingBudget = 0, temperature = 0 }, { maxRetries = 2 } = {}) {
   const url = `${GOOGLE_ENDPOINT}/${model}:generateContent?key=${apiKey}`;
 
   const thinking = thinkingConfig(model, thinkingBudget);
@@ -41,7 +41,7 @@ async function callGemini(model, apiKey, { system, content, maxOutputTokens, thi
     system_instruction: { parts: [{ text: system }] },
     contents: [{ role: 'user', parts: toGeminiParts(content) }],
     generationConfig: {
-      temperature: 0,
+      temperature,
       // Les tokens de raisonnement sont décomptés de maxOutputTokens.
       maxOutputTokens: Math.min(maxOutputTokens + (thinking.thinkingConfig?.thinkingBudget ?? 0), 65536),
       ...thinking,
@@ -159,6 +159,15 @@ export async function runGoogleTranscription(imagePaths, { googleKey, vocabulary
     await sleep(2000);
   }
 
+  // Boucle de répétition : un nouvel essai avec un peu d'aléa suffit souvent à en sortir.
+  let loopedPages = [];
+  if (output && hasRepetitionLoop(output)) {
+    log.warn(`↻ Gemini ${modelUsed} : nouvel essai après une boucle de répétition`);
+    const retry = await callGemini(modelUsed, googleKey, { ...request, temperature: 0.4 }, { maxRetries: 1 });
+    if (retry && !hasRepetitionLoop(retry)) output = retry;
+    else loopedPages = paths.map((_, i) => i + 1);
+  }
+
   const reference = await litePromise;
 
   if (!output) {
@@ -172,18 +181,18 @@ export async function runGoogleTranscription(imagePaths, { googleKey, vocabulary
   const transcription = finishTranscription(output);
   if (!reference) {
     log.warn('⚠ Aucune référence disponible — Gemini retourné sans validation');
-    return { transcription, modelUsed };
+    return { transcription, modelUsed, loopedPages };
   }
 
   const refSource = `Ollama (${getOllamaConfig().model})`;
   if (isOutputValid(reference, transcription)) {
     log.debug(`✓ Gemini validé par ${refSource}`);
-    return { transcription, modelUsed };
+    return { transcription, modelUsed, loopedPages };
   }
   // Désaccord : on garde Gemini sauf s'il a manifestement tronqué sa lecture.
   const keepGemini = transcription.length > 300;
   log.debug(`↩ Gemini rejeté par ${refSource} → ${keepGemini ? 'Gemini conservé' : 'lecture Ollama utilisée'}`);
-  return { transcription: keepGemini ? transcription : finishTranscription(reference), modelUsed, usedFallback: true };
+  return { transcription: keepGemini ? transcription : finishTranscription(reference), modelUsed, usedFallback: true, loopedPages };
 }
 
 // Structuration (passe 2) : appel texte, sans raisonnement.

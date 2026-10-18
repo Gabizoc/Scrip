@@ -189,7 +189,7 @@ async function runPipeline(job, { step, warn }) {
   step({ id: 'ocr', label: provider.label, status: 'running', detail: pageDetail });
   step({ id: 'structure', label: 'Structuration du contenu', status: 'pending' });
 
-  const { rawMarkdown, rawStructured, imageRegions, detail, usedFallback, fallbackWarning } =
+  const { rawMarkdown, rawStructured, imageRegions, detail, usedFallback, fallbackWarning, warnings = [] } =
     await provider.run(imagePaths, {
       userNote: params.userNote,
       systemPrompt,
@@ -201,6 +201,7 @@ async function runPipeline(job, { step, warn }) {
   step({ id: 'ocr', label: provider.label, status: 'done', detail: `${pageDetail} · ${wordCount(rawMarkdown)} mots extraits` });
   step({ id: 'structure', label: 'Structuration du contenu', status: 'done', detail });
   if (usedFallback) warn(fallbackWarning);
+  warnings.forEach(w => warn(w));
 
   step({ id: 'format', label: 'Mise en forme', status: 'running' });
   const structured = replaceSimpleLatex(stripFences(rawStructured));
