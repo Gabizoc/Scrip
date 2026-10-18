@@ -1,3 +1,5 @@
+import { log } from '../lib/logger.js';
+import { llmSignal } from './http.js';
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage } from './ocr.js';
 import { isOutputValid, removeExerciseBlocks } from './format-rules.js';
@@ -9,7 +11,8 @@ const GEMINI_PRIMARY_MODELS = process.env.GEMINI_MODEL
   ? [process.env.GEMINI_MODEL]
   : ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-1.5-flash-latest', 'gemini-1.5-flash-8b'];
 
-const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
+// Consignes propres à la lecture d'image, ajoutées après le prompt de la matière.
+const VISION_SUFFIX = `
 
 Tu regardes directement une photo de notes manuscrites françaises.
 Lis EXACTEMENT le texte physiquement écrit dans l'image — n'ajoute rien de tes connaissances.
@@ -75,6 +78,8 @@ RAPPEL DU FORMAT ATTENDU (applique-le sur ce que tu lis) :
 # Définitions              ← H1, toujours en dernier si présentes
 * **Terme :** Définition`;
 
+const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}${VISION_SUFFIX}`;
+
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 function cleanFences(text) {
@@ -118,10 +123,10 @@ N'invente rien : copie exactement ce qui est écrit.`;
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     if (attempt > 0) {
-      process.stderr.write(`    ↻ Gemini ${model} tentative ${attempt + 1}/${maxRetries + 1}\n`);
+      log.debug(`↻ Gemini ${model} tentative ${attempt + 1}/${maxRetries + 1}`);
     }
 
-    const res = await fetch(url, {
+    const res = await fetch(url, { signal: llmSignal(),
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -154,8 +159,8 @@ N'invente rien : copie exactement ce qui est écrit.`;
       const fallbackMs = (attempt + 1) * 8000;
       const waitMs = retryAfterMs ? Math.min(retryAfterMs + 500, 60_000) : fallbackMs;
 
-      process.stderr.write(
-        `    ⚠ Gemini ${model} rate limit (429)` +
+      log.warn(
+        `⚠ Gemini ${model} rate limit (429)` +
         (attempt < maxRetries
           ? ` — retry dans ${(waitMs / 1000).toFixed(1)}s${retryAfterMs ? ' (Retry-After Google)' : ' (backoff)'}\n`
           : '\n')
@@ -167,7 +172,7 @@ N'invente rien : copie exactement ce qui est écrit.`;
     if (!res.ok) {
       const txt = await res.text();
       if (res.status === 404 || res.status === 400) {
-        process.stderr.write(`    ⚠ Gemini ${model} indisponible (${res.status})\n`);
+        log.warn(`⚠ Gemini ${model} indisponible (${res.status})`);
         return null;
       }
       throw new Error(`Gemini erreur ${res.status}: ${txt}`);
@@ -177,15 +182,15 @@ N'invente rien : copie exactement ce qui est écrit.`;
     const candidate = data.candidates?.[0];
 
     if (!candidate) {
-      process.stderr.write(`    ⚠ Gemini ${model} : aucun candidat retourné\n`);
+      log.warn(`⚠ Gemini ${model} : aucun candidat retourné`);
       return null;
     }
     if (candidate.finishReason === 'SAFETY') {
-      process.stderr.write(`    ⚠ Gemini ${model} : bloqué par filtre de sécurité\n`);
+      log.warn(`⚠ Gemini ${model} : bloqué par filtre de sécurité`);
       return null;
     }
     if (candidate.finishReason === 'MAX_TOKENS') {
-      process.stderr.write(`    ⚠ Gemini ${model} : limite de tokens atteinte (sortie tronquée)\n`);
+      log.warn(`⚠ Gemini ${model} : limite de tokens atteinte (sortie tronquée)`);
     }
 
     return candidate.content?.parts?.[0]?.text ?? null;
@@ -194,18 +199,18 @@ N'invente rien : copie exactement ce qui est écrit.`;
   return null;
 }
 
-export async function runGoogleVisionPipeline(imagePaths, subject, level, googleKey, mistralKey, nvidiaKey, openrouterKey, userNote = null, systemPrompt = null) {
+export async function runGoogleVisionPipeline(imagePaths, { googleKey, userNote = null, systemPrompt = null } = {}) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
 
-  process.stderr.write(`[google] ${paths.length} image(s), mode Gemini vision\n`);
+  log.debug(`[google] ${paths.length} image(s), mode Gemini vision`);
 
   const images = await Promise.all(paths.map(prepareImage));
 
-  const baseInstruction = systemPrompt ?? VISION_INSTRUCTION;
+  const baseInstruction = systemPrompt ? `${systemPrompt}${VISION_SUFFIX}` : VISION_INSTRUCTION;
   const instruction = userNote
     ? `${baseInstruction}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
     : baseInstruction;
-  if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
+  if (userNote) log.debug(`[userNote] "${userNote}"`);
 
   const ollamaEnabled = (process.env.OLLAMA_VALIDATION ?? 'true') !== 'false';
   const litePromise = ollamaEnabled
@@ -216,11 +221,11 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
   let modelUsed = null;
 
   for (const model of GEMINI_PRIMARY_MODELS) {
-    process.stderr.write(`    → Gemini ${model}\n`);
+    log.debug(`→ Gemini ${model}`);
     geminiOutput = await callGemini(images, googleKey, model, instruction, paths.length, { maxRetries: 2 });
     if (geminiOutput !== null) {
       modelUsed = model;
-      process.stderr.write(`    ✓ Gemini ${model} → ${geminiOutput.length} chars\n`);
+      log.debug(`✓ Gemini ${model} → ${geminiOutput.length} chars`);
       break;
     }
     await sleep(2000);
@@ -236,10 +241,10 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
       const refSource = `Ollama (${getOllamaConfig().model})`;
       const valid = isOutputValid(reference, geminiCleaned);
 
-      process.stderr.write(`    [validation/${refSource}] seuil=55% — ref: ${reference.length}c, Gemini: ${geminiCleaned.length}c\n`);
+      log.debug(`[validation/${refSource}] seuil=55% — ref: ${reference.length}c, Gemini: ${geminiCleaned.length}c`);
 
       if (valid) {
-        process.stderr.write(`    ✓ Gemini validé par ${refSource}\n`);
+        log.debug(`✓ Gemini validé par ${refSource}`);
         return { rawMarkdown: geminiCleaned, imageRegions: [], modelUsed };
       }
 
@@ -248,11 +253,11 @@ export async function runGoogleVisionPipeline(imagePaths, subject, level, google
       const fallbackReason = geminiHasStructure
         ? 'sortie tronquée mais structurée'
         : 'fallback OCR formaté';
-      process.stderr.write(`    ↩ Gemini rejeté par ${refSource} → ${fallbackReason}\n`);
+      log.debug(`↩ Gemini rejeté par ${refSource} → ${fallbackReason}`);
       return { rawMarkdown: fallbackContent, imageRegions: [], usedFallback: true };
     }
 
-    process.stderr.write(`    ⚠ Aucune référence disponible — Gemini retourné sans validation\n`);
+    log.warn(`⚠ Aucune référence disponible — Gemini retourné sans validation`);
     return { rawMarkdown: geminiCleaned, imageRegions: [], modelUsed };
   }
 

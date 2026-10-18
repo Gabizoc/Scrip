@@ -1,5 +1,5 @@
-import fs from 'node:fs';
-import path from 'node:path';
+import { log } from '../lib/logger.js';
+import { llmSignal } from './http.js';
 import sharp from 'sharp';
 
 const MISTRAL_CHAT_ENDPOINT = 'https://api.mistral.ai/v1/chat/completions';
@@ -11,20 +11,20 @@ export async function prepareImage(imagePath) {
     .jpeg({ quality: 80 })
     .toBuffer();
 
-  console.log('[DEBUG ocr] image redimensionnée :', buffer.length, 'bytes (mime: image/jpeg)');
+  log.debug(`[ocr] image redimensionnée : ${buffer.length} bytes (mime: image/jpeg)`);
   return { base64: buffer.toString('base64'), mimeType: 'image/jpeg' };
 }
 
 async function fetchWithRetry(url, options, maxRetries = 3) {
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
-    const res = await fetch(url, options);
+    const res = await fetch(url, { ...options, signal: llmSignal() });
     if (res.status !== 429) return res;
 
     const wait = attempt * 15_000;
-    console.log(`[DEBUG ocr] 429 rate limit — attente ${wait / 1000}s (tentative ${attempt}/${maxRetries})`);
+    log.warn(`[ocr] 429 rate limit — attente ${wait / 1000}s (tentative ${attempt}/${maxRetries})`);
     await new Promise(r => setTimeout(r, wait));
   }
-  return fetch(url, options);
+  return fetch(url, { ...options, signal: llmSignal() });
 }
 
 const SYSTEM_PROMPT = `Tu es un moteur d'OCR. Lis ce qui est ÉCRIT dans l'image, mot par mot.
@@ -52,9 +52,9 @@ FORMAT : texte brut, sans balises \`\`\`markdown\`\`\`. Commence directement par
 export async function runOCR(imagePaths, apiKey) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
 
-  console.log('[DEBUG ocr] modèle :', VISION_MODEL);
-  console.log('[DEBUG ocr] apiKey reçue :', apiKey ? 'présente' : 'UNDEFINED/NULL');
-  console.log('[DEBUG ocr] pages :', paths.length);
+  log.debug(`[ocr] modèle : ${VISION_MODEL}`);
+  log.debug(`[ocr] apiKey reçue : ${apiKey ? 'présente' : 'UNDEFINED/NULL'}`);
+  log.debug(`[ocr] pages : ${paths.length}`);
 
   const images = await Promise.all(paths.map(prepareImage));
 
@@ -88,10 +88,10 @@ export async function runOCR(imagePaths, apiKey) {
     }),
   });
 
-  console.log('[DEBUG ocr] réponse HTTP :', response.status, response.statusText);
+  log.debug(`[ocr] réponse HTTP : ${response.status} ${response.statusText}`);
   if (!response.ok) {
     const errorText = await response.text();
-    console.log('[DEBUG ocr] corps erreur :', errorText);
+    log.debug(`[ocr] corps erreur : ${errorText}`);
     throw new Error(`Mistral OCR erreur ${response.status}: ${errorText}`);
   }
 
@@ -131,7 +131,7 @@ export function deduplicateOCR(text) {
       const ahead = lines2.slice(i + 1, i + 1 + WINDOW).map(l => l.trim()).join('\n');
       if (block === ahead && block.length > 20) {
         i += WINDOW;
-        process.stderr.write(`[OCR] bloc répété détecté (fenêtre ${WINDOW}) → sauté\n`);
+        log.debug(`[OCR] bloc répété détecté (fenêtre ${WINDOW}) → sauté`);
         continue;
       }
     }
@@ -158,7 +158,7 @@ export function deduplicateOCR(text) {
           j++;
         }
         step4.push(step3[j]);
-        process.stderr.write(`[OCR] extension additive (${j - k + 1} lignes) → conservé la plus longue\n`);
+        log.debug(`[OCR] extension additive (${j - k + 1} lignes) → conservé la plus longue`);
         k = j + 1;
         continue;
       }
@@ -171,7 +171,7 @@ export function deduplicateOCR(text) {
 
   const removed = originalLen - result.length;
   if (removed > 50) {
-    process.stderr.write(`[OCR] déduplication : ${removed} chars supprimés (${originalLen} → ${result.length})\n`);
+    log.debug(`[OCR] déduplication : ${removed} chars supprimés (${originalLen} → ${result.length})`);
   }
 
   return result;

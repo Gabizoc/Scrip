@@ -1,3 +1,4 @@
+import { log } from '../lib/logger.js';
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage, prepareImageSmall } from './ocr.js';
 import { removeExerciseBlocks } from './format-rules.js';
@@ -34,7 +35,8 @@ export async function pingOllama(timeoutMs = 2000) {
   }
 }
 
-const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
+// Consignes propres à la lecture d'image, ajoutées après le prompt de la matière.
+const VISION_SUFFIX = `
 
 Tu regardes directement une photo de notes manuscrites françaises.
 Lis EXACTEMENT le texte physiquement écrit dans l'image — n'ajoute rien de tes connaissances.
@@ -87,7 +89,8 @@ RAPPEL DU FORMAT ATTENDU (applique-le sur ce que tu lis) :
 # Définitions              ← H1, toujours en dernier si présentes
 * **Terme :** Définition`;
 
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}${VISION_SUFFIX}`;
+
 
 function cleanFences(text) {
   return text
@@ -145,7 +148,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     stream: true,
   });
 
-  process.stderr.write(`    [debug] POST ${endpoint} — model=${model} body=${body.length}B stream (timeout inactivité ${Math.round(idleTimeoutMs / 1000)}s)\n`);
+  log.debug(`[debug] POST ${endpoint} — model=${model} body=${body.length}B stream (timeout inactivité ${Math.round(idleTimeoutMs / 1000)}s)`);
 
   const controller = new AbortController();
   let timer = setTimeout(() => controller.abort(), idleTimeoutMs);
@@ -159,22 +162,22 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     res = await fetch(endpoint, { method: 'POST', headers, body, signal: controller.signal });
   } catch (err) {
     clearTimeout(timer);
-    process.stderr.write(`    [debug] fetch ERREUR réseau: ${err.message}\n`);
+    log.warn(`[debug] fetch ERREUR réseau: ${err.message}`);
     throw err;
   }
 
-  process.stderr.write(`    [debug] HTTP ${res.status} ${res.statusText}\n`);
+  log.debug(`[debug] HTTP ${res.status} ${res.statusText}`);
 
   if (res.status === 429) {
     clearTimeout(timer);
-    process.stderr.write(`    [debug] 429 rate-limit\n`);
+    log.debug(`[debug] 429 rate-limit`);
     return null;
   }
 
   if (!res.ok) {
     clearTimeout(timer);
     const txt = await res.text();
-    process.stderr.write(`    [debug] réponse erreur: ${txt.slice(0, 500)}\n`);
+    log.warn(`[debug] réponse erreur: ${txt.slice(0, 500)}`);
     if (res.status === 401) {
       const hint = apiKey
         ? `cle OLLAMA_API_KEY refusee (${apiKey.slice(0, 4)}…, ${apiKey.length} chars) — verifie-la sur https://ollama.com/settings/keys et redemarre le backend apres modification du .env`
@@ -182,7 +185,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
       throw new Error(`Ollama 401 : ${hint}`);
     }
     if (res.status === 404) {
-      process.stderr.write(`    ⚠ Ollama modèle "${model}" introuvable — vérifie que le modèle est installé (ollama pull ${model})\n`);
+      log.warn(`⚠ Ollama modèle "${model}" introuvable — vérifie que le modèle est installé (ollama pull ${model})`);
       return null;
     }
     throw new Error(`Ollama erreur ${res.status}: ${txt}`);
@@ -215,13 +218,13 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
       catch { /* */ }
     }
   } catch (err) {
-    process.stderr.write(`    [debug] erreur lecture stream: ${err.message}\n`);
+    log.warn(`[debug] erreur lecture stream: ${err.message}`);
     throw err;
   } finally {
     clearTimeout(timer);
   }
 
-  process.stderr.write(`    [debug] réponse reçue (stream): ${content.length} chars\n`);
+  log.debug(`[debug] réponse reçue (stream): ${content.length} chars`);
   return content || null;
 }
 
@@ -257,33 +260,41 @@ export async function callOllamaRaw(imagePaths) {
     },
   ];
 
-  process.stderr.write(`    → Ollama validation (${model})\n`);
+  log.debug(`→ Ollama validation (${model})`);
   try {
     const raw = await callOllama(messages, model, baseUrl, 4096);
     if (!raw) return null;
     const cleaned = cleanFences(raw);
     if (hasRepetitionLoop(cleaned)) {
-      process.stderr.write(`    ⚠ Ollama validation : boucle de répétition détectée → rejet\n`);
+      log.warn(`⚠ Ollama validation : boucle de répétition détectée → rejet`);
       return null;
     }
-    process.stderr.write(`    ✓ Ollama validation → ${cleaned.length} chars\n`);
+    log.debug(`✓ Ollama validation → ${cleaned.length} chars`);
     return cleaned;
   } catch (err) {
-    process.stderr.write(`    ⚠ Ollama validation échoué: ${err.message}\n`);
+    log.warn(`⚠ Ollama validation échoué: ${err.message}`);
     return null;
   }
 }
 
-export async function runOllamaPipeline(imagePaths, userNote = null) {
+// Appel texte simple (sans image), utilisé par exemple pour le résumé.
+export async function ollamaChat(messages, maxTokens = 512) {
+  const { baseUrl, model } = getOllamaConfig();
+  const raw = await callOllama(messages, model, baseUrl, maxTokens);
+  return raw ? cleanFences(raw) : null;
+}
+
+export async function runOllamaPipeline(imagePaths, { userNote = null, systemPrompt = null } = {}) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
   const { baseUrl, model, isCloud } = getOllamaConfig();
 
-  process.stderr.write(`[ollama] ${paths.length} image(s), modèle: ${model}, endpoint: ${baseUrl}\n`);
+  log.debug(`[ollama] ${paths.length} image(s), modèle: ${model}, endpoint: ${baseUrl}`);
 
+  const baseInstruction = systemPrompt ? `${systemPrompt}${VISION_SUFFIX}` : VISION_INSTRUCTION;
   const systemInstruction = userNote
-    ? `${VISION_INSTRUCTION}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
-    : VISION_INSTRUCTION;
-  if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
+    ? `${baseInstruction}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
+    : baseInstruction;
+  if (userNote) log.debug(`[userNote] "${userNote}"`);
 
   let rawMarkdown = '';
 
@@ -292,21 +303,21 @@ export async function runOllamaPipeline(imagePaths, userNote = null) {
     for (let i = 0; i < paths.length; i++) {
       const image = await prepareImageSmall(paths[i]);
       const messages = buildMessages([image], 1, systemInstruction);
-      process.stderr.write(`    → ${model} [${i + 1}/${paths.length}]\n`);
+      log.debug(`→ ${model} [${i + 1}/${paths.length}]`);
       const raw = await callOllama(messages, model, baseUrl, 4096);
       if (!raw) throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
       rawMarkdown += (rawMarkdown ? '\n\n' : '') + cleanFences(raw);
-      process.stderr.write(`    ✓ image ${i + 1}/${paths.length} → ${raw.length} chars\n`);
+      log.debug(`✓ image ${i + 1}/${paths.length} → ${raw.length} chars`);
     }
   } else {
     // Modeles locaux : toutes les images en une seule requete
     const images = await Promise.all(paths.map(prepareImage));
     const maxTokens = Math.min(4096 * paths.length, 16384);
     const messages = buildMessages(images, paths.length, systemInstruction);
-    process.stderr.write(`    → ${model}\n`);
+    log.debug(`→ ${model}`);
     const raw = await callOllama(messages, model, baseUrl, maxTokens);
     if (!raw) throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
-    process.stderr.write(`    ✓ Ollama ${model} → ${raw.length} chars\n`);
+    log.debug(`✓ Ollama ${model} → ${raw.length} chars`);
     rawMarkdown = cleanFences(raw);
   }
 

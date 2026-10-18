@@ -1,3 +1,5 @@
+import { log } from '../lib/logger.js';
+import { llmSignal } from './http.js';
 import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
 import { prepareImage, runOCR } from './ocr.js';
 import { isOutputValid, applyRulesFormat, removeExerciseBlocks } from './format-rules.js';
@@ -13,7 +15,8 @@ const OPENROUTER_VISION_MODELS = process.env.OPENROUTER_VISION_MODEL
   ? [process.env.OPENROUTER_VISION_MODEL]
   : ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'openrouter/auto'];
 
-const VISION_SYSTEM_PROMPT = `${DEFAULT_SYSTEM_PROMPT}
+// Consignes propres à la lecture d'image, ajoutées après le prompt de la matière.
+const VISION_SUFFIX = `
 
 Tu regardes directement une photo de notes manuscrites françaises.
 Lis EXACTEMENT le texte physiquement écrit dans l'image — n'ajoute rien de tes connaissances.
@@ -63,6 +66,8 @@ RAPPEL DU FORMAT ATTENDU (applique-le sur ce que tu lis) :
 # Définitions              ← H1, toujours en dernier si présentes
 * **Terme :** Définition`;
 
+const VISION_SYSTEM_PROMPT = `${DEFAULT_SYSTEM_PROMPT}${VISION_SUFFIX}`;
+
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
 function buildUserContent(images, count) {
@@ -95,7 +100,7 @@ function cleanFences(text) {
 }
 
 async function callNvidiaVision(messages, apiKey, model, maxTokens) {
-  const res = await fetch(NVIDIA_ENDPOINT, {
+  const res = await fetch(NVIDIA_ENDPOINT, { signal: llmSignal(),
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
     body: JSON.stringify({ model, temperature: 0, max_tokens: maxTokens, messages }),
@@ -104,7 +109,7 @@ async function callNvidiaVision(messages, apiKey, model, maxTokens) {
   if (!res.ok) {
     const txt = await res.text();
     if (res.status === 404 || res.status === 400) {
-      process.stderr.write(`    ⚠ NVIDIA vision ${model} indisponible (${res.status})\n`);
+      log.warn(`⚠ NVIDIA vision ${model} indisponible (${res.status})`);
       return null;
     }
     throw new Error(`NVIDIA vision erreur ${res.status}: ${txt}`);
@@ -113,7 +118,7 @@ async function callNvidiaVision(messages, apiKey, model, maxTokens) {
 }
 
 async function callOpenRouterVision(messages, apiKey, model, maxTokens) {
-  const res = await fetch(OPENROUTER_ENDPOINT, {
+  const res = await fetch(OPENROUTER_ENDPOINT, { signal: llmSignal(),
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -127,7 +132,7 @@ async function callOpenRouterVision(messages, apiKey, model, maxTokens) {
   if (!res.ok) {
     const txt = await res.text();
     if (res.status === 404 || res.status === 400) {
-      process.stderr.write(`    ⚠ OpenRouter vision ${model} indisponible (${res.status})\n`);
+      log.warn(`⚠ OpenRouter vision ${model} indisponible (${res.status})`);
       return null;
     }
     throw new Error(`OpenRouter vision erreur ${res.status}: ${txt}`);
@@ -135,27 +140,28 @@ async function callOpenRouterVision(messages, apiKey, model, maxTokens) {
   return (await res.json()).choices[0].message.content;
 }
 
-export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, openrouterKey, mistralKey, userNote = null) {
+export async function runVisionPipeline(imagePaths, { nvidiaKey, openrouterKey, mistralKey, userNote = null, systemPrompt = null } = {}) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
 
-  process.stderr.write(`[vision] ${paths.length} image(s), mode vision direct\n`);
+  log.debug(`[vision] ${paths.length} image(s), mode vision direct`);
 
   const images = await Promise.all(paths.map(prepareImage));
   const maxTokens = Math.min(4096 * paths.length, 16384);
 
-  const systemPrompt = userNote
-    ? `${VISION_SYSTEM_PROMPT}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
-    : VISION_SYSTEM_PROMPT;
-  if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
+  const baseInstruction = systemPrompt ? `${systemPrompt}${VISION_SUFFIX}` : VISION_SYSTEM_PROMPT;
+  const instruction = userNote
+    ? `${baseInstruction}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
+    : baseInstruction;
+  if (userNote) log.debug(`[userNote] "${userNote}"`);
 
   const visionMessages = [
-    { role: 'system', content: systemPrompt },
+    { role: 'system', content: instruction },
     { role: 'user',   content: buildUserContent(images, paths.length) },
   ];
 
   const ocrPromise = mistralKey
     ? runOCR(paths, mistralKey).then(r => r.rawMarkdown).catch(err => {
-        process.stderr.write(`    ⚠ OCR parallèle échoué (${err.message}), validation désactivée\n`);
+        log.warn(`⚠ OCR parallèle échoué (${err.message}), validation désactivée`);
         return null;
       })
     : Promise.resolve(null);
@@ -164,10 +170,10 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
 
   if (nvidiaKey) {
     for (const model of NVIDIA_VISION_MODELS) {
-      process.stderr.write(`    → NVIDIA vision ${model}\n`);
+      log.debug(`→ NVIDIA vision ${model}`);
       visionOutput = await callNvidiaVision(visionMessages, nvidiaKey, model, maxTokens);
       if (visionOutput !== null) {
-        process.stderr.write(`    ✓ NVIDIA vision → ${visionOutput.length} chars\n`);
+        log.debug(`✓ NVIDIA vision → ${visionOutput.length} chars`);
         break;
       }
       await sleep(1000);
@@ -176,10 +182,10 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
 
   if (!visionOutput && openrouterKey) {
     for (const model of OPENROUTER_VISION_MODELS) {
-      process.stderr.write(`    → OpenRouter vision ${model}\n`);
+      log.debug(`→ OpenRouter vision ${model}`);
       visionOutput = await callOpenRouterVision(visionMessages, openrouterKey, model, maxTokens);
       if (visionOutput !== null) {
-        process.stderr.write(`    ✓ OpenRouter vision → ${visionOutput.length} chars\n`);
+        log.debug(`✓ OpenRouter vision → ${visionOutput.length} chars`);
         break;
       }
       await sleep(800);
@@ -195,15 +201,15 @@ export async function runVisionPipeline(imagePaths, subject, level, nvidiaKey, o
   const ocrReference = await ocrPromise;
 
   if (ocrReference) {
-    process.stderr.write(`    [validation] OCR référence: ${ocrReference.length} chars\n`);
+    log.debug(`[validation] OCR référence: ${ocrReference.length} chars`);
     if (isOutputValid(ocrReference, visionCleaned)) {
       return { rawMarkdown: visionCleaned, rawVisionOutput: visionCleaned, imageRegions: [], reliable: true };
     }
-    process.stderr.write(`    ↩ Vision rejetée, fallback OCR + formateur règles\n`);
+    log.debug(`↩ Vision rejetée, fallback OCR + formateur règles`);
     const fallback = applyRulesFormat(ocrReference);
     return { rawMarkdown: fallback, rawVisionOutput: visionCleaned, imageRegions: [], usedFallback: true, reliable: false };
   }
 
-  process.stderr.write(`    ⚠ Validation désactivée (pas de clé Mistral ou OCR échoué)\n`);
+  log.warn(`⚠ Validation désactivée (pas de clé Mistral ou OCR échoué)`);
   return { rawMarkdown: visionCleaned, rawVisionOutput: visionCleaned, imageRegions: [], reliable: false };
 }
