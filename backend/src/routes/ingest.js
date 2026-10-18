@@ -13,7 +13,7 @@ import { runOllamaPipeline, isOllamaConfigured, pingOllama } from '../pipeline/o
 import { buildNote } from '../pipeline/format.js';
 import { writeAuditLog } from '../pipeline/audit.js';
 import { scoreNote } from '../pipeline/score.js';
-import { isOutputValid, applyRulesFormat } from '../pipeline/format-rules.js';
+import { isOutputValid, applyRulesFormat, replaceSimpleLatex } from '../pipeline/format-rules.js';
 import { saveDebugLog } from '../pipeline/debug-log.js';
 import { createJob, getJob, emitStep, emitDone, emitError, emitWarning } from '../jobs.js';
 import { summarizeNote } from '../pipeline/summarize.js';
@@ -260,10 +260,10 @@ async function runPipeline({ jobId, files, subject, level, mistralKey, openroute
   }
 
   step('format', 'Mise en forme', 'running');
-  const structured = rawStructured
+  const structured = replaceSimpleLatex(rawStructured
     .replace(/^```(?:markdown)?\s*\n?/i, '')
     .replace(/\n?```\s*$/i, '')
-    .trim();
+    .trim());
   const contentForFile = structured.replace(/\n*<!--\s*METADATA[\s\S]*?-->\s*$/i, '').trim();
 
   const now = new Date();

@@ -68,6 +68,29 @@ function removeDuplicateH1(markdown) {
   return lines.join('\n');
 }
 
+// Les modeles ecrivent souvent les fleches/symboles des notes en LaTeX ($\rightarrow$),
+// illisible dans la PWA. On remplace les blocs $...$ qui ne contiennent QUE des symboles connus ;
+// les vraies formules ($E = mc^2$) sont laissees telles quelles (Obsidian les rend).
+const LATEX_SYMBOLS = {
+  rightarrow: '→', to: '→', longrightarrow: '⟶', leftarrow: '←', gets: '←', longleftarrow: '⟵',
+  leftrightarrow: '↔', Rightarrow: '⇒', implies: '⇒', Longrightarrow: '⟹', Leftarrow: '⇐',
+  Leftrightarrow: '⇔', iff: '⇔', uparrow: '↑', downarrow: '↓', nearrow: '↗', searrow: '↘',
+  mapsto: '↦', rightleftharpoons: '⇌',
+  times: '×', cdot: '·', div: '÷', pm: '±', approx: '≈', simeq: '≃', sim: '~', neq: '≠', ne: '≠',
+  leq: '≤', le: '≤', geq: '≥', ge: '≥', ll: '≪', gg: '≫', infty: '∞', degree: '°', circ: '°',
+  in: '∈', notin: '∉', subset: '⊂', cup: '∪', cap: '∩', emptyset: '∅', forall: '∀', exists: '∃',
+  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', Delta: 'Δ', epsilon: 'ε', lambda: 'λ', mu: 'μ',
+  pi: 'π', rho: 'ρ', sigma: 'σ', Sigma: 'Σ', theta: 'θ', omega: 'ω', Omega: 'Ω',
+};
+
+export function replaceSimpleLatex(markdown) {
+  return markdown.replace(/\$\s*((?:\\[A-Za-z]+\s*)+)\$/g, (match, body) => {
+    const cmds = body.trim().split(/\s+/).map(c => c.slice(1));
+    if (!cmds.every(c => c in LATEX_SYMBOLS)) return match;
+    return cmds.map(c => LATEX_SYMBOLS[c]).join(' ');
+  });
+}
+
 export function applyRulesFormat(ocrText) {
   const lines = ocrText.split('\n');
   const out = [];
