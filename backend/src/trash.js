@@ -84,7 +84,6 @@ export function deleteTrashFiles(entry) {
 }
 
 export async function purgeExpiredTrash() {
-  await db.read();
   const days = Number(db.data.settings.trashRetentionDays ?? 30);
   if (!Number.isFinite(days) || days <= 0) return 0;
 

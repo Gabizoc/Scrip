@@ -7,7 +7,6 @@ export const trashRouter = Router();
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 trashRouter.get('/', async (req, res) => {
-  await db.read();
   const days = Number(db.data.settings.trashRetentionDays ?? 30);
   const entries = (db.data.trash ?? [])
     .slice()
@@ -21,7 +20,6 @@ trashRouter.get('/', async (req, res) => {
 });
 
 trashRouter.post('/:id/restore', async (req, res) => {
-  await db.read();
   const idx = (db.data.trash ?? []).findIndex(e => e.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'entrée corbeille introuvable' });
 
@@ -39,7 +37,6 @@ trashRouter.post('/:id/restore', async (req, res) => {
 });
 
 trashRouter.delete('/', async (req, res) => {
-  await db.read();
   for (const entry of (db.data.trash ?? [])) deleteTrashFiles(entry);
   db.data.trash = [];
   await db.write();
@@ -47,7 +44,6 @@ trashRouter.delete('/', async (req, res) => {
 });
 
 trashRouter.delete('/:id', async (req, res) => {
-  await db.read();
   const idx = (db.data.trash ?? []).findIndex(e => e.id === req.params.id);
   if (idx === -1) return res.status(404).json({ error: 'entrée corbeille introuvable' });
 
