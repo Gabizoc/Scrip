@@ -117,7 +117,7 @@ npm run dev
 | `nvidia` | NVIDIA NIM (`NVIDIA_API_KEY`) |
 | `mistral` | OCR Mistral + structuration (`MISTRAL_API_KEY`) |
 
-**OpenRouter** n'est pas un mode à part : s'il est configuré, il sert de **secours** pour la vision et la structuration, et pour le résumé automatique.
+**OpenRouter** n'est pas un mode à part. Il ne reçoit **que du texte**, jamais les photos : la structuration du texte OCR en mode `mistral`, et le résumé automatique des notes (avec repli sur Ollama).
 
 <details>
 <summary><b>Ollama &nbsp;·&nbsp; recommandé, 100 % gratuit</b></summary>
@@ -220,7 +220,7 @@ MISTRAL_API_KEY=ta_cle_ici
 <summary><b>OpenRouter &nbsp;·&nbsp; secours avec des dizaines de modèles gratuits</b></summary>
 <br>
 
-[OpenRouter](https://openrouter.ai) donne accès à des dizaines de modèles, dont plusieurs gratuits (suffixe `:free`). Dans Scrip, il sert de secours et de fournisseur pour le résumé automatique.
+[OpenRouter](https://openrouter.ai) donne accès à des dizaines de modèles, dont plusieurs gratuits (suffixe `:free`). Dans Scrip, il ne traite que du texte : structuration en mode `mistral` et résumé automatique.
 
 1. Crée un compte sur [openrouter.ai](https://openrouter.ai)
 2. Crée une clé dans **Keys**
@@ -230,12 +230,12 @@ MISTRAL_API_KEY=ta_cle_ici
 OPENROUTER_API_KEY=ta_cle_ici
 ```
 
-**Modèles gratuits par défaut** (modifiables via `OPENROUTER_VISION_MODEL`, `OPENROUTER_STRUCTURE_MODEL` et `OPENROUTER_SUMMARY_MODEL`) :
+**Modèles gratuits par défaut** (modifiables via `OPENROUTER_STRUCTURE_MODEL` et `OPENROUTER_SUMMARY_MODEL`) :
 - `google/gemma-4-26b-a4b-it:free`
 - `google/gemma-4-31b-it:free`
 - `meta-llama/llama-3.3-70b-instruct:free`
 
-Scrip bascule sur `openrouter/auto` si la limite journalière est atteinte. Sans clé OpenRouter, le résumé automatique passe par Ollama s'il est configuré.
+Scrip bascule sur `openrouter/auto` si la limite journalière est atteinte. Pour le résumé, si OpenRouter échoue (quota, erreur) ou n'est pas configuré, Scrip utilise Ollama s'il est configuré.
 
 </details>
 
@@ -263,7 +263,7 @@ Copie `.env.example` en `.env` : chaque variable y est commentée. Les principal
 | `GOOGLE_API_KEY`, `GEMINI_MODEL` | Google Gemini |
 | `NVIDIA_API_KEY` | NVIDIA NIM |
 | `MISTRAL_API_KEY` | Mistral |
-| `OPENROUTER_API_KEY` | OpenRouter (secours + résumé) |
+| `OPENROUTER_API_KEY` | OpenRouter (texte seulement : structuration en mode `mistral`, résumé) |
 | `LLM_TIMEOUT_MS` | Délai max d'un appel IA (défaut `180000`) |
 
 **Serveur**
