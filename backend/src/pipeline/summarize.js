@@ -37,7 +37,12 @@ async function summarizeWithOpenRouter(userPrompt, apiKey) {
   return json.choices?.[0]?.message?.content?.trim() ?? '';
 }
 
-// Résumé court de la note : OpenRouter si une clé est fournie, sinon Ollama s'il est configuré.
+async function summarizeWithOllama(userPrompt) {
+  return (await ollamaChat([{ role: 'user', content: userPrompt }], MAX_TOKENS))?.trim() ?? '';
+}
+
+// Résumé court de la note : OpenRouter si une clé est fournie, avec repli sur Ollama s'il est configuré
+// (quota OpenRouter atteint, erreur HTTP, réponse vide).
 export async function summarizeNote(markdown, level, openrouterKey) {
   if (!openrouterKey && !isOllamaConfigured()) return null;
 
@@ -51,10 +56,17 @@ export async function summarizeNote(markdown, level, openrouterKey) {
     content.slice(0, MAX_INPUT_CHARS);
 
   try {
-    const text = openrouterKey
-      ? await summarizeWithOpenRouter(userPrompt, openrouterKey)
-      : (await ollamaChat([{ role: 'user', content: userPrompt }], MAX_TOKENS))?.trim() ?? '';
-    return text.length > MIN_RESULT_LEN ? text : null;
+    let text = openrouterKey
+      ? await summarizeWithOpenRouter(userPrompt, openrouterKey).catch((err) => {
+        log.warn(`[summarize] OpenRouter : ${err.name === 'TimeoutError' ? 'timeout' : err.message}`);
+        return null;
+      })
+      : null;
+    if ((text?.length ?? 0) <= MIN_RESULT_LEN && isOllamaConfigured()) {
+      if (openrouterKey) log.info('[summarize] repli sur Ollama');
+      text = await summarizeWithOllama(userPrompt);
+    }
+    return (text?.length ?? 0) > MIN_RESULT_LEN ? text : null;
   } catch (err) {
     if (err.name === 'TimeoutError' || err.name === 'AbortError') {
       log.warn('[summarize] timeout');
