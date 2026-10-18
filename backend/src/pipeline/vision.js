@@ -13,7 +13,7 @@ const NVIDIA_VISION_MODELS = process.env.NVIDIA_VISION_MODEL
 
 const OPENROUTER_VISION_MODELS = process.env.OPENROUTER_VISION_MODEL
   ? [process.env.OPENROUTER_VISION_MODEL]
-  : ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'openrouter/auto'];
+  : ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'openrouter/free'];
 
 // Consignes propres à la lecture d'image, ajoutées après le prompt de la matière.
 const VISION_SUFFIX = `

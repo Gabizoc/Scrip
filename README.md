@@ -235,7 +235,7 @@ OPENROUTER_API_KEY=ta_cle_ici
 - `google/gemma-4-31b-it:free`
 - `meta-llama/llama-3.3-70b-instruct:free`
 
-Scrip bascule sur `openrouter/auto` si la limite journalière est atteinte. Pour le résumé, si OpenRouter échoue (quota, erreur) ou n'est pas configuré, Scrip utilise Ollama s'il est configuré.
+Si ces modèles sont saturés, Scrip se rabat en dernier recours sur `openrouter/free`, un routeur qui choisit un modèle gratuit au hasard (qualité variable, mais jamais facturé). Pour le résumé, si OpenRouter échoue (quota, erreur) ou n'est pas configuré, Scrip utilise Ollama s'il est configuré.
 
 </details>
 

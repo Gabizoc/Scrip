@@ -9,9 +9,13 @@ const NVIDIA_MODELS = process.env.NVIDIA_STRUCTURE_MODEL
   ? [process.env.NVIDIA_STRUCTURE_MODEL]
   : ['mistralai/mistral-medium-3-instruct', 'meta/llama-4-maverick-17b-128e-instruct', 'nvidia/llama-3.1-nemotron-ultra-253b-v1', 'qwen/qwq-32b'];
 
+// Routeur OpenRouter vers un modèle gratuit tiré au hasard : qualité variable, donc dernier recours
+// (contrairement à openrouter/auto, il ne choisit jamais de modèle payant).
+const FREE_ROUTER = 'openrouter/free';
+
 const OPENROUTER_MODELS = process.env.OPENROUTER_STRUCTURE_MODEL
   ? [process.env.OPENROUTER_STRUCTURE_MODEL]
-  : ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'openrouter/auto', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-coder:free', 'qwen/qwen3-next-80b-a3b-instruct:free', 'nousresearch/hermes-3-llama-3.1-405b:free', 'openai/gpt-oss-120b:free', 'nvidia/nemotron-3-super-120b-a12b:free'];
+  : ['google/gemma-4-26b-a4b-it:free', 'google/gemma-4-31b-it:free', 'meta-llama/llama-3.3-70b-instruct:free', 'qwen/qwen3-coder:free', 'qwen/qwen3-next-80b-a3b-instruct:free', 'nousresearch/hermes-3-llama-3.1-405b:free', 'openai/gpt-oss-120b:free', 'nvidia/nemotron-3-super-120b-a12b:free', FREE_ROUTER];
 
 const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
@@ -86,7 +90,7 @@ export async function structureContent(rawMarkdown, { systemPrompt = DEFAULT_SYS
     }
     log.debug(`── vague OpenRouter ${round + 1} ──`);
 
-    const models = round < 2 ? OPENROUTER_MODELS : ['openrouter/auto'];
+    const models = round < 2 ? OPENROUTER_MODELS : [FREE_ROUTER];
     for (const model of models) {
       log.debug(`→ ${model}`);
       const result = await callOpenRouter(messages, openrouterKey, model, maxTokens);
@@ -99,9 +103,9 @@ export async function structureContent(rawMarkdown, { systemPrompt = DEFAULT_SYS
     }
   }
 
-  log.debug(`⏳ dernier espoir — attente 45s puis openrouter/auto...`);
+  log.debug(`⏳ dernier espoir — attente 45s puis ${FREE_ROUTER}...`);
   await sleep(45000);
-  const last = await callOpenRouter(messages, openrouterKey, 'openrouter/auto', maxTokens);
+  const last = await callOpenRouter(messages, openrouterKey, FREE_ROUTER, maxTokens);
   if (last !== null) return last;
 
   throw new Error('Tous les modèles LLM sont saturés. Réessaie dans quelques minutes.');
