@@ -15,7 +15,12 @@ async function authRequest(method, path, body) {
 export const authApi = {
   status:         ()                             => authRequest('GET',  '/status'),
   login:          (email, password)              => authRequest('POST', '/login',           { email, password }),
-  logout:         ()                             => authRequest('POST', '/logout'),
+  logout:         async ()                       => {
+    const res = await authRequest('POST', '/logout');
+    // Vide les réponses API gardées par le service worker pour le mode hors ligne.
+    navigator.serviceWorker?.controller?.postMessage({ type: 'clear-api-cache' });
+    return res;
+  },
   magic:          ()                             => authRequest('POST', '/magic'),
   forgot:         ()                             => authRequest('POST', '/forgot'),
   reset:          (token, password)              => authRequest('POST', '/reset',            { token, password }),

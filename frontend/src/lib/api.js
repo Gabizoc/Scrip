@@ -42,7 +42,8 @@ export const api = {
     if (subfolder?.trim()) fd.append('subfolder', subfolder.trim());
     return request('POST', '/ingest', fd, true);
   },
-  ingestEvents: (jobId) => new EventSource(`/api/ingest/${jobId}/events`),
+  ingestEvents: (jobId) => new EventSource(`/api/ingest/${encodeURIComponent(jobId)}/events`),
+  getIngestJobs: () => request('GET', '/ingest/jobs'),
 
   getLevels: () => request('GET', '/levels'),
   createLevel: (name) => request('POST', '/levels', { name }),

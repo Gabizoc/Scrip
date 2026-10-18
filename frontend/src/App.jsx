@@ -2,6 +2,7 @@ import { useQuery }      from '@tanstack/react-query';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { SubjectsProvider } from './lib/SubjectsContext.jsx';
 import { authApi }       from './lib/auth.js';
+import { useOfflineSync } from './hooks/useOfflineSync.js';
 import Sidebar           from './components/Sidebar.jsx';
 import BottomNav         from './components/BottomNav.jsx';
 import Home              from './pages/Home.jsx';
@@ -26,6 +27,7 @@ function PageWrapper({ children }) {
 }
 
 function ProtectedLayout() {
+  useOfflineSync();
   return (
     <SubjectsProvider>
       <div className="min-h-screen bg-bg-base text-text-primary">
