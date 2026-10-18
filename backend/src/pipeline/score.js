@@ -1,3 +1,4 @@
+import { log } from '../lib/logger.js';
 import nspell from 'nspell';
 import dicFr from 'dictionary-fr';
 
@@ -29,7 +30,7 @@ function extractCandidates(text) {
     .replace(/^\|[\s\-:|]+\|.*$/mg, '')
     .replace(/[^\wÀ-ÿœŒæÆ'\- ]/g, ' ')
     .split(/\s+/)
-    .map(w => w.replace(/^['\-]+|['\-]+$/g, ''))
+    .map(w => w.replace(/^['-]+|['-]+$/g, ''))
     .filter(w => w.length >= 3 && !isIgnored(w));
 }
 
@@ -60,7 +61,7 @@ export function scoreNote(markdown = '') {
 
   const samples = wrong.slice(0, 6);
 
-  process.stderr.write(
+  log.debug(
     `[score] ${score}/100 — ${wrong.length}/${unique.length} mots suspects` +
     (samples.length ? ` (ex: ${samples.join(', ')})` : '') + '\n'
   );
