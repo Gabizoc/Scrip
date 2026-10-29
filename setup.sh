@@ -234,14 +234,25 @@ select_option "Mode pipeline :" \
 PIPELINE_MODES=("auto" "ollama" "google" "nvidia" "mistral")
 CFG_PIPELINE="${PIPELINE_MODES[$SELECTED_INDEX]}"
 
-CFG_OLLAMA_URL=""; CFG_OLLAMA_MODEL=""
+CFG_OLLAMA_URL=""; CFG_OLLAMA_MODEL=""; CFG_OLLAMA_KEY=""
 CFG_GOOGLE_KEY=""; CFG_NVIDIA_KEY=""; CFG_MISTRAL_KEY=""
 
 if [ "$CFG_PIPELINE" = "auto" ] || [ "$CFG_PIPELINE" = "ollama" ]; then
   echo
   if ask_yesno "Configurer Ollama ?" "y"; then
-    ask_input "URL Ollama" "http://localhost:11434"
-    CFG_OLLAMA_URL="$INPUT_VALUE"
+    select_option "Acces Ollama :" \
+      "Local       (Ollama installe sur cette machine)" \
+      "Cloud API   (cle ollama.com, sans installation)"
+
+    if [ "$SELECTED_INDEX" = "1" ]; then
+      echo -e "${DIM}  Cle a creer sur https://ollama.com/settings/keys${RST}"
+      ask_input "OLLAMA_API_KEY" "" "true"
+      CFG_OLLAMA_KEY="$INPUT_VALUE"
+      CFG_OLLAMA_URL="https://ollama.com"
+    else
+      ask_input "URL Ollama" "http://localhost:11434"
+      CFG_OLLAMA_URL="$INPUT_VALUE"
+    fi
 
     select_option "Modele Ollama :" \
       "gemma4:31b-cloud    (recommande - excellent francais)" \
@@ -305,6 +316,7 @@ print_header "5 - Ecriture du .env"
 
   [ -n "$CFG_OLLAMA_URL" ] && {
     echo "OLLAMA_BASE_URL=$CFG_OLLAMA_URL"
+    [ -n "$CFG_OLLAMA_KEY" ] && echo "OLLAMA_API_KEY=$CFG_OLLAMA_KEY"
     echo "OLLAMA_MODEL=$CFG_OLLAMA_MODEL"
     echo "OLLAMA_VALIDATION=true"
     echo ""

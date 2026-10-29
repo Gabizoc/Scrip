@@ -5,24 +5,27 @@
   "main": "src/server.js",
   "scripts": {
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js",
-    "test": "node --test tests/*.test.js"
+    "dev": "node --watch src/server.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
     "cors": "^2.8.5",
     "dictionary-fr": "^3.0.0",
     "dotenv": "^16.4.0",
-    "express": "^4.19.2",
+    "express": "^5.3.0",
+    "express-rate-limit": "^8.7.1",
     "express-session": "^1.19.0",
+    "helmet": "^8.3.0",
     "lowdb": "^7.0.1",
-    "multer": "^1.4.5-lts.1",
+    "multer": "^2.4.0",
     "nodemailer": "^8.0.8",
     "nspell": "^2.1.5",
+    "pino": "^10.4.0",
     "sharp": "^0.34.5",
-    "webdav-server": "^2.6.2"
+    "webdav-server": "^2.6.2",
+    "zod": "^4.6.7"
   },
-  "devDependencies": {
-    "supertest": "^7.0.0"
+  "engines": {
+    "node": ">=20"
   }
 }

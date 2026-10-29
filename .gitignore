@@ -27,3 +27,6 @@ nginx/scrip.conf
 
 # Brainstorming superpowers
 .superpowers/
+# File d'ingestion persistante (photos en attente de traitement)
+backend/data/uploads/
+backend/data/*.tmp

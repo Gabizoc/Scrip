@@ -102,7 +102,7 @@ export default function Settings() {
   const webdavUrl = publicUrl ? `${publicUrl.replace(/\/$/, '')}/webdav` : null;
 
   const nginxSnippet = `location /webdav/ {
-    proxy_pass http://localhost:5001/webdav/;
+    proxy_pass http://localhost:7001/webdav/;  # PORT de ton .env
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     client_max_body_size 10M;
@@ -255,15 +255,32 @@ export default function Settings() {
 
           <div className="space-y-1.5">
             <label className="text-[11px] uppercase tracking-wide text-text-tertiary font-medium">
-              Mot de passe {settings?.webdav?.hasPassword ? '(laisser vide pour ne pas changer)' : ''}
+              Mot de passe WebDAV {settings?.webdav?.hasPassword ? '(laisser vide pour ne pas changer)' : ''}
             </label>
+            <p className="text-[11px] text-text-tertiary leading-relaxed">
+              {settings?.webdav?.hasPassword
+                ? 'Un mot de passe dédié à WebDAV est défini, distinct de celui de connexion.'
+                : 'Aucun mot de passe dédié : WebDAV utilise ton mot de passe de connexion. Définis-en un pour les séparer.'}
+              {settings?.webdav?.hasPassword && (
+                <>
+                  {' '}
+                  <button
+                    type="button"
+                    onClick={() => updateSettings.mutate({ webdav: { useAppPassword: true } })}
+                    className="underline hover:text-text-primary"
+                  >
+                    Revenir au mot de passe de connexion
+                  </button>
+                </>
+              )}
+            </p>
             <div className="flex gap-2">
               <div className="relative flex-1">
                 <input
                   type={showPass ? 'text' : 'password'}
                   value={webdavPass}
                   onChange={e => setWebdavPass(e.target.value)}
-                  placeholder={settings?.webdav?.hasPassword ? '••••••••••••••••' : 'Définir un mot de passe'}
+                  placeholder={settings?.webdav?.hasPassword ? '••••••••••••••••' : 'Définir un mot de passe dédié'}
                   className="w-full h-10 px-3 pr-9 rounded-lg text-[13px]
                     bg-black/[0.04] dark:bg-white/[0.05]
                     border border-black/[0.08] dark:border-white/[0.07]

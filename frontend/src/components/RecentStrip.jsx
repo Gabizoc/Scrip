@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Zap } from 'lucide-react';
 import { parseScore, scoreColor, subjectDotColor } from '../lib/noteUtils.js';
 
 const CHUNK = 8;

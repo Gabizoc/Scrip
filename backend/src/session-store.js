@@ -2,16 +2,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 import session from 'express-session';
 
+export const SESSION_COOKIE = 'scrip.sid';
+
 const Store = session.Store;
+
+const PERSIST_DELAY_MS = 1000;
 
 export class FileSessionStore extends Store {
   constructor({ path: filePath, cleanupIntervalMs = 60 * 60 * 1000 } = {}) {
     super();
     this.filePath = filePath;
     this.sessions = new Map();
+    this._persistTimer = null;
     this._load();
     const timer = setInterval(() => this._cleanup(true), cleanupIntervalMs);
     timer.unref?.();
+    // Écrit les modifications en attente avant l'arrêt du process.
+    process.once('beforeExit', () => this._flush());
   }
 
   _load() {
@@ -23,7 +30,16 @@ export class FileSessionStore extends Store {
     }
   }
 
+  // Regroupe les écritures : une rafale de requêtes ne réécrit le fichier qu'une fois.
   _persist() {
+    if (this._persistTimer) return;
+    this._persistTimer = setTimeout(() => this._flush(), PERSIST_DELAY_MS);
+    this._persistTimer.unref?.();
+  }
+
+  _flush() {
+    clearTimeout(this._persistTimer);
+    this._persistTimer = null;
     const tmp = `${this.filePath}.tmp`;
     try {
       fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
@@ -76,7 +92,10 @@ export class FileSessionStore extends Store {
 
   touch(sid, sess, cb) {
     const entry = this.sessions.get(sid);
-    if (entry) entry.expires = this._expiryOf(sess);
+    if (entry) {
+      entry.expires = this._expiryOf(sess);
+      this._persist();
+    }
     cb?.(null);
   }
 }

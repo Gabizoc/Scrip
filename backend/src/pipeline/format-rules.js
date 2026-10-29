@@ -1,3 +1,4 @@
+import { log } from '../lib/logger.js';
 export function removeExerciseBlocks(markdown) {
   const lines = markdown.split('\n');
   const sections = [];
@@ -32,21 +33,21 @@ export function removeExerciseBlocks(markdown) {
   for (const sec of sections) {
     if (sec.isExercise) {
       removed++;
-      process.stderr.write(`    [filter] exercice supprimé: "${sec.headingText.slice(0, 80)}"\n`);
+      log.debug(`[filter] exercice supprimé: "${sec.headingText.slice(0, 80)}"`);
       continue;
     }
     if (sec.headingLine) result.push(sec.headingLine);
     for (const line of sec.bodyLines) {
       const numPrefix = line.match(/^(\d+[a-z]?\)\s+)(.+)/);
       if (numPrefix && numPrefix[2].length > 80) {
-        process.stderr.write(`    [filter] préfixe numérique retiré: "${numPrefix[1].trim()}"\n`);
+        log.debug(`[filter] préfixe numérique retiré: "${numPrefix[1].trim()}"`);
         result.push(numPrefix[2]);
       } else {
         result.push(line);
       }
     }
   }
-  if (removed) process.stderr.write(`    [filter] ${removed} section(s) exercice supprimée(s)\n`);
+  if (removed) log.debug(`[filter] ${removed} section(s) exercice supprimée(s)`);
 
   const deduped = removeDuplicateH1(result.join('\n'));
 
@@ -62,10 +63,33 @@ function removeDuplicateH1(markdown) {
   const t2 = h1s[1].line.replace(/^# /, '').trim().toLowerCase();
 
   if (t2.includes(t1) || t1.includes(t2)) {
-    process.stderr.write(`    [filter] titre H1 dupliqué supprimé: "${h1s[0].line.slice(0, 60)}"\n`);
+    log.debug(`[filter] titre H1 dupliqué supprimé: "${h1s[0].line.slice(0, 60)}"`);
     lines.splice(h1s[0].i, 1);
   }
   return lines.join('\n');
+}
+
+// Les modeles ecrivent souvent les fleches/symboles des notes en LaTeX ($\rightarrow$),
+// illisible dans la PWA. On remplace les blocs $...$ qui ne contiennent QUE des symboles connus ;
+// les vraies formules ($E = mc^2$) sont laissees telles quelles (Obsidian les rend).
+const LATEX_SYMBOLS = {
+  rightarrow: '→', to: '→', longrightarrow: '⟶', leftarrow: '←', gets: '←', longleftarrow: '⟵',
+  leftrightarrow: '↔', Rightarrow: '⇒', implies: '⇒', Longrightarrow: '⟹', Leftarrow: '⇐',
+  Leftrightarrow: '⇔', iff: '⇔', uparrow: '↑', downarrow: '↓', nearrow: '↗', searrow: '↘',
+  mapsto: '↦', rightleftharpoons: '⇌',
+  times: '×', cdot: '·', div: '÷', pm: '±', approx: '≈', simeq: '≃', sim: '~', neq: '≠', ne: '≠',
+  leq: '≤', le: '≤', geq: '≥', ge: '≥', ll: '≪', gg: '≫', infty: '∞', degree: '°', circ: '°',
+  in: '∈', notin: '∉', subset: '⊂', cup: '∪', cap: '∩', emptyset: '∅', forall: '∀', exists: '∃',
+  alpha: 'α', beta: 'β', gamma: 'γ', delta: 'δ', Delta: 'Δ', epsilon: 'ε', lambda: 'λ', mu: 'μ',
+  pi: 'π', rho: 'ρ', sigma: 'σ', Sigma: 'Σ', theta: 'θ', omega: 'ω', Omega: 'Ω',
+};
+
+export function replaceSimpleLatex(markdown) {
+  return markdown.replace(/\$\s*((?:\\[A-Za-z]+\s*)+)\$/g, (match, body) => {
+    const cmds = body.trim().split(/\s+/).map(c => c.slice(1));
+    if (!cmds.every(c => c in LATEX_SYMBOLS)) return match;
+    return cmds.map(c => LATEX_SYMBOLS[c]).join(' ');
+  });
 }
 
 export function applyRulesFormat(ocrText) {
@@ -119,21 +143,21 @@ export function isOutputValid(reference, llmOutput, {
   maxRatio = 1.4,
 } = {}) {
   if (!llmOutput || llmOutput.length < 50) {
-    process.stderr.write(`    ⚠ VALIDATION: sortie trop courte ou vide → rejet\n`);
+    log.warn(`⚠ VALIDATION: sortie trop courte ou vide → rejet`);
     return false;
   }
 
   const ratio = llmOutput.length / reference.length;
 
   if (ratio > maxRatio) {
-    process.stderr.write(
-      `    ⚠ VALIDATION: sortie trop longue (ratio ${ratio.toFixed(2)}x > ${maxRatio}) → rejet\n`
+    log.warn(
+      `⚠ VALIDATION: sortie trop longue (ratio ${ratio.toFixed(2)}x > ${maxRatio}) → rejet`
     );
     return false;
   }
   if (ratio < minRatio) {
-    process.stderr.write(
-      `    ⚠ VALIDATION: sortie trop courte (ratio ${ratio.toFixed(2)}x < ${minRatio}) → rejet\n`
+    log.warn(
+      `⚠ VALIDATION: sortie trop courte (ratio ${ratio.toFixed(2)}x < ${minRatio}) → rejet`
     );
     return false;
   }
@@ -147,16 +171,16 @@ export function isOutputValid(reference, llmOutput, {
   const coverage = matchedCount / Math.max(llmWords.length, 1);
 
   if (coverage < minOverlap) {
-    process.stderr.write(
-      `    ⚠ VALIDATION: recouvrement ${(coverage * 100).toFixed(0)}% < seuil ${(minOverlap * 100).toFixed(0)}% → rejet\n`
+    log.warn(
+      `⚠ VALIDATION: recouvrement ${(coverage * 100).toFixed(0)}% < seuil ${(minOverlap * 100).toFixed(0)}% → rejet`
     );
     const invented = [...new Set(llmWords.filter(w => !refWords.has(w)))].slice(0, 12);
-    if (invented.length) process.stderr.write(`    Mots absents de la référence : ${invented.join(', ')}\n`);
+    if (invented.length) log.debug(`Mots absents de la référence : ${invented.join(', ')}`);
     return false;
   }
 
-  process.stderr.write(
-    `    ✓ VALIDATION: ratio=${ratio.toFixed(2)}x, recouvrement=${(coverage * 100).toFixed(0)}% → OK\n`
+  log.debug(
+    `✓ VALIDATION: ratio=${ratio.toFixed(2)}x, recouvrement=${(coverage * 100).toFixed(0)}% → OK`
   );
   return true;
 }

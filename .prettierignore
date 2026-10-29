@@ -1,0 +1,7 @@
+node_modules
+frontend/dist
+vault
+logs
+backend/data
+package-lock.json
+*.md

@@ -1,97 +1,49 @@
-import { DEFAULT_SYSTEM_PROMPT } from '../../prompts/default.js';
-import { prepareImage, prepareImageSmall } from './ocr.js';
-import { removeExerciseBlocks } from './format-rules.js';
+import { log } from '../lib/logger.js';
+import { prepareImage, preparePages } from './image.js';
+import { buildTranscriptionPrompt, buildTranscriptionContent, finishTranscription, cleanFences, hasRepetitionLoop } from './transcribe.js';
 
 const DEFAULT_BASE_URL = 'http://127.0.0.1:11434';
+const CLOUD_BASE_URL = 'https://ollama.com';
 const DEFAULT_MODEL = 'gemma4:31b-cloud';
 
-const VISION_INSTRUCTION = `${DEFAULT_SYSTEM_PROMPT}
-
-Tu regardes directement une photo de notes manuscrites françaises.
-Lis EXACTEMENT le texte physiquement écrit dans l'image — n'ajoute rien de tes connaissances.
-
-TABLEAUX :
-- Compte d'abord le nombre exact de colonnes en regardant les séparateurs verticaux
-- Le header doit avoir EXACTEMENT ce nombre de colonnes
-- Si la 1ère colonne n'a pas de titre écrit → header vide : |  |
-- Chaque ligne de données doit avoir le MÊME nombre de cellules que le header
-- Si une cellule est vide → laisse vide entre les pipes : |  |
-
-TEXTE MANUSCRIT :
-- Si un mot est illisible → écris [illisible]
-- Ne complète jamais avec tes connaissances
-
-ZONES D'EXERCICES — IGNORER ABSOLUMENT :
-
-Ce cahier contient deux types de contenu. Tu ne dois retranscrire QUE le cours.
-
-▸ SIGNAL PRINCIPAL — deux traits horizontaux au stylo :
-  Chaque zone d'exercice est encadrée par un trait horizontal avant et un après.
-  Tout le contenu entre ces deux traits = ignorer entièrement.
-
-▸ SIGNAL TEXTUEL — blocs numérotés courts :
-  À l'intérieur des traits, le texte est organisé en réponses courtes numérotées : 1) … 2) … 3) …
-  Ces réponses répondent à des questions (elles n'exposent pas un concept en prose continue).
-  Ce pattern = toujours des exercices, jamais des sous-parties de cours.
-
-▸ INDICE OPTIONNEL — référence de page :
-  Parfois (pas toujours) une référence "p.67" ou "p.77" apparaît dans la zone.
-  Quand elle est présente, c'est une confirmation supplémentaire que c'est un exercice.
-
-▸ DISTINCTION COURS vs EXERCICE :
-  Cours   → prose continue, paragraphes qui développent une idée, définitions approfondies
-  Exercice → réponses courtes numérotées 1) 2) 3), chaque item tient en 1-3 lignes
-
-COMPORTEMENT ATTENDU :
-- Avant la zone d'exercice → transcrire le cours normalement
-- Zone d'exercice (entre les deux traits, items numérotés courts) → ignorer complètement
-- Après la zone d'exercice → reprendre le cours comme si la zone n'avait pas existé
-- Ne mentionne JAMAIS les exercices dans ta sortie, ni les références de page
-
-RAPPEL DU FORMAT ATTENDU (applique-le sur ce que tu lis) :
-# Titre
-# I - Grande partie        ← H1
-## A) Sous-partie          ← H2
-## B) Sous-partie          ← H2
-# II - Grande partie       ← H1
-# Conclusion               ← H1 si présente
-# Définitions              ← H1, toujours en dernier si présentes
-* **Terme :** Définition`;
-
-const sleep = (ms) => new Promise(r => setTimeout(r, ms));
-
-function cleanFences(text) {
-  return text
-    .replace(/^```(?:markdown)?\s*\n?/i, '')
-    .replace(/\n?```\s*$/i, '')
-    .trim();
+// Ollama Cloud (https://docs.ollama.com/cloud) : appel direct a ollama.com avec OLLAMA_API_KEY,
+// sans installation locale. Si seule la cle est definie, on bascule automatiquement sur le cloud.
+export function getOllamaConfig() {
+  const apiKey = process.env.OLLAMA_API_KEY || null;
+  const baseUrl = (process.env.OLLAMA_BASE_URL || (apiKey ? CLOUD_BASE_URL : DEFAULT_BASE_URL)).replace(/\/$/, '');
+  const direct = /^https?:\/\/(www\.)?ollama\.com$/i.test(baseUrl);
+  let model = process.env.OLLAMA_MODEL || DEFAULT_MODEL;
+  // L'API ollama.com attend le nom brut (gemma4:31b), pas la variante CLI (gemma4:31b-cloud / gemma4:cloud)
+  if (direct) model = model.replace(/-cloud$/, '').replace(/:cloud$/, '');
+  return { apiKey, baseUrl, model, direct, isCloud: direct || /[:-]cloud$/.test(model) };
 }
 
-function buildMessages(images, count, systemInstruction = VISION_INSTRUCTION) {
-  const imageBlocks = images.map(({ base64, mimeType }, i) => [
-    { type: 'text', text: count > 1 ? `— Page ${i + 1} sur ${count} —` : '' },
-    { type: 'image_url', image_url: { url: `data:${mimeType};base64,${base64}` } },
-  ]).flat().filter(b => b.text !== '');
-
-  const instruction = count === 1
-    ? 'Lis et formate en Markdown structuré le texte manuscrit de cette photo. Respecte le format du système.'
-    : `Ces ${count} images sont les pages d'UN SEUL cours manuscrit, dans l'ordre.
-Lis-les comme un document continu : une phrase peut commencer page ${1} et finir page ${2}, un tableau peut s'étaler sur plusieurs pages, une partie peut continuer d'une page à l'autre.
-Produis UN SEUL document Markdown unifié — pas de séparateur entre les pages.
-Respecte le format défini dans le système (# pour les grandes parties, ## pour les sous-parties, etc.).
-N'invente rien : copie exactement ce qui est écrit.`;
-
-  return [
-    { role: 'system', content: systemInstruction },
-    { role: 'user',   content: [...imageBlocks, { type: 'text', text: instruction }] },
-  ];
+export function isOllamaConfigured() {
+  return !!(process.env.OLLAMA_BASE_URL || process.env.OLLAMA_API_KEY);
 }
 
-async function callOllama(messages, model, baseUrl, maxTokens) {
+export async function pingOllama(timeoutMs = 2000) {
+  if (!isOllamaConfigured()) return false;
+  const { baseUrl, apiKey } = getOllamaConfig();
+  try {
+    const headers = apiKey ? { Authorization: `Bearer ${apiKey}` } : {};
+    const r = await fetch(`${baseUrl}/api/tags`, { headers, signal: AbortSignal.timeout(timeoutMs) });
+    return r.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Nouvel essai après une boucle : un peu d'aléa et une pénalité de répétition l'en font sortir.
+const LOOP_RETRY_OPTIONS = { temperature: 0.4, repeat_penalty: 1.15 };
+// Fréquence (en caractères reçus) de la recherche de boucle pendant le streaming.
+const LOOP_CHECK_EVERY = 1500;
+
+async function callOllama(messages, model, baseUrl, maxTokens, extraOptions = {}) {
   const endpoint = `${baseUrl.replace(/\/$/, '')}/api/chat`;
 
   const headers = { 'Content-Type': 'application/json' };
-  const apiKey = process.env.OLLAMA_API_KEY;
+  const { apiKey } = getOllamaConfig();
   if (apiKey) headers['Authorization'] = `Bearer ${apiKey}`;
 
   const ollamaMessages = messages.map(msg => {
@@ -111,12 +63,12 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
 
   const body = JSON.stringify({
     model,
-    options: { temperature: 0, num_predict: maxTokens },
+    options: { temperature: 0, num_predict: maxTokens, ...extraOptions },
     messages: ollamaMessages,
     stream: true,
   });
 
-  process.stderr.write(`    [debug] POST ${endpoint} — model=${model} body=${body.length}B stream (timeout inactivité ${Math.round(idleTimeoutMs / 1000)}s)\n`);
+  log.debug(`[debug] POST ${endpoint} — model=${model} body=${body.length}B stream (timeout inactivité ${Math.round(idleTimeoutMs / 1000)}s)`);
 
   const controller = new AbortController();
   let timer = setTimeout(() => controller.abort(), idleTimeoutMs);
@@ -130,24 +82,30 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
     res = await fetch(endpoint, { method: 'POST', headers, body, signal: controller.signal });
   } catch (err) {
     clearTimeout(timer);
-    process.stderr.write(`    [debug] fetch ERREUR réseau: ${err.message}\n`);
+    log.warn(`[debug] fetch ERREUR réseau: ${err.message}`);
     throw err;
   }
 
-  process.stderr.write(`    [debug] HTTP ${res.status} ${res.statusText}\n`);
+  log.debug(`[debug] HTTP ${res.status} ${res.statusText}`);
 
   if (res.status === 429) {
     clearTimeout(timer);
-    process.stderr.write(`    [debug] 429 rate-limit\n`);
+    log.debug(`[debug] 429 rate-limit`);
     return null;
   }
 
   if (!res.ok) {
     clearTimeout(timer);
     const txt = await res.text();
-    process.stderr.write(`    [debug] réponse erreur: ${txt.slice(0, 500)}\n`);
+    log.warn(`[debug] réponse erreur: ${txt.slice(0, 500)}`);
+    if (res.status === 401) {
+      const hint = apiKey
+        ? `cle OLLAMA_API_KEY refusee (${apiKey.slice(0, 4)}…, ${apiKey.length} chars) — verifie-la sur https://ollama.com/settings/keys et redemarre le backend apres modification du .env`
+        : 'OLLAMA_API_KEY manquante dans le .env';
+      throw new Error(`Ollama 401 : ${hint}`);
+    }
     if (res.status === 404) {
-      process.stderr.write(`    ⚠ Ollama modèle "${model}" introuvable — vérifie que le modèle est installé (ollama pull ${model})\n`);
+      log.warn(`⚠ Ollama modèle "${model}" introuvable — vérifie que le modèle est installé (ollama pull ${model})`);
       return null;
     }
     throw new Error(`Ollama erreur ${res.status}: ${txt}`);
@@ -157,6 +115,7 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
   const decoder = new TextDecoder();
   let buffer = '';
   let content = '';
+  let checkedAt = 0;
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -173,6 +132,15 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
         if (obj.error) throw new Error(`Ollama: ${typeof obj.error === 'string' ? obj.error : JSON.stringify(obj.error)}`);
         if (obj.message?.content) content += obj.message.content;
       }
+      // Coupe le flux dès qu'une boucle apparaît plutôt que d'attendre num_predict tokens.
+      if (content.length - checkedAt >= LOOP_CHECK_EVERY) {
+        checkedAt = content.length;
+        if (hasRepetitionLoop(content)) {
+          log.warn(`⚠ Ollama ${model} : boucle de répétition détectée → génération interrompue`);
+          await reader.cancel().catch(() => {});
+          break;
+        }
+      }
     }
     const last = buffer.trim();
     if (last) {
@@ -180,31 +148,30 @@ async function callOllama(messages, model, baseUrl, maxTokens) {
       catch { /* */ }
     }
   } catch (err) {
-    process.stderr.write(`    [debug] erreur lecture stream: ${err.message}\n`);
+    log.warn(`[debug] erreur lecture stream: ${err.message}`);
     throw err;
   } finally {
     clearTimeout(timer);
   }
 
-  process.stderr.write(`    [debug] réponse reçue (stream): ${content.length} chars\n`);
+  log.debug(`[debug] réponse reçue (stream): ${content.length} chars`);
   return content || null;
 }
 
-function hasRepetitionLoop(text) {
-  if (text.length < 400) return false;
-  const seen = new Set();
-  for (let i = 0; i < text.length - 50; i += 80) {
-    const sample = text.slice(i, i + 50);
-    if (seen.has(sample)) return true;
-    seen.add(sample);
-  }
-  return false;
+// Transcrit une requête ; si le modèle part en boucle, réessaie une fois avec d'autres réglages.
+async function transcribeOnce(messages, model, baseUrl, maxTokens) {
+  const first = await callOllama(messages, model, baseUrl, maxTokens);
+  if (!first || !hasRepetitionLoop(first)) return { raw: first, looped: false };
+  log.warn(`↻ ${model} : nouvel essai après une boucle de répétition`);
+  const second = await callOllama(messages, model, baseUrl, maxTokens, LOOP_RETRY_OPTIONS);
+  if (second && !hasRepetitionLoop(second)) return { raw: second, looped: false };
+  return { raw: first, looped: true };
 }
 
 export async function callOllamaRaw(imagePaths) {
-  const images = await Promise.all(imagePaths.map(prepareImageSmall));
-  const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
-  const model = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
+  // Lecture de référence, toutes pages en une requête : taille modérée pour le payload.
+  const images = await Promise.all(imagePaths.map(p => prepareImage(p, { maxSide: 1200, quality: 75 })));
+  const { baseUrl, model } = getOllamaConfig();
 
   const messages = [
     {
@@ -223,61 +190,63 @@ export async function callOllamaRaw(imagePaths) {
     },
   ];
 
-  process.stderr.write(`    → Ollama validation (${model})\n`);
+  log.debug(`→ Ollama validation (${model})`);
   try {
     const raw = await callOllama(messages, model, baseUrl, 4096);
     if (!raw) return null;
     const cleaned = cleanFences(raw);
     if (hasRepetitionLoop(cleaned)) {
-      process.stderr.write(`    ⚠ Ollama validation : boucle de répétition détectée → rejet\n`);
+      log.warn(`⚠ Ollama validation : boucle de répétition détectée → rejet`);
       return null;
     }
-    process.stderr.write(`    ✓ Ollama validation → ${cleaned.length} chars\n`);
+    log.debug(`✓ Ollama validation → ${cleaned.length} chars`);
     return cleaned;
   } catch (err) {
-    process.stderr.write(`    ⚠ Ollama validation échoué: ${err.message}\n`);
+    log.warn(`⚠ Ollama validation échoué: ${err.message}`);
     return null;
   }
 }
 
-export async function runOllamaPipeline(imagePaths, userNote = null) {
+// Appel texte simple (sans image), utilisé par exemple pour le résumé.
+export async function ollamaChat(messages, maxTokens = 512) {
+  const { baseUrl, model } = getOllamaConfig();
+  const raw = await callOllama(messages, model, baseUrl, maxTokens);
+  return raw ? cleanFences(raw) : null;
+}
+
+// Transcription (passe 1). La structuration se fait ensuite sur le texte (cf. providers.js).
+export async function runOllamaTranscription(imagePaths, { vocabulary, corrections, userNote } = {}) {
   const paths = Array.isArray(imagePaths) ? imagePaths : [imagePaths];
-  const baseUrl = process.env.OLLAMA_BASE_URL ?? DEFAULT_BASE_URL;
-  const model = process.env.OLLAMA_MODEL    ?? DEFAULT_MODEL;
-  const isCloud = model.includes(':cloud');
+  const { baseUrl, model, isCloud } = getOllamaConfig();
 
-  process.stderr.write(`[ollama] ${paths.length} image(s), modèle: ${model}, endpoint: ${baseUrl}\n`);
+  log.debug(`[ollama] ${paths.length} image(s), modèle: ${model}, endpoint: ${baseUrl}`);
 
-  const systemInstruction = userNote
-    ? `${VISION_INSTRUCTION}\n\nINSTRUCTION SPÉCIALE :\n${userNote}`
-    : VISION_INSTRUCTION;
-  if (userNote) process.stderr.write(`    [userNote] "${userNote}"\n`);
-
-  let rawMarkdown = '';
+  const system = { role: 'system', content: buildTranscriptionPrompt({ vocabulary, corrections, userNote }) };
+  const unreachable = () => new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
 
   if (isCloud) {
-    // Modeles cloud : une image a la fois pour rester sous la limite de payload du relay
+    // Modèles cloud : une page par requête pour rester sous la limite de payload du relay
+    const parts = [];
+    const loopedPages = [];
     for (let i = 0; i < paths.length; i++) {
-      const image = await prepareImageSmall(paths[i]);
-      const messages = buildMessages([image], 1, systemInstruction);
-      process.stderr.write(`    → ${model} [${i + 1}/${paths.length}]\n`);
-      const raw = await callOllama(messages, model, baseUrl, 4096);
-      if (!raw) throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
-      rawMarkdown += (rawMarkdown ? '\n\n' : '') + cleanFences(raw);
-      process.stderr.write(`    ✓ image ${i + 1}/${paths.length} → ${raw.length} chars\n`);
+      const pages = await preparePages([paths[i]]);
+      const user = { role: 'user', content: buildTranscriptionContent(pages, { firstPage: i + 1, totalPages: paths.length }) };
+      log.debug(`→ ${model} [${i + 1}/${paths.length}]`);
+      const { raw, looped } = await transcribeOnce([system, user], model, baseUrl, 4096);
+      if (!raw) throw unreachable();
+      if (looped) loopedPages.push(i + 1);
+      parts.push(finishTranscription(raw));
+      log.debug(`✓ page ${i + 1}/${paths.length} → ${raw.length} chars`);
     }
-  } else {
-    // Modeles locaux : toutes les images en une seule requete
-    const images = await Promise.all(paths.map(prepareImage));
-    const maxTokens = Math.min(4096 * paths.length, 16384);
-    const messages = buildMessages(images, paths.length, systemInstruction);
-    process.stderr.write(`    → ${model}\n`);
-    const raw = await callOllama(messages, model, baseUrl, maxTokens);
-    if (!raw) throw new Error(`Ollama: le modèle "${model}" est inaccessible sur ${baseUrl}. Vérifie qu'Ollama tourne et que le modèle est installé.`);
-    process.stderr.write(`    ✓ Ollama ${model} → ${raw.length} chars\n`);
-    rawMarkdown = cleanFences(raw);
+    return { transcription: parts.join('\n\n'), modelUsed: model, loopedPages };
   }
 
-  const filtered = removeExerciseBlocks(rawMarkdown);
-  return { rawMarkdown: filtered, imageRegions: [], modelUsed: model };
+  // Modèles locaux : toutes les pages en une seule requête
+  const pages = await preparePages(paths);
+  const user = { role: 'user', content: buildTranscriptionContent(pages) };
+  log.debug(`→ ${model}`);
+  const { raw, looped } = await transcribeOnce([system, user], model, baseUrl, Math.min(4096 * paths.length, 16384));
+  if (!raw) throw unreachable();
+  log.debug(`✓ Ollama ${model} → ${raw.length} chars`);
+  return { transcription: finishTranscription(raw), modelUsed: model, loopedPages: looped ? paths.map((_, i) => i + 1) : [] };
 }

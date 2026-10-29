@@ -7,15 +7,26 @@
     "frontend"
   ],
   "scripts": {
-    "test": "node --test tests/*.test.js",
-    "start": "node ingest.js",
+    "start": "npm start --workspace=backend",
     "dev": "concurrently -n backend,frontend -c cyan,magenta \"npm run dev --workspace=backend\" \"npm run dev --workspace=frontend\"",
     "dev:backend": "npm run dev --workspace=backend",
     "dev:frontend": "npm run dev --workspace=frontend",
     "build": "npm run build --workspace=frontend",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "db:reset": "node backend/scripts/reset-db.js"
   },
   "devDependencies": {
-    "concurrently": "^9.2.1"
+    "@eslint/js": "^9.39.5",
+    "concurrently": "^9.2.1",
+    "eslint": "^9.39.5",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10"
+  },
+  "engines": {
+    "node": ">=20"
   }
 }

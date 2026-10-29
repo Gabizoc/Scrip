@@ -1,0 +1,18 @@
+services:
+  scrip:
+    build: .
+    image: scrip:latest
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      SERVE_FRONTEND: "true"
+      # Ollama installé sur la machine hôte (laisser commenté pour Ollama Cloud)
+      # OLLAMA_BASE_URL: http://host.docker.internal:11434
+    ports:
+      - "127.0.0.1:${PORT:-7001}:${PORT:-7001}"
+    volumes:
+      - ./backend/data:/app/backend/data
+      - ./vault:/app/vault
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,211 +1,19 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Images, Plus, X, FileImage, CheckCircle, Circle, XCircle, Loader2, Scan, BrainCircuit, Wand2, Save, MessageSquarePlus, FolderOpen } from 'lucide-react';
+import { MessageSquarePlus, CloudOff } from 'lucide-react';
 import { api } from '../lib/api.js';
 import { subjectIcon } from '../lib/noteUtils.js';
+import { enqueueCapture, isNetworkError } from '../lib/offlineQueue.js';
 import { useCamera } from '../hooks/useCamera.jsx';
+import { useIngestJob } from '../hooks/useIngestJob.js';
 import Button from '../components/Button.jsx';
 import GlassCard from '../components/GlassCard.jsx';
 import Dropdown from '../components/Dropdown.jsx';
-
-const PIPELINE_STEPS = [
-  { id: 'ocr',       label: 'Lecture des notes',      icon: Scan },
-  { id: 'structure', label: 'Structuration du contenu', icon: BrainCircuit },
-  { id: 'format',    label: 'Mise en forme',           icon: Wand2 },
-  { id: 'save',      label: 'Sauvegarde de la note',   icon: Save },
-];
-
-function ElapsedBadge({ ms }) {
-  if (ms == null) return null;
-  const s = (ms / 1000).toFixed(1);
-  return (
-    <span className="text-[10px] font-mono tabular-nums text-text-tertiary bg-black/[0.05] dark:bg-white/[0.07] px-1.5 py-0.5 rounded shrink-0">
-      {s}s
-    </span>
-  );
-}
-
-function ProgressPanel({ steps, warnings = [], error }) {
-  const [timings, setTimings] = useState({});
-  const [elapsed, setElapsed] = useState(0);
-  const startRef = useRef(Date.now());
-  const tickRef = useRef(null);
-
-  useEffect(() => {
-    tickRef.current = setInterval(() => setElapsed(Date.now() - startRef.current), 250);
-    return () => clearInterval(tickRef.current);
-  }, []);
-
-  useEffect(() => {
-    setTimings(prev => {
-      const next = { ...prev };
-      steps.forEach(step => {
-        if (step.status === 'running' && !next[step.id]?.start) {
-          next[step.id] = { start: Date.now() };
-        }
-        if (step.status === 'done' && next[step.id]?.start && !next[step.id]?.end) {
-          next[step.id] = { ...next[step.id], end: Date.now() };
-        }
-      });
-      return next;
-    });
-  }, [steps]);
-
-  const doneCount = PIPELINE_STEPS.filter(def => steps.find(s => s.id === def.id)?.status === 'done').length;
-  const progressPct = Math.round((doneCount / PIPELINE_STEPS.length) * 100);
-  const runningStep = PIPELINE_STEPS.find(def => steps.find(s => s.id === def.id)?.status === 'running');
-
-  const logEntries = steps
-    .filter(s => s.detail)
-    .map(s => ({ id: s.id, label: s.label ?? PIPELINE_STEPS.find(d => d.id === s.id)?.label, detail: s.detail, status: s.status }));
-
-  return (
-    <GlassCard className="overflow-hidden">
-      <div className="px-5 pt-5 pb-4 border-b border-black/[0.06] dark:border-white/[0.06]">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <div className="relative w-2 h-2">
-              <span className="absolute inset-0 rounded-full bg-accent animate-ping opacity-75" />
-              <span className="relative block w-2 h-2 rounded-full bg-accent" />
-            </div>
-            <p className="text-sm font-semibold text-text-primary">
-              {runningStep
-                ? (steps.find(s => s.id === runningStep.id)?.label ?? runningStep.label)
-                : doneCount === PIPELINE_STEPS.length ? 'Terminé' : 'En attente…'}
-            </p>
-          </div>
-          <span className="text-[11px] font-mono text-text-tertiary tabular-nums">
-            {(elapsed / 1000).toFixed(1)}s
-          </span>
-        </div>
-
-        <div className="flex gap-1">
-          {PIPELINE_STEPS.map((def, i) => {
-            const s = steps.find(st => st.id === def.id);
-            const status = s?.status ?? 'pending';
-            return (
-              <div key={def.id} className="flex-1 h-1.5 rounded-full overflow-hidden bg-black/[0.07] dark:bg-white/[0.08]">
-                {status === 'done' && (
-                  <div className="h-full w-full rounded-full bg-accent/80" />
-                )}
-                {status === 'running' && (
-                  <div className="h-full w-full rounded-full bg-accent
-                    animate-[pulse_1s_ease-in-out_infinite]" />
-                )}
-              </div>
-            );
-          })}
-        </div>
-        <p className="text-[10px] text-text-tertiary mt-1.5">
-          Étape {Math.min(doneCount + (runningStep ? 1 : 0), PIPELINE_STEPS.length)} / {PIPELINE_STEPS.length}
-        </p>
-      </div>
-
-      <div className="px-5 py-4 space-y-3">
-        {PIPELINE_STEPS.map((def) => {
-          const step = steps.find(s => s.id === def.id);
-          const status = step?.status ?? 'pending';
-          const label = step?.label ?? def.label;
-          const t = timings[def.id];
-          const durMs = t?.end ? t.end - t.start : null;
-          const Icon = def.icon;
-
-          return (
-            <div key={def.id} className={[
-              'flex items-start gap-3 transition-all duration-300',
-              status === 'pending' ? 'opacity-35' : '',
-            ].join(' ')}>
-              <div className={[
-                'shrink-0 w-7 h-7 rounded-lg flex items-center justify-center mt-px transition-all duration-300',
-                status === 'done'    ? 'bg-status-success/15'  :
-                status === 'running' ? 'bg-accent/15'           :
-                status === 'error'   ? 'bg-status-danger/15'   :
-                'bg-black/[0.05] dark:bg-white/[0.05]',
-              ].join(' ')}>
-                {status === 'running' ? (
-                  <Loader2 size={14} className="text-accent animate-spin" />
-                ) : status === 'done' ? (
-                  <CheckCircle size={14} className="text-status-success" />
-                ) : status === 'error' ? (
-                  <XCircle size={14} className="text-status-danger" />
-                ) : (
-                  <Icon size={14} className="text-text-tertiary" />
-                )}
-              </div>
-
-              <div className="flex-1 min-w-0">
-                <p className={[
-                  'text-[13px] font-medium transition-colors leading-tight',
-                  status === 'done'    ? 'text-text-primary' :
-                  status === 'running' ? 'text-accent' :
-                  status === 'error'   ? 'text-status-danger' :
-                  'text-text-tertiary',
-                ].join(' ')}>
-                  {label}
-                </p>
-                {step?.detail && (
-                  <p className="text-[11px] text-text-tertiary mt-0.5 truncate">{step.detail}</p>
-                )}
-                {status === 'running' && (
-                  <div className="mt-1.5 h-0.5 w-28 rounded-full bg-accent/20 overflow-hidden">
-                    <div className="h-full rounded-full bg-accent
-                      animate-[shimmer_1.4s_ease-in-out_infinite]
-                      [background:linear-gradient(90deg,transparent,rgba(124,122,255,0.9),transparent)]
-                      [background-size:200%_100%]" />
-                  </div>
-                )}
-              </div>
-
-              <ElapsedBadge ms={durMs} />
-            </div>
-          );
-        })}
-      </div>
-
-      {logEntries.length > 0 && (
-        <div className="mx-5 mb-5 rounded-lg bg-black/[0.03] dark:bg-white/[0.03]
-          border border-black/[0.05] dark:border-white/[0.05] overflow-hidden">
-          <p className="text-[9px] uppercase tracking-widest font-semibold text-text-tertiary
-            px-3 pt-2.5 pb-1.5 border-b border-black/[0.05] dark:border-white/[0.05]">
-            Activité
-          </p>
-          <div className="divide-y divide-black/[0.04] dark:divide-white/[0.04]">
-            {logEntries.map((e, i) => (
-              <div key={i} className="flex items-center gap-2 px-3 py-2">
-                <span className={[
-                  'w-1.5 h-1.5 rounded-full shrink-0',
-                  e.status === 'done' ? 'bg-status-success' : 'bg-accent',
-                ].join(' ')} />
-                <span className="text-[11px] text-text-secondary truncate flex-1">{e.label}</span>
-                <span className="text-[11px] text-text-tertiary truncate max-w-[140px]">{e.detail}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {warnings.length > 0 && (
-        <div className="mx-5 mb-5 space-y-1.5">
-          {warnings.map((w, i) => (
-            <p key={i} className="text-xs text-status-warning bg-status-warning/10 rounded-md px-3 py-2 flex items-start gap-2">
-              <span className="shrink-0 mt-px">⚠</span>
-              <span>{w.message}</span>
-            </p>
-          ))}
-        </div>
-      )}
-
-      {error && (
-        <div className="mx-5 mb-5">
-          <p className="text-sm text-status-danger bg-status-danger/10 rounded-md px-3 py-2">
-            {error}
-          </p>
-        </div>
-      )}
-    </GlassCard>
-  );
-}
+import ProgressPanel from '../components/capture/ProgressPanel.jsx';
+import PageGrid from '../components/capture/PageGrid.jsx';
+import SubfolderPicker from '../components/capture/SubfolderPicker.jsx';
+import QueueStatus from '../components/capture/QueueStatus.jsx';
 
 export default function Capture() {
   const navigate = useNavigate();
@@ -214,14 +22,14 @@ export default function Capture() {
   const [subjectId, setSubjectId] = useState('');
   const [subfolder, setSubfolder] = useState('');
   const [userNote, setUserNote] = useState('');
-  const [dragIdx, setDragIdx] = useState(null);
-  const [dragOverIdx, setDragOverIdx] = useState(null);
 
-  const [processing, setProcessing] = useState(false);
-  const [pipelineSteps, setPipelineSteps] = useState([]);
-  const [pipelineError, setPipelineError] = useState(null);
-  const [pipelineWarnings, setPipelineWarnings] = useState([]);
-  const esRef = useRef(null);
+  const [jobId, setJobId] = useState(null);
+  const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
+  const [savedOffline, setSavedOffline] = useState(false);
+
+  const pagesRef = useRef(pages);
+  pagesRef.current = pages;
 
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings });
   const { data: subjects = [] } = useQuery({
@@ -237,7 +45,23 @@ export default function Capture() {
     staleTime: 10_000,
   });
 
+  const clearPages = useCallback(() => {
+    setPages(prev => { prev.forEach(p => URL.revokeObjectURL(p.url)); return []; });
+  }, []);
+
+  const job = useIngestJob(jobId, {
+    onDone: ({ note }) => {
+      clearPages();
+      qc.invalidateQueries({ queryKey: ['notes'] });
+      qc.invalidateQueries({ queryKey: ['ingest-jobs'] });
+      navigate(`/preview/${note.id}`);
+    },
+  });
+
+  useEffect(() => () => pagesRef.current.forEach(p => URL.revokeObjectURL(p.url)), []);
+
   const addPages = useCallback((files) => {
+    setSavedOffline(false);
     setPages(prev => [...prev, ...files.map(file => ({ file, url: URL.createObjectURL(file) }))]);
   }, []);
 
@@ -245,84 +69,54 @@ export default function Capture() {
     setPages(prev => { URL.revokeObjectURL(prev[idx].url); return prev.filter((_, i) => i !== idx); });
   }, []);
 
-  const clearAll = useCallback(() => {
-    setPages(prev => { prev.forEach(p => URL.revokeObjectURL(p.url)); return []; });
-  }, []);
-
-  const handleDragStart = useCallback((idx) => setDragIdx(idx), []);
-  const handleDragOver = useCallback((e, idx) => { e.preventDefault(); setDragOverIdx(idx); }, []);
-  const handleDrop = useCallback((idx) => {
-    if (dragIdx === null || dragIdx === idx) { setDragIdx(null); setDragOverIdx(null); return; }
+  const reorderPages = useCallback((from, to) => {
     setPages(prev => {
       const next = [...prev];
-      const [moved] = next.splice(dragIdx, 1);
-      next.splice(idx, 0, moved);
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
       return next;
     });
-    setDragIdx(null);
-    setDragOverIdx(null);
-  }, [dragIdx]);
-  const handleDragEnd = useCallback(() => { setDragIdx(null); setDragOverIdx(null); }, []);
-
-  useEffect(() => () => esRef.current?.close(), []);
+  }, []);
 
   const { triggerGallery, CameraInputs } = useCamera({ onCapture: addPages, multiple: true });
 
-  async function startIngest() {
-    if (!pages.length || !subjectId) return;
-
-    setProcessing(true);
-    setPipelineSteps([]);
-    setPipelineError(null);
-    setPipelineWarnings([]);
-
-    let jobId;
-    try {
-      const res = await api.ingest(pages.map(p => p.file), subjectId, settings?.currentLevelId, userNote, subfolder);
-      jobId = res.jobId;
-    } catch (err) {
-      setPipelineError(err.message);
-      setProcessing(false);
-      return;
-    }
-
-    const es = api.ingestEvents(jobId);
-    esRef.current = es;
-
-    es.addEventListener('step', (e) => {
-      const step = JSON.parse(e.data);
-      setPipelineSteps(prev => {
-        const idx = prev.findIndex(s => s.id === step.id);
-        if (idx >= 0) { const next = [...prev]; next[idx] = step; return next; }
-        return [...prev, step];
-      });
-    });
-
-    es.addEventListener('done', (e) => {
-      es.close();
-      const { note } = JSON.parse(e.data);
-      pages.forEach(p => URL.revokeObjectURL(p.url));
-      qc.invalidateQueries({ queryKey: ['notes'] });
-      navigate(`/preview/${note.id}`);
-    });
-
-    es.addEventListener('warning', (e) => {
-      const w = JSON.parse(e.data);
-      setPipelineWarnings(prev => [...prev, w]);
-    });
-
-    es.addEventListener('error', (e) => {
-      es.close();
-      setProcessing(false);
-      try {
-        const { message } = JSON.parse(e.data);
-        setPipelineError(message);
-      } catch {
-        setPipelineError('Erreur de connexion au serveur');
-      }
-    });
+  async function saveOffline(files) {
+    await enqueueCapture({ files, subjectId, levelId: settings?.currentLevelId, userNote: userNote.trim(), subfolder: subfolder.trim() });
+    clearPages();
+    setSavedOffline(true);
   }
 
+  async function startIngest() {
+    if (!pages.length || !subjectId) return;
+    const files = pages.map(p => p.file);
+    setSubmitError(null);
+    setSavedOffline(false);
+    setSubmitting(true);
+
+    try {
+      if (!navigator.onLine) {
+        await saveOffline(files);
+        return;
+      }
+      const res = await api.ingest(files, subjectId, settings?.currentLevelId, userNote, subfolder);
+      setJobId(res.jobId);
+      qc.invalidateQueries({ queryKey: ['ingest-jobs'] });
+    } catch (err) {
+      if (isNetworkError(err)) {
+        try { await saveOffline(files); } catch { setSubmitError('Serveur injoignable et enregistrement hors ligne impossible.'); }
+      } else {
+        setSubmitError(err.message);
+      }
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  function backToForm() {
+    setJobId(null);
+  }
+
+  const processing = !!jobId;
   const dropdownClass = 'h-12 px-4 rounded-md text-[15px] bg-black/[0.03] dark:bg-white/[0.04] border border-black/[0.08] dark:border-white/[0.06] text-text-primary';
 
   return (
@@ -334,7 +128,7 @@ export default function Capture() {
           <h1 className="text-2xl font-bold text-text-primary">Capturer un cours</h1>
           <p className="text-sm text-text-secondary mt-1">
             {processing
-              ? 'Analyse en cours…'
+              ? (job.error ? 'Analyse interrompue' : 'Analyse en cours…')
               : pages.length > 0
                 ? `${pages.length} page${pages.length > 1 ? 's' : ''} sélectionnée${pages.length > 1 ? 's' : ''}`
                 : 'Photographie tes notes manuscrites'}
@@ -343,181 +137,87 @@ export default function Capture() {
 
         <div className="space-y-4">
           {processing ? (
-            <ProgressPanel steps={pipelineSteps} warnings={pipelineWarnings} error={pipelineError} />
-          ) : (
-            <GlassCard className="p-4">
-              {pages.length === 0 ? (
-                <button
-                  onClick={triggerGallery}
-                  className="w-full py-14 flex flex-col items-center gap-3
-                    text-text-tertiary hover:text-text-secondary
-                    hover:bg-black/[0.02] dark:hover:bg-white/[0.02]
-                    transition-colors rounded-md"
-                >
-                  <Images size={36} strokeWidth={1.5} />
-                  <span className="text-sm font-medium">Sélectionner des photos</span>
-                  <span className="text-xs">Plusieurs pages supportées</span>
-                </button>
-              ) : (
-                <div className="space-y-3">
-                  <div className="grid grid-cols-3 gap-2">
-                    {pages.map(({ url }, idx) => (
-                      <div key={url}
-                        draggable
-                        onDragStart={() => handleDragStart(idx)}
-                        onDragOver={e => handleDragOver(e, idx)}
-                        onDrop={() => handleDrop(idx)}
-                        onDragEnd={handleDragEnd}
-                        className={[
-                          'relative group rounded-md overflow-hidden aspect-[3/4]',
-                          'animate-scale-in ring-1 ring-black/[0.06] dark:ring-white/[0.08]',
-                          'cursor-grab active:cursor-grabbing select-none transition-all duration-150',
-                          dragIdx === idx ? 'opacity-30 scale-95' : '',
-                          dragOverIdx === idx && dragIdx !== idx
-                            ? 'ring-2 ring-accent/70 scale-[1.03]'
-                            : '',
-                        ].join(' ')}>
-                        <img src={url} alt={`Page ${idx + 1}`} className="w-full h-full object-cover pointer-events-none" />
-                        <div className="absolute bottom-1.5 left-1.5
-                          bg-black/60 text-white text-[10px] font-semibold
-                          px-1.5 py-0.5 rounded-sm leading-none">
-                          p.{idx + 1}
-                        </div>
-                        <div className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 transition-opacity
-                          pointer-events-none text-white/80">
-                          <svg width="10" height="14" viewBox="0 0 10 14" fill="currentColor">
-                            <circle cx="2.5" cy="2.5" r="1.5"/><circle cx="7.5" cy="2.5" r="1.5"/>
-                            <circle cx="2.5" cy="7"   r="1.5"/><circle cx="7.5" cy="7"   r="1.5"/>
-                            <circle cx="2.5" cy="11.5" r="1.5"/><circle cx="7.5" cy="11.5" r="1.5"/>
-                          </svg>
-                        </div>
-                        <button onClick={() => removePage(idx)}
-                          className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-black/60 text-white
-                            flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                          aria-label={`Supprimer la page ${idx + 1}`}>
-                          <X size={12} />
-                        </button>
-                      </div>
-                    ))}
-                    <button onClick={triggerGallery}
-                      className="aspect-[3/4] rounded-md flex flex-col items-center justify-center gap-1.5
-                        border-2 border-dashed border-black/[0.12] dark:border-white/[0.12]
-                        text-text-tertiary hover:text-accent hover:border-accent/40 transition-colors">
-                      <Plus size={20} strokeWidth={1.5} />
-                      <span className="text-[10px] font-medium">Ajouter</span>
-                    </button>
-                  </div>
-                  <div className="flex items-center justify-between pt-1">
-                    <span className="flex items-center gap-1.5 text-xs text-text-tertiary">
-                      <FileImage size={13} />
-                      {pages.length} page{pages.length > 1 ? 's' : ''}
-                    </span>
-                    <button onClick={clearAll}
-                      className="text-xs text-text-tertiary hover:text-status-danger transition-colors">
-                      Tout effacer
-                    </button>
-                  </div>
-                </div>
+            <>
+              <ProgressPanel key={jobId} steps={job.steps} warnings={job.warnings} error={job.error} />
+              {job.error && (
+                <Button className="w-full" onClick={backToForm}>
+                  {pages.length > 0 ? 'Modifier et réessayer' : 'Retour'}
+                </Button>
               )}
-            </GlassCard>
-          )}
+            </>
+          ) : (
+            <>
+              <QueueStatus currentJobId={jobId} onFollow={setJobId} />
 
-          {!processing && (
-            <GlassCard className="p-4 space-y-2">
-              <label className="text-sm font-medium text-text-secondary">Matière</label>
-              <Dropdown
-                value={subjectId}
-                onChange={setSubjectId}
-                options={subjects.map(s => ({ value: s.id, label: s.name, icon: subjectIcon(s.name, s.emoji ?? null) }))}
-                placeholder="Choisir une matière…"
-                fullWidth
-                className={dropdownClass}
-              />
-              {subjects.length === 0 && settings?.currentLevelId && (
-                <p className="text-xs text-text-tertiary">
-                  Aucune matière ·{' '}
-                  <button className="text-accent underline" onClick={() => navigate('/settings/subjects')}>
-                    en ajouter
-                  </button>
+              {savedOffline && (
+                <p className="text-sm text-text-secondary bg-accent/10 rounded-md px-3 py-2 flex items-start gap-2">
+                  <CloudOff size={16} className="shrink-0 mt-0.5 text-accent" />
+                  Pas de connexion : la capture est enregistrée sur cet appareil et sera envoyée automatiquement au retour du réseau.
                 </p>
               )}
-            </GlassCard>
-          )}
 
-          {!processing && subjectId && (
-            <GlassCard className="p-4">
-              <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-2">
-                <FolderOpen size={14} className="text-text-tertiary" />
-                Sous-dossier
-                <span className="text-[11px] font-normal text-text-tertiary ml-auto">facultatif</span>
-              </label>
-              <input
-                list="folder-suggestions"
-                value={subfolder}
-                onChange={e => setSubfolder(e.target.value)}
-                placeholder="ex : Chapitre 1 ou Chapitre 1/Thème A"
-                className="w-full px-3 py-2 rounded-lg text-sm text-text-primary
-                  bg-black/[0.03] dark:bg-white/[0.04]
-                  border border-black/[0.08] dark:border-white/[0.06]
-                  placeholder:text-text-tertiary
-                  focus:outline-none focus:border-accent/40 transition-colors"
-              />
-              {existingFolders.length > 0 && (
-                <datalist id="folder-suggestions">
-                  {existingFolders.map(f => <option key={f} value={f} />)}
-                </datalist>
-              )}
-              {existingFolders.length > 0 && (
-                <div className="flex flex-wrap gap-1.5 mt-2">
-                  {existingFolders.slice(0, 6).map(f => (
-                    <button
-                      key={f}
-                      type="button"
-                      onClick={() => setSubfolder(f)}
-                      className={[
-                        'text-[11px] px-2 py-0.5 rounded-full border transition-colors',
-                        subfolder === f
-                          ? 'border-accent/60 text-accent bg-accent/10'
-                          : 'border-black/[0.1] dark:border-white/[0.1] text-text-tertiary hover:text-text-secondary hover:border-accent/30',
-                      ].join(' ')}
-                    >
-                      {f}
+              <PageGrid pages={pages} onAdd={triggerGallery} onRemove={removePage} onClear={clearPages} onReorder={reorderPages} />
+
+              <GlassCard className="p-4 space-y-2">
+                <label className="text-sm font-medium text-text-secondary">Matière</label>
+                <Dropdown
+                  value={subjectId}
+                  onChange={setSubjectId}
+                  options={subjects.map(s => ({ value: s.id, label: s.name, icon: subjectIcon(s.name, s.emoji ?? null) }))}
+                  placeholder="Choisir une matière…"
+                  fullWidth
+                  className={dropdownClass}
+                />
+                {subjects.length === 0 && settings?.currentLevelId && (
+                  <p className="text-xs text-text-tertiary">
+                    Aucune matière ·{' '}
+                    <button className="text-accent underline" onClick={() => navigate('/settings/subjects')}>
+                      en ajouter
                     </button>
-                  ))}
-                </div>
+                  </p>
+                )}
+              </GlassCard>
+
+              {subjectId && (
+                <SubfolderPicker value={subfolder} onChange={setSubfolder} existingFolders={existingFolders} />
               )}
-            </GlassCard>
-          )}
 
-          {!processing && (
-            <GlassCard className="p-4">
-              <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-2">
-                <MessageSquarePlus size={14} className="text-text-tertiary" />
-                Note pour l'IA
-                <span className="text-[11px] font-normal text-text-tertiary ml-auto">facultatif</span>
-              </label>
-              <textarea
-                value={userNote}
-                onChange={e => setUserNote(e.target.value)}
-                placeholder={'Ex : "ne traite pas ce qui est écrit en noir" ou "ignorer la partie III"'}
-                rows={2}
-                className="w-full px-3 py-2 rounded-lg text-sm text-text-primary
-                  bg-black/[0.03] dark:bg-white/[0.04]
-                  border border-black/[0.08] dark:border-white/[0.06]
-                  placeholder:text-text-tertiary
-                  resize-none focus:outline-none focus:border-accent/40 transition-colors"
-              />
-            </GlassCard>
-          )}
+              <GlassCard className="p-4">
+                <label className="flex items-center gap-2 text-sm font-medium text-text-secondary mb-2">
+                  <MessageSquarePlus size={14} className="text-text-tertiary" />
+                  Note pour l'IA
+                  <span className="text-[11px] font-normal text-text-tertiary ml-auto">facultatif</span>
+                </label>
+                <textarea
+                  value={userNote}
+                  onChange={e => setUserNote(e.target.value)}
+                  placeholder={'Ex : "ne traite pas ce qui est écrit en noir" ou "ignorer la partie III"'}
+                  rows={2}
+                  maxLength={2000}
+                  className="w-full px-3 py-2 rounded-lg text-sm text-text-primary
+                    bg-black/[0.03] dark:bg-white/[0.04]
+                    border border-black/[0.08] dark:border-white/[0.06]
+                    placeholder:text-text-tertiary
+                    resize-none focus:outline-none focus:border-accent/40 transition-colors"
+                />
+              </GlassCard>
 
-          {!processing && (
-            <Button
-              className="w-full"
-              onClick={startIngest}
-              disabled={pages.length === 0 || !subjectId}
-            >
-              {pages.length > 1 ? `Ingérer ${pages.length} pages` : 'Ingérer le cours'}
-            </Button>
+              {submitError && (
+                <p className="text-sm text-status-danger bg-status-danger/10 rounded-md px-3 py-2">
+                  {submitError}
+                </p>
+              )}
+
+              <Button
+                className="w-full"
+                onClick={startIngest}
+                disabled={pages.length === 0 || !subjectId || submitting}
+              >
+                {submitting
+                  ? 'Envoi…'
+                  : pages.length > 1 ? `Ingérer ${pages.length} pages` : 'Ingérer le cours'}
+              </Button>
+            </>
           )}
         </div>
       </div>
